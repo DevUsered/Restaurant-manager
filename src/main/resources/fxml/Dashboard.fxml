@@ -1,106 +1,111 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import java.net.*?>
-<?import javafx.geometry.*?>
-<?import javafx.scene.control.*?>
-<?import javafx.scene.image.*?>
-<?import javafx.scene.layout.*?>
+<?import java.net.URL?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
 
-<AnchorPane fx:id="rootPane" prefHeight="700.0" prefWidth="1100.0" style="-fx-background-color: transparent;" styleClass="dashboard" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="Attizos.Frontend.DashboardController">
+<AnchorPane fx:id="rootPane" prefHeight="650.0" prefWidth="1100.0" style="-fx-background-color: transparent;" styleClass="dashboard" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="Attizos.Frontend.DashboardController">
     <children>
         <HBox prefHeight="660.0" prefWidth="1060.0" styleClass="glass-container" AnchorPane.bottomAnchor="20.0" AnchorPane.leftAnchor="20.0" AnchorPane.rightAnchor="20.0" AnchorPane.topAnchor="20.0">
 
             <VBox fx:id="sidebar" prefWidth="260.0" styleClass="sidebar">
-
                 <padding>
-                    <Insets bottom="20" left="20" right="20" top="25" />
+                    <Insets bottom="15" left="20" right="20" top="20" />
                 </padding>
+
                 <HBox alignment="CENTER_LEFT" spacing="10">
                     <Label styleClass="logo-icon" text="🍕" />
                     <Label styleClass="logo-text" text="Attizos" />
                 </HBox>
+
                 <AnchorPane fx:id="apSearch" prefHeight="21.0" prefWidth="220.0" styleClass="search-box">
                     <VBox.margin>
-                        <Insets bottom="10.0" top="20.0" />
+                        <Insets bottom="10.0" top="15.0" />
                     </VBox.margin>
                     <children>
                         <Label layoutX="15" layoutY="12" styleClass="search-icon" text="🔍" />
-
                         <Label layoutX="45" layoutY="12" styleClass="search-text" text="Search..." />
                     </children>
                 </AnchorPane>
-                <Label styleClass="section-title" text="Menu" />
 
-                <VBox fx:id="vBCajero" spacing="8">
+                <ScrollPane fitToWidth="true" style="-fx-background: transparent; -fx-background-color: transparent; -fx-border-color: transparent;" VBox.vgrow="ALWAYS">
+                    <content>
+                        <VBox spacing="8" style="-fx-background-color: transparent; -fx-padding: 0 5 0 0;">
 
-                    <Button fx:id="btnSales" onAction="#openSales" styleClass="menu-button" text="🛒 Venta" />
+                            <Label styleClass="section-title" text="Menu" />
+                            <VBox fx:id="vBCajero" spacing="8">
+                                <Button fx:id="btnSales" onAction="#openSales" styleClass="menu-button" text="🛒 Venta" />
+                                <Button fx:id="btnOrders" onAction="#openOrders" styleClass="menu-button" text="🎫 Pedidos" />
+                                <Button fx:id="btnReservations" onAction="#openReservations" styleClass="menu-button" text="📓 Reservas" />
+                            </VBox>
 
-                    <Button fx:id="btnOrders" onAction="#openOrders" styleClass="menu-button" text="🎫 Pedidos" />
+                            <Separator styleClass="separator" />
 
-                    <Button fx:id="btnReservations" onAction="#openReservations" styleClass="menu-button" text="📓 Reservas" />
+                            <Label fx:id="lblAdmin" styleClass="section-title" text="Administración" />
+                            <VBox fx:id="vBAdmin" spacing="8">
+                                <Button fx:id="btnProducts" onAction="#openProducts" styleClass="menu-button" text="🧑‍💻 Productos" />
+                                <Button fx:id="btnInventory" onAction="#openInventory" styleClass="menu-button" text="🏷 Inventario" />
+                                <Button fx:id="btnEmploys" onAction="#openEmploys" styleClass="menu-button" text="👥 Empleados" />
+                                <Button fx:id="btnReports" onAction="#openReports" styleClass="menu-button" text="📊 Reportes" />
+                            </VBox>
 
-                </VBox>
-                <Region VBox.vgrow="ALWAYS" />
-                <Separator styleClass="separator" />
-
-                <Label fx:id="lblAdmin" styleClass="section-title" text="Administración" />
-
-                <VBox fx:id="vBAdmin" spacing="8">
-
-                    <Button fx:id="btnProducts" onAction="#openProducts" styleClass="menu-button" text="🧑‍💻 Productos" />
-
-                    <Button fx:id="btnInventory" onAction="#openInventory" styleClass="menu-button" text="🏷 Inventario" />
-
-                    <Button fx:id="btnEmploys" onAction="#openEmploys" styleClass="menu-button" text="👥 Empleados" />
-
-                    <Button fx:id="btnReports" onAction="#openReports" styleClass="menu-button" text="📊 Reportes" />
-
-                </VBox>
-
-                <Region VBox.vgrow="ALWAYS" />
+                        </VBox>
+                    </content>
+                </ScrollPane>
 
                 <Separator styleClass="separator" />
 
                 <HBox alignment="CENTER_LEFT" spacing="12" styleClass="profile-box">
                     <StackPane styleClass="profile-avatar">
-
-                        <ImageView fx:id="profileImage" fitHeight="94.0" fitWidth="95.0" pickOnBounds="false" preserveRatio="false">
+                        <ImageView fx:id="profileImage" fitHeight="84.0" fitWidth="87.0" pickOnBounds="false" preserveRatio="false">
                             <image>
                                 <Image url="@../logo.png" />
                             </image>
-
                         </ImageView>
                     </StackPane>
-
-                    <VBox>
+                    <VBox alignment="CENTER_LEFT">
                         <Label fx:id="lblCargo" styleClass="profile-role" text="Cargo" />
                         <Label fx:id="lblName" styleClass="profile-name" text="Nombre" />
                     </VBox>
-
                 </HBox>
-      
-                             <Button fx:id="btnLogout" onAction="#logout" styleClass="menu-button-active" text="🏠  Cerrar Sesión" />
+
+                <Button fx:id="btnLogout" onAction="#logout" styleClass="menu-button-active" text="🏠  Cerrar Sesión">
+                    <VBox.margin>
+                        <Insets top="10.0" />
+                    </VBox.margin>
+                </Button>
 
             </VBox>
+
             <AnchorPane styleClass="dashboard" HBox.hgrow="ALWAYS">
                 <children>
                     <StackPane fx:id="contentArea" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="60.0" />
 
-                    <Button fx:id="btnToggle" layoutX="15.0" layoutY="15.0" onAction="#toggleMenu" style="-fx-background-color: rgba(255,255,255,0.1); -fx-text-fill: white; -fx-font-size: 18px; -fx-background-radius: 8; -fx-cursor: hand;" text="☰" />
+                    <!-- CAMBIO DE COLOR AQUÍ (-fx-text-fill: #111111 y fondo transparente) -->
+                    <Button fx:id="btnToggle" layoutX="15.0" layoutY="15.0" onAction="#toggleMenu" style="-fx-background-color: transparent; -fx-text-fill: #111111; -fx-font-size: 18px; -fx-background-radius: 8; -fx-cursor: hand;" text="☰" />
+
                     <HBox fx:id="hbPrincipal" alignment="TOP_RIGHT" spacing="10.0" AnchorPane.rightAnchor="20.0" AnchorPane.topAnchor="15.0">
                         <children>
-                            <Button mnemonicParsing="false" onAction="#minimizarVentana" style="-fx-background-color: transparent; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand; -fx-font-size: 14px;" text="—" />
-                            <Button mnemonicParsing="false" onAction="#maximizarVentana" style="-fx-background-color: transparent; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand; -fx-font-size: 14px;" text="⬜" />
+                            <!-- CAMBIO DE COLOR AQUÍ (-fx-text-fill: #111111) -->
+                            <Button mnemonicParsing="false" onAction="#minimizarVentana" style="-fx-background-color: transparent; -fx-text-fill: #111111; -fx-font-weight: bold; -fx-cursor: hand; -fx-font-size: 14px;" text="—" />
+                            <Button mnemonicParsing="false" onAction="#maximizarVentana" style="-fx-background-color: transparent; -fx-text-fill: #111111; -fx-font-weight: bold; -fx-cursor: hand; -fx-font-size: 14px;" text="⬜" />
                             <Button mnemonicParsing="false" onAction="#cerrarVentana" style="-fx-background-color: transparent; -fx-text-fill: #ff4c4c; -fx-font-weight: bold; -fx-cursor: hand; -fx-font-size: 14px;" text="✖" />
                         </children>
                     </HBox>
                 </children>
             </AnchorPane>
         </HBox>
-        <AnchorPane styleClass="dashboard" HBox.hgrow="ALWAYS" />
     </children>
-   <stylesheets>
-      <URL value="@../css/style.css" />
-   </stylesheets>
-
+    <stylesheets>
+        <URL value="@../css/style.css" />
+    </stylesheets>
 </AnchorPane>

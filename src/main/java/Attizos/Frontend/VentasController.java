@@ -13,10 +13,12 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.TextAlignment;
 
+import java.io.InputStream;
 import java.util.HashSet;
 import java.util.Set;
 
 public class VentasController {
+    @FXML private TextField tfBuscar;
     @FXML private TextField tfNombreCli;
     @FXML private HBox hBCategoria;
     @FXML private FlowPane flPProductos;
@@ -32,10 +34,16 @@ public class VentasController {
     @FXML
     public void initialize() {
         iniciarNuevaVenta();
+        if(tfBuscar != null){
+            tfBuscar.textProperty().addListener((observable, oldValue, newValue) ->{
+                mostrarProductosPorCategoria(categoriaActiva);
+            });
+        }
     }
 
     private void iniciarNuevaVenta() {
         tfNombreCli.clear();
+        if(tfBuscar != null) tfBuscar.clear();
         facturaActual = new Factura(0, "");
         productoSeleccionadoEnCarrito = null;
         filaSeleccionada = null;
@@ -74,10 +82,13 @@ public class VentasController {
     }
     private void mostrarProductosPorCategoria(String categoria) {
         flPProductos.getChildren().clear();
+        String busqueda = (tfBuscar != null && tfBuscar.getText() != null) ? tfBuscar.getText().toLowerCase() : "";
         NodoDE<Producto> actual = App.attizos.getMenu().getCabeza();
         while (actual != null) {
             Producto p = actual.getDato();
-            if (categoria.equals("Todos") || p.getCategoria().equalsIgnoreCase(categoria)) {
+            boolean coincideCategoria = categoria.equals("Todos") || p.getCategoria().equalsIgnoreCase(categoria);
+            boolean coincideBusqueda = p.getNombre().toLowerCase().contains(busqueda);
+            if (coincideCategoria && coincideBusqueda) {
                 crearTarjetaProducto(p);
             }
             actual = actual.getSiguiente();
@@ -111,12 +122,12 @@ public class VentasController {
     }
     private void seleccionarItemCarrito(HBox row, Producto p) {
         if (filaSeleccionada != null) {
-            filaSeleccionada.setStyle("-fx-background-color: rgba(255, 255, 255, 0.05); -fx-background-radius: 10;");
+            filaSeleccionada.setStyle("-fx-border-color: transparent");
         }
 
         filaSeleccionada = row;
         productoSeleccionadoEnCarrito = p;
-        filaSeleccionada.setStyle("-fx-background-color: rgba(126, 87, 194, 0.5); -fx-background-radius: 10;");
+        filaSeleccionada.setStyle("-fx-background-color: rgba(218, 165, 32, 0.15); -fx-background-radius: 10; -fx-border-color: #daa520; -fx-border-radius: 10;");
     }
 
     @FXML
@@ -133,6 +144,8 @@ public class VentasController {
                         facturaActual.modificarCantidad(productoSeleccionadoEnCarrito, nuevaCant, App.attizos.getInventario());
                     } else {
                         facturaActual.eliminarProducto(productoSeleccionadoEnCarrito, App.attizos.getInventario());
+                        productoSeleccionadoEnCarrito = null;
+                        filaSeleccionada = null;
                     }
                     break;
                 }
@@ -149,6 +162,8 @@ public class VentasController {
             return;
         }
             facturaActual.eliminarProducto(productoSeleccionadoEnCarrito, App.attizos.getInventario());
+        productoSeleccionadoEnCarrito = null;
+        filaSeleccionada = null;
             actualizarVistaCarrito();
             mostrarProductosPorCategoria(categoriaActiva);
     }
@@ -208,19 +223,19 @@ public class VentasController {
                 // ========================================================
                 // OPCIÓN 1: MOSTRAR PANTALLA DE IMPRESIÓN DE WINDOWS
                 // ========================================================
-               boolean procede = printerJob.showPrintDialog(null);
+               /*boolean procede = printerJob.showPrintDialog(null);
                 if(procede){
                     boolean impreso = printerJob.printPage(nodoTicket);
                     if (impreso) {
                         printerJob.endJob();
                         System.out.println("✅ Ticket enviado a la impresora exitosamente.");
                     }
-                }
+                }*/
 
-               /* boolean impreso = printerJob.printPage(nodoTicket);
+               boolean impreso = printerJob.printPage(nodoTicket);
                 if (impreso) {
                     printerJob.endJob();
-                }*/
+                }
                 // ========================================================
 
 
@@ -232,11 +247,7 @@ public class VentasController {
         }
     }
     private void mostrarAlerta(String titulo, String mensaje, Alert.AlertType tipo) {
-        Alert alerta = new Alert(tipo);
-        alerta.setTitle(titulo);
-        alerta.setHeaderText(null);
-        alerta.setContentText(mensaje);
-        alerta.showAndWait();
+        AlertaPersonalizada.mostrarAlerta(titulo,mensaje,tipo);
     }
     private void crearTarjetaProducto(Producto p) {
         VBox card = new VBox(8);
@@ -250,15 +261,15 @@ public class VentasController {
         try {
            String url = p.getImagenURL();
            String rutaF = url.startsWith("/") ? url : "/images/Productos/"+url;
-           java.io.InputStream streamImg = getClass().getResourceAsStream(rutaF);
-           if(streamImg != null){
-               imgView.setImage(new Image(streamImg));
-           }else{
-               java.io.InputStream streamDefault = getClass().getResourceAsStream("/images/default.png");
-               if (streamDefault != null) {
-                   imgView.setImage(new Image(streamDefault));
+           try(InputStream streamImg = getClass().getResourceAsStream(rutaF)){
+               if(streamImg != null){
+                   imgView.setImage(new Image(streamImg));
+               }else{
+                   try (InputStream streamDefault = getClass().getResourceAsStream("/images/default.png")) {
+                       if (streamDefault != null) imgView.setImage(new Image(streamDefault));
+                   }
                }
-           }
+           }catch (Exception e){}
         } catch (Exception e) {
         }
 
@@ -272,7 +283,7 @@ public class VentasController {
 
         int stock = p.calcularDisponibilidad(App.attizos.getInventario());
         Label lblStock = new Label("Stock: " + stock);
-        lblStock.setStyle("-fx-text-fill: " + (stock > 0 ? "#b39ddb;" : "#ff4c4c;"));
+        lblStock.setStyle("-fx-text-fill: " + (stock > 0 ? "#218c4e;" : "#ff4c4c;"));
 
         card.getChildren().addAll(imgView, name, price, lblStock);
 
@@ -326,7 +337,7 @@ public class VentasController {
             name.setWrapText(true);
 
             Label qty = new Label("x" + det.getCantidad());
-            qty.getStyleClass().add("cart-product-qty");
+            qty.setStyle("-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #111111;");
 
             textos.getChildren().addAll(name, qty);
 

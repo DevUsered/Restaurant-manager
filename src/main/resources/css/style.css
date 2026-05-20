@@ -1,82 +1,98 @@
-/* ========================================= */
 /* 1. FONDOS PRINCIPALES                     */
-/* ========================================= */
 
-/* Fondo para el Home (Menú público) */
+/* Fondo para el Home (Menú público) y áreas generales */
 .root {
-    -fx-background-color: linear-gradient(to bottom right, #260f41, #120524);
+    -fx-background-color: #FDF6E3; /* Crema suave */
     -fx-font-family: "Segoe UI";
 }
 
-/* Fondo para el Dashboard (Transparente para el efecto flotante) */
+/* Fondo para el Dashboard flotante */
 .dashboard {
     -fx-background-color: transparent;
     -fx-font-family: "Segoe UI";
 }
 
-/* ========================================= */
-/* 2. COMPONENTES GLASSMORPHISM (DASHBOARD)  */
-/* ========================================= */
-
-.glass-container {
-    -fx-background-color: rgba(38, 15, 65, 0.75);
+/* 2. COMPONENTES GLOBALES (DASHBOARD)       */
+.main-container {
+    -fx-background-color: #FDF6E3;
     -fx-background-radius: 25;
-    -fx-border-color: rgba(255, 255, 255, 0.15);
-    -fx-border-width: 1;
+    -fx-border-color: rgba(218, 165, 32, 0.4);
+    -fx-border-width: 1.5;
     -fx-border-radius: 25;
-    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 20, 0.2, 0, 10);
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 25, 0, 0, 10);
 }
 
 .sidebar {
-    -fx-background-color: rgba(28, 8, 48, 0.65);
+    -fx-background-color: #FFFFFF;
     -fx-background-radius: 25 0 0 25;
+    -fx-border-color: #DDDDDD;
+    -fx-border-width: 0 1.5 0 0;
 }
 
 .content-area {
-    -fx-background-color: linear-gradient(to bottom right, rgba(60, 30, 95, 0.4), rgba(30, 10, 50, 0.5));
+    -fx-background-color: #FDF6E3;
     -fx-background-radius: 0 25 25 0;
 }
 
-/* ========================================= */
 /* 3. TARJETAS DE PRODUCTOS (HOME / CAJA)    */
-/* ========================================= */
 
 .product-card {
-    -fx-background-color: rgba(43, 16, 75, 0.6); /* Morado cristalino */
+    -fx-background-color: #FFFFFF;
     -fx-background-radius: 20;
-    -fx-border-color: rgba(255, 255, 255, 0.1);
-    -fx-border-width: 1;
-    -fx-border-radius: 20;
-    -fx-padding: 15;
-    -fx-alignment: center;
+    -fx-border-color: transparent;
+    -fx-padding: 0;
     -fx-cursor: hand;
-    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 10, 0, 0, 5);
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 15, 0, 0, 5);
+    -fx-transition: -fx-scale-x 0.3s ease, -fx-scale-y 0.3s ease;
+}
+.product-overlay {
+    -fx-background-color: rgba(17, 17, 17, 0.85); /* Negro casi opaco para leer bien */
+    -fx-background-radius: 20;
+    -fx-padding: 20;
+}
+.overlay-text {
+    -fx-text-fill: #FDF6E3; /* Letras claras sobre fondo oscuro */
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+    -fx-text-alignment: center;
+    -fx-line-spacing: 5px;
+}
+.btn-close {
+    -fx-background-color: transparent;
+    -fx-text-fill: #111111;
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-cursor: hand;
+    -fx-background-radius: 50;
+}
+.btn-close:hover {
+    -fx-background-color: #FF4C4C;
+    -fx-text-fill: #FFFFFF;
 }
 
 .product-card:hover {
-    -fx-background-color: rgba(74, 30, 125, 0.8); /* Brillo al pasar el mouse */
+    -fx-background-color: #FDF6E3;
+    -fx-border-color: #DAA520; /* Borde dorado al pasar el mouse */
     -fx-scale-x: 1.03;
     -fx-scale-y: 1.03;
 }
 
 .product-name {
-    -fx-text-fill: white;
+    -fx-text-fill: #111111;
     -fx-font-weight: bold;
     -fx-font-size: 18px;
 }
 
 .product-price {
-    -fx-text-fill: #00ff88;
+    -fx-text-fill: #DAA520;
     -fx-font-weight: bold;
     -fx-font-size: 20px;
 }
 
-/* ========================================= */
 /* 4. ELEMENTOS DE TEXTO E ICONOS            */
-/* ========================================= */
 
 .logo-icon, .logo-text {
-    -fx-text-fill: white;
+    -fx-text-fill: #111111;
     -fx-font-size: 24px;
     -fx-font-weight: bold;
 }
@@ -86,18 +102,17 @@
 }
 
 .section-title {
-    -fx-text-fill: #b39ddb;
-    -fx-font-size: 13px;
+    -fx-text-fill: #555555; /* Gris oscuro para subtítulos */
+    -fx-font-size: 14px;
     -fx-padding: 20 0 10 5;
+    -fx-font-weight: bold;
 }
 
-/* ========================================= */
 /* 5. BOTONES Y CONTROLES                    */
-/* ========================================= */
 
 .menu-button {
     -fx-background-color: transparent;
-    -fx-text-fill: #d1c4e9;
+    -fx-text-fill: #555555;
     -fx-font-size: 15px;
     -fx-font-weight: bold;
     -fx-padding: 12 15;
@@ -106,13 +121,13 @@
 }
 
 .menu-button:hover {
-    -fx-background-color: rgba(255, 255, 255, 0.1);
-    -fx-text-fill: white;
+    -fx-background-color: rgba(218, 165, 32, 0.1); /* Resalte en tono crema/dorado */
+    -fx-text-fill: #111111;
 }
 
 .menu-button-active {
-    -fx-background-color: linear-gradient(to right, #7e57c2, #5e35b1);
-    -fx-text-fill: white;
+    -fx-background-color: linear-gradient(to right, #FFC107, #DAA520); /* Degardado dorado */
+    -fx-text-fill: #111111;
     -fx-font-weight: bold;
     -fx-padding: 12 15;
     -fx-background-radius: 12;
@@ -121,89 +136,104 @@
 
 .btn-top {
     -fx-background-color: transparent;
-    -fx-border-color: white;
+    -fx-border-color: #111111;
     -fx-border-width: 2;
     -fx-border-radius: 20;
-    -fx-text-fill: white;
+    -fx-text-fill: #111111;
     -fx-font-weight: bold;
     -fx-cursor: hand;
     -fx-transition: 0.3s;
 }
 
 .btn-top:hover {
-    -fx-background-color: white;
-    -fx-text-fill: #260f41;
+    -fx-background-color: #111111;
+    -fx-text-fill: #FFC107;
 }
 
 .combo-personalizado {
-    -fx-background-color: white;
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #111111;
+    -fx-border-radius: 15;
     -fx-background-radius: 15;
     -fx-font-weight: bold;
 }
 
-/* ========================================= */
 /* 6. CAJAS DE BÚSQUEDA Y PERFIL             */
-/* ========================================= */
 
 .search-box {
-    -fx-background-color: rgba(255, 255, 255, 0.15);
+    -fx-background-color: #F5F5F5;
+    -fx-border-color: #DDDDDD;
     -fx-background-radius: 14;
+    -fx-border-radius: 14;
     -fx-padding: 10;
 }
 
-.search-icon { -fx-text-fill: #b9a6ff; -fx-font-size: 14px; }
-.search-text { -fx-text-fill: white; -fx-font-size: 13px; }
+.search-icon { -fx-text-fill: #555555; -fx-font-size: 14px; }
+.search-text { -fx-text-fill: #111111; -fx-font-size: 13px; }
 
 .separator .line {
-    -fx-border-color: rgba(255, 255, 255, 0.08);
+    -fx-border-color: #DDDDDD;
     -fx-border-width: 1;
 }
 
 .profile-box { -fx-padding: 10; }
 
 .profile-avatar {
-    -fx-background-color: white;
+    -fx-background-color: #FFFFFF;
     -fx-background-radius: 50;
+    -fx-border-color: #DAA520;
+    -fx-border-width: 2;
     -fx-min-width: 90px; -fx-min-height: 90px;
     -fx-max-width: 90px; -fx-max-height: 90px;
     -fx-alignment: center;
-    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10, 0.2, 0, 2);
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0.2, 0, 2);
 }
 
 .profile-name {
-    -fx-text-fill: white;
+    -fx-text-fill: #111111;
     -fx-font-size: 15px;
     -fx-font-weight: bold;
 }
 
 .profile-role {
-    -fx-text-fill: #9d8bc9;
+    -fx-text-fill: #555555;
     -fx-font-size: 12px;
 }
+
 .logo-circle {
-    -fx-background-color: white;
-    -fx-background-radius: 100; /* Número alto para garantizar un círculo perfecto */
+    -fx-background-color: #FFFFFF;
+    -fx-background-radius: 100;
     -fx-alignment: center;
-    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 15, 0, 0, 5);
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 15, 0, 0, 5);
 }
-.sale-product-card{
-    -fx-background-color: rgba(43, 16, 75, 0.6);
+
+/* 7. TARJETAS DE VENTA (CAJA) Y CARRITO     */
+
+.sale-product-card {
+    -fx-background-color: #FFFFFF;
     -fx-background-radius: 15;
-    -fx-border-color: rgba(255, 255, 255, 0.1);
+    -fx-border-color: #DDDDDD;
+    -fx-border-radius: 15;
     -fx-padding: 10;
     -fx-alignment: CENTER;
     -fx-min-width: 150;
     -fx-max-width: 150;
     -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 8, 0, 0, 3);
 }
+
 .sale-product-card:hover {
-    -fx-background-color: rgba(74, 30, 125, 0.8);
+    -fx-background-color: #FDF6E3;
+    -fx-border-color: #DAA520;
     -fx-scale-x: 1.05;
     -fx-scale-y: 1.05;
 }
+
 .cart-item {
-    -fx-background-color: rgba(255, 255, 255, 0.03);
+    -fx-background-color: #FFFFFF;
     -fx-background-radius: 12;
+    -fx-border-color: #DDDDDD;
+    -fx-border-radius: 12;
     -fx-padding: 8;
     -fx-alignment: CENTER_LEFT;
     -fx-cursor: hand;
@@ -211,29 +241,30 @@
 }
 
 .cart-item:hover {
-    -fx-background-color: rgba(255, 255, 255, 0.08);
+    -fx-background-color: #FDF6E3;
 }
 
 .cart-item-selected {
-    -fx-background-color: rgba(126, 87, 194, 0.3);
-    -fx-border-color: rgba(126, 87, 194, 0.5);
+    -fx-background-color: rgba(218, 165, 32, 0.15); /* Crema suave */
+    -fx-border-color: #DAA520;
     -fx-border-radius: 12;
-    -fx-border-width: 1;
+    -fx-border-width: 1.5;
 }
 
 .cart-product-name {
-    -fx-text-fill: white;
+    -fx-text-fill: #111111;
     -fx-font-weight: bold;
     -fx-font-size: 13px;
 }
 
 .cart-product-qty {
-    -fx-text-fill: #a0f8a0;
-    -fx-font-size: 11px;
+    -fx-text-fill: #555555;
+    -fx-font-weight: bold;
+    -fx-font-size: 12px;
 }
 
 .cart-product-price {
-    -fx-text-fill: #00ff88; /* Verde neón para el precio como en muchas apps */
+    -fx-text-fill: #218c4e; /* Verde contable profesional */
     -fx-font-weight: bold;
     -fx-font-size: 14px;
 }

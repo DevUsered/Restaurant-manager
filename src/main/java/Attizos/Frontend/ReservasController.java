@@ -112,9 +112,7 @@ public class ReservasController {
             }
             int pax = Integer.parseInt(txtPersonas.getText());
 
-            String id = "RES-" + System.currentTimeMillis() % 10000;
-
-
+            String id = App.attizos.generarIdReserva(fechaHora);
             Reserva nueva = new Reserva(id, cliente, telf, pax, fechaHora, obs);
 
 
@@ -140,6 +138,7 @@ public class ReservasController {
     void cancelarReservaSeleccionada(ActionEvent event) {
         Reserva sel = tablaReservas.getSelectionModel().getSelectedItem();
         if (sel != null) {
+            sel.setNumeroMesa(0);
             App.attizos.getReservas().eliminarPorValor(sel);
             cargarReservas();
         }
@@ -155,11 +154,9 @@ public class ReservasController {
     }
 
     private void mostrarAlerta(String t, String m) {
-        Alert a = new Alert(Alert.AlertType.WARNING);
-        a.setTitle(t); a.setContentText(m); a.show();
+        AlertaPersonalizada.mostrarAlerta(t, m, Alert.AlertType.WARNING);
     }
     private void mostrarExito(String t, String m) {
-        Alert a = new Alert(Alert.AlertType.INFORMATION);
-        a.setTitle(t); a.setContentText(m); a.show();
+        AlertaPersonalizada.mostrarAlerta(t,m, Alert.AlertType.INFORMATION);
     }
 }

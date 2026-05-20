@@ -13,13 +13,15 @@
 
 <AnchorPane style="-fx-background-color: transparent;" stylesheets="@../css/style.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="Attizos.Frontend.VentasController">
     <children>
-        <Label text="Punto de Venta" textFill="WHITE" AnchorPane.leftAnchor="20.0" AnchorPane.topAnchor="20.0">
+        <!-- TÍTULO EN GRIS OSCURO/NEGRO -->
+        <Label text="Punto de Venta" textFill="#111111" AnchorPane.leftAnchor="20.0" AnchorPane.topAnchor="20.0">
             <font>
                 <Font name="System Bold" size="28.0" />
             </font>
         </Label>
 
-        <TextField prefHeight="35.0" prefWidth="237.0" promptText="🔍 Buscar producto..." style="-fx-background-color: rgba(15, 5, 30, 0.6); -fx-text-fill: white; -fx-prompt-text-fill: #a0a0a0; -fx-background-radius: 10; -fx-padding: 8 15; -fx-border-color: rgba(255,255,255,0.1); -fx-border-radius: 10;" AnchorPane.leftAnchor="268.0" AnchorPane.topAnchor="22.0" />
+        <!-- BARRA DE BÚSQUEDA (Con ID y colores claros) -->
+        <TextField fx:id="tfBuscar" prefHeight="35.0" prefWidth="237.0" promptText="🔍 Buscar producto..." style="-fx-background-color: #F5F5F5; -fx-text-fill: #111111; -fx-prompt-text-fill: #999999; -fx-background-radius: 10; -fx-padding: 8 15; -fx-border-color: #DDDDDD; -fx-border-radius: 10;" AnchorPane.leftAnchor="268.0" AnchorPane.topAnchor="22.0" />
 
         <Label styleClass="section-title" text="Categorías" AnchorPane.leftAnchor="20.0" AnchorPane.topAnchor="80.0" />
 
@@ -29,22 +31,25 @@
             </content>
         </ScrollPane>
 
-        <Label styleClass="section-title" text="Menú de Productos" AnchorPane.leftAnchor="20.0" AnchorPane.topAnchor="185.0" />
+        <Label layoutX="14.0" layoutY="153.0" styleClass="section-title" text="Menú de Productos" AnchorPane.leftAnchor="14.0" AnchorPane.topAnchor="153.0" />
 
         <ScrollPane fx:id="sPProductos" fitToWidth="true" hbarPolicy="NEVER" style="-fx-background: transparent; -fx-background-color: transparent;" AnchorPane.bottomAnchor="20.0" AnchorPane.leftAnchor="20.0" AnchorPane.rightAnchor="340.0" AnchorPane.topAnchor="215.0">
             <content>
                 <FlowPane fx:id="flPProductos" hgap="15.0" style="-fx-background-color: transparent;" vgap="15.0" />
             </content>
         </ScrollPane>
+
         <AnchorPane fx:id="aPCarrito" prefWidth="300.0" styleClass="glass-container" AnchorPane.bottomAnchor="20.0" AnchorPane.rightAnchor="20.0" AnchorPane.topAnchor="20.0">
             <children>
-                <Label text="Orden Actual" textFill="WHITE" AnchorPane.leftAnchor="20.0" AnchorPane.topAnchor="20.0">
+                <!-- TÍTULO ORDEN EN GRIS OSCURO/NEGRO -->
+                <Label text="Orden Actual" textFill="#111111" AnchorPane.leftAnchor="20.0" AnchorPane.topAnchor="20.0">
                     <font>
                         <Font name="System Bold" size="18.0" />
                     </font>
                 </Label>
 
-                <TextField fx:id="tfNombreCli" prefHeight="35.0" promptText="Nombre del cliente..." style="-fx-background-color: rgba(15, 5, 30, 0.6); -fx-text-fill: white; -fx-prompt-text-fill: #a0a0a0; -fx-background-radius: 10; -fx-padding: 8 15; -fx-border-color: rgba(255,255,255,0.1); -fx-border-radius: 10;" AnchorPane.leftAnchor="20.0" AnchorPane.rightAnchor="20.0" AnchorPane.topAnchor="55.0" />
+                <!-- INPUT NOMBRE CLIENTE (Colores claros) -->
+                <TextField fx:id="tfNombreCli" prefHeight="35.0" promptText="Nombre del cliente..." style="-fx-background-color: #F5F5F5; -fx-text-fill: #111111; -fx-prompt-text-fill: #999999; -fx-background-radius: 10; -fx-padding: 8 15; -fx-border-color: #DDDDDD; -fx-border-radius: 10;" AnchorPane.leftAnchor="20.0" AnchorPane.rightAnchor="20.0" AnchorPane.topAnchor="55.0" />
 
                 <ScrollPane fitToWidth="true" hbarPolicy="NEVER" style="-fx-background: transparent; -fx-background-color: transparent;" AnchorPane.bottomAnchor="160.0" AnchorPane.leftAnchor="15.0" AnchorPane.rightAnchor="15.0" AnchorPane.topAnchor="100.0">
                     <content>
@@ -54,11 +59,12 @@
 
                 <VBox spacing="15.0" AnchorPane.bottomAnchor="15.0" AnchorPane.leftAnchor="15.0" AnchorPane.rightAnchor="15.0">
                     <children>
-                        <AnchorPane prefHeight="1.0" style="-fx-background-color: rgba(255,255,255,0.2);" />
+                        <!-- SEPARADOR (Gris claro) -->
+                        <AnchorPane prefHeight="1.0" style="-fx-background-color: #DDDDDD;" />
 
                         <HBox alignment="CENTER_LEFT">
                             <children>
-                                <Label text="Total a pagar:" textFill="#b39ddb">
+                                <Label text="Total a pagar:" textFill="#555555">
                                     <font>
                                         <Font name="System Bold" size="14.0" />
                                     </font>
@@ -76,7 +82,7 @@
                             </children>
                         </HBox>
 
-                        <Button fx:id="btnFinalizar" maxWidth="Infinity" mnemonicParsing="false" onAction="#finalizarVenta" prefHeight="40.0" style="-fx-background-color: linear-gradient(to right, #00ff88, #00cc6a); -fx-text-fill: #120524; -fx-font-weight: bold; -fx-font-size: 16px; -fx-background-radius: 12; -fx-cursor: hand;" text="✅ Confirmar Venta" />
+                        <Button fx:id="btnFinalizar" maxWidth="Infinity" mnemonicParsing="false" onAction="#finalizarVenta" prefHeight="40.0" style="-fx-background-color: linear-gradient(to right, #00ff88, #00cc6a); -fx-text-fill: #111111; -fx-font-weight: bold; -fx-font-size: 16px; -fx-background-radius: 12; -fx-cursor: hand;" text="✅ Confirmar Venta" />
                     </children>
                 </VBox>
             </children>

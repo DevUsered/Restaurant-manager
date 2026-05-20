@@ -4,20 +4,28 @@ import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.paint.Color;
 import javafx.stage.Stage;
+import javafx.stage.StageStyle;
+
 public class MainGUI extends Application {
     @Override
-    public void start(Stage ventanaPrincipal) throws Exception {
-        Attizos.Backend.Attizos.App.cargarDatosEnRAM();
-        Application.setUserAgentStylesheet(new atlantafx.base.theme.PrimerDark().getUserAgentStylesheet());
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Home.fxml"));
-        Parent design = loader.load();
-
-        ventanaPrincipal.setTitle("Attizos");
-        Scene escena = new Scene(design);
-        ventanaPrincipal.setScene(escena);
-        ventanaPrincipal.setResizable(false);
-        ventanaPrincipal.show();
+    public void start(Stage ventanaPrincipal){
+        try {
+            Attizos.Backend.Attizos.App.cargarDatosEnRAM();
+            Application.setUserAgentStylesheet(new atlantafx.base.theme.PrimerDark().getUserAgentStylesheet());
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Home.fxml"));
+            Parent root = loader.load();
+            ventanaPrincipal.initStyle(StageStyle.TRANSPARENT);
+            Scene scene = new Scene(root);
+            scene.setFill(Color.TRANSPARENT);
+            ventanaPrincipal.setScene(scene);
+            ventanaPrincipal.setResizable(false);
+            ventanaPrincipal.centerOnScreen();
+            ventanaPrincipal.show();
+        }catch (Exception e){
+            e.printStackTrace();
+        }
 
     }
     public static void main(String[] args) {

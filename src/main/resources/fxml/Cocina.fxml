@@ -11,17 +11,20 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<AnchorPane prefHeight="650.0" prefWidth="900.0" style="-fx-background-color: #120524;" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="Attizos.Frontend.CocinaController">
+<!-- Cambiado el fondo morado oscuro por transparente/crema -->
+
+<AnchorPane prefHeight="650.0" prefWidth="900.0" style="-fx-background-color: transparent;" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="Attizos.Frontend.CocinaController">
     <children>
         <VBox spacing="15.0" AnchorPane.bottomAnchor="20.0" AnchorPane.leftAnchor="20.0" AnchorPane.rightAnchor="20.0" AnchorPane.topAnchor="20.0">
             <children>
                 <HBox alignment="CENTER_LEFT" spacing="20.0">
                     <children>
-                        <Label text="👨‍🍳 PANTALLA DE COCINA " textFill="WHITE">
+                        <!-- Texto principal en negro -->
+                        <Label text="👨‍🍳 PANTALLA DE COCINA " textFill="#111111">
                             <font><Font name="System Bold" size="26.0" /></font>
                         </Label>
                         <AnchorPane HBox.hgrow="ALWAYS" />
-                        <Button fx:id="btnCerrar" focusTraversable="false" mnemonicParsing="false" onAction="#cerrarVentana" prefHeight="40.0" prefWidth="120.0" style="-fx-background-color: transparent; -fx-border-color: #ff4c4c; -fx-border-radius: 10; -fx-border-width: 2; -fx-text-fill: #ff4c4c; -fx-font-weight: bold; -fx-font-size: 14px; -fx-cursor: hand;" text="❌ CERRAR" />
+                        <Button fx:id="btnCerrar" focusTraversable="false" mnemonicParsing="false" onAction="#cerrarVentana" prefHeight="38.0" prefWidth="154.0" style="-fx-background-color: transparent; -fx-border-color: #ff4c4c; -fx-border-radius: 10; -fx-border-width: 2; -fx-text-fill: #ff4c4c; -fx-font-weight: bold; -fx-font-size: 14px; -fx-cursor: hand;" text="❌ CERRAR SESIÓN" />
                     </children>
                 </HBox>
 
@@ -30,11 +33,13 @@
 
                         <VBox prefWidth="400.0" spacing="10.0" HBox.hgrow="ALWAYS">
                             <children>
-                                <Label text="📋 Cola de Espera:" textFill="#b39ddb">
+                                <!-- Subtítulos en gris oscuro -->
+                                <Label text="📋 Cola de Espera:" textFill="#555555">
                                     <font><Font name="System Bold" size="18.0" /></font>
                                 </Label>
 
-                                <TableView fx:id="tablaPedidos" style="-fx-font-size: 16px; -fx-base: #1a0a2a; -fx-control-inner-background: #1a0a2a; -fx-background-color: #1a0a2a; -fx-background-radius: 10; -fx-border-color: rgba(255,255,255,0.1); -fx-border-radius: 10;" VBox.vgrow="ALWAYS">
+                                <!-- Tabla con fondo blanco -->
+                                <TableView fx:id="tablaPedidos" style="-fx-font-size: 16px; -fx-base: #FFFFFF; -fx-control-inner-background: #FFFFFF; -fx-background-color: transparent; -fx-background-radius: 10; -fx-border-color: #DDDDDD; -fx-border-radius: 10;" VBox.vgrow="ALWAYS">
                                     <columnResizePolicy><TableView fx:constant="CONSTRAINED_RESIZE_POLICY" /></columnResizePolicy>
                                     <columns>
                                         <TableColumn fx:id="colIdPedido" prefWidth="100.0" text="N° PEDIDO" />
@@ -46,20 +51,22 @@
                             </children>
                         </VBox>
 
-                        <VBox prefWidth="450.0" spacing="10.0" style="-fx-background-color: rgba(255, 255, 255, 0.05); -fx-background-radius: 15; -fx-border-color: rgba(255, 255, 255, 0.1); -fx-border-radius: 15;" HBox.hgrow="ALWAYS">
+                        <!-- Tarjeta de Detalles con fondo blanco, sombra y borde dorado -->
+                        <VBox prefWidth="450.0" spacing="10.0" style="-fx-background-color: #FFFFFF; -fx-background-radius: 15; -fx-border-color: rgba(218, 165, 32, 0.3); -fx-border-width: 1.5; -fx-border-radius: 15; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 15, 0, 0, 5);" HBox.hgrow="ALWAYS">
                             <padding><Insets bottom="20.0" left="20.0" right="20.0" top="20.0" /></padding>
                             <children>
-                                <Label fx:id="lblPedidoActual" text="Seleccione un pedido..." textFill="WHITE">
+                                <Label fx:id="lblPedidoActual" text="Seleccione un pedido..." textFill="#111111">
                                     <font><Font name="System Bold" size="22.0" /></font>
                                 </Label>
 
-                                <Label text="PREPARAR LO SIGUIENTE:" textFill="#b39ddb">
+                                <Label text="PREPARAR LO SIGUIENTE:" textFill="#555555">
                                     <font><Font name="System Bold" size="14.0" /></font>
                                 </Label>
 
-                                <ListView fx:id="listaDetallesCocina" style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-base: #1a0a2a; -fx-control-inner-background: rgba(15, 5, 30, 0.6); -fx-background-color: transparent; -fx-background-radius: 10; -fx-border-color: rgba(255,255,255,0.1); -fx-border-radius: 10;" VBox.vgrow="ALWAYS" />
+                                <!-- Lista de ingredientes fondo gris claro -->
+                                <ListView fx:id="listaDetallesCocina" style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-base: #F5F5F5; -fx-control-inner-background: #F5F5F5; -fx-background-color: transparent; -fx-background-radius: 10; -fx-border-color: #DDDDDD; -fx-border-radius: 10;" VBox.vgrow="ALWAYS" />
 
-                                <Button fx:id="btnConfirmar" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#atenderSiguiente" prefHeight="60.0" style="-fx-background-color: linear-gradient(to right, #00ff88, #00cc6a); -fx-text-fill: #120524; -fx-font-weight: bold; -fx-font-size: 18px; -fx-background-radius: 12; -fx-cursor: hand;" text="✅ ¡PLATO LISTO! (Atender Siguiente)" />
+                                <Button fx:id="btnConfirmar" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#atenderSiguiente" prefHeight="60.0" style="-fx-background-color: linear-gradient(to right, #00ff88, #00cc6a); -fx-text-fill: #111111; -fx-font-weight: bold; -fx-font-size: 18px; -fx-background-radius: 12; -fx-cursor: hand;" text="✅ ¡PLATO LISTO! (Atender Siguiente)" />
                             </children>
                         </VBox>
                     </children>

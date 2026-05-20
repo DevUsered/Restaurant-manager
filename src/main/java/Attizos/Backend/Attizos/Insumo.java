@@ -77,4 +77,8 @@ public class Insumo {
             System.out.println("Vencimiento: No perecedero");
         }
     }
+    @Override
+    public String toString(){
+        return nombre;
+    }
 }

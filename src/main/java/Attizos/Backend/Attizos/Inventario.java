@@ -132,7 +132,6 @@ public class Inventario {
                 if(ins.getStockActual() > 0){
                     if(ins.isVencido()){
                         hayVencidos = true;
-                        //System.out.println("🚫 ALERTA DE COCINA: El lote '" + ins.getCodigo() + "' de " + ins.getNombre() + " está VENCIDO. Uso bloqueado.");
                     }else{
                         lotesDisponibles.add(ins);
                         stockTotalValido += ins.getStockActual();

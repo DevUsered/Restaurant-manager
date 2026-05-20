@@ -88,8 +88,6 @@ public class Restaurante
         }
         return filtrados;
     }
-    //Gestion recursos humanos
-    //Modifique aqui:
     public void agregarEmpleado(Empleado nuevoEmpleado) {
         if(nuevoEmpleado != null){
             empleados.add(nuevoEmpleado);
@@ -139,7 +137,6 @@ public class Restaurante
         }
         //3. Obtener el día del mes(ZZ)
         int diaMes = fechaReserva.getDayOfMonth();
-        // Armar el código: %s (Texto), %03d (3 números), %02d (2 números)
         return String.format("%s%03d%02d",letraDia,correlativoMes,diaMes);
     }
 
@@ -151,7 +148,7 @@ public class Restaurante
         }
         return null;
     }
-    //Gestion de pedidos (COCINA)
+
     public ListaDE<Pedido> getPedidos(){ return colaPedidos; }
     public void agregarPedido(Pedido p){
         colaPedidos.insertarAlFinal(p);
@@ -175,7 +172,6 @@ public class Restaurante
                 // 1. Guardamos el pedido que vamos a cancelar
                 Pedido pedidoCancelado = actual.getDato();
 
-                // 2. Recorremos sus productos para DEVOLVER EL STOCK
                 NodoDE<DetalleFactura> detActual = pedidoCancelado.getProductos().getCabeza();
                 while (detActual != null) {
                     DetalleFactura df = detActual.getDato();
@@ -198,7 +194,7 @@ public class Restaurante
             }
             actual = actual.getSiguiente();
         }
-        return false; // No se encontró el pedido
+        return false;
     }
     private void devolverIngredienteInteligente(String codBase, double cantidad) {
         Insumo insumoDestino = null;
@@ -266,6 +262,25 @@ public class Restaurante
     }
     public void registrarVentaFinalizada(Factura f){
         historialVentas.insertarAlFinal(f);
+        NodoDE<DetalleFactura> ac = f.getDetalles().getCabeza();
+        while(ac != null){
+            DetalleFactura df = ac.getDato();
+            Producto p = df.getProducto();
+            int cantVendida = df.getCantidad();
+            if(p.tieneReceta()){
+                for(Map.Entry<String, Double> entry : p.getReceta().getIngredientes().entrySet()){
+                    String codigoInsumo = entry.getKey();
+                    double cantidadNecesaria = entry.getValue() * cantVendida;
+                    boolean exito = inventario.consumirInsumoFEFO(codigoInsumo, cantidadNecesaria);
+                    if(!exito){
+                        System.out.println("⚠️ ALERTA CRÍTICA: Faltó stock en almacén para el insumo " + codigoInsumo);
+                    }
+                }
+            }else{
+                p.reducirStock(cantVendida);
+            }
+            ac = ac.getSiguiente();
+        }
     }
     public boolean anularFacturaFinanciera(int numeroFactura){
         NodoDE<Factura> actual = historialVentas.getCabeza();
@@ -290,24 +305,39 @@ public class Restaurante
     public ListaDE<Factura> getHistorialVentas() {
         return historialVentas;
     }
-    public Empleado buscarEmpleado(int id){
+    public ArrayList<Empleado> getEmpleados() {
+        return empleados;
+    }
+
+    public Empleado buscarEmpleado(String id){
         for(Empleado emp : empleados){
-            if(emp.getId() == id){
+            if(emp.getId().equalsIgnoreCase(id)){
                 return emp;
             }
         }
         return null;
     }
-    public boolean eliminarEmpleado(int id) {
+    public boolean eliminarEmpleado(String id) {
         Iterator<Empleado> iterador = empleados.iterator();
         while (iterador.hasNext()) {
             Empleado emp = iterador.next();
-            if (emp.getId() == id) {
+            if (emp.getId().equalsIgnoreCase(id)) {
                 iterador.remove();
                 return true;
             }
         }
         return false;
+    }
+    public int generarIdNuevoProducto(){
+        int idGenerado = 1;
+        NodoDE<Producto> auxId = menu.getCabeza();
+        while(auxId != null){
+            if(auxId.getDato().getId() >= idGenerado){
+                idGenerado = auxId.getDato().getId() + 1;
+            }
+            auxId = auxId.getSiguiente();
+        }
+        return idGenerado;
     }
     public void registerExpense(Egreso egreso){
         expenseHistory.insertarAlFinal(egreso);

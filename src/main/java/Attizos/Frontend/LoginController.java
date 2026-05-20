@@ -46,7 +46,7 @@ public class LoginController {
                 abrirDashboard();
             }
         }else{
-            lblMensaje.setText("-fx-text-fill: #ff4c4c;");
+            lblMensaje.setStyle("-fx-text-fill: #ff4c4c;");
             lblMensaje.setText("Usuario o contraseña incorrectos");
         }
     }

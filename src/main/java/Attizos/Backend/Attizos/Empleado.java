@@ -1,13 +1,13 @@
 package Attizos.Backend.Attizos;
 
 public class Empleado {
-    private int id;
+    private String id;
     private String nombre;
     private String cargo;
     private double sueldo;
 
     // Constructor
-    public Empleado(int id, String nombre, String cargo, double sueldo) {
+    public Empleado(String id, String nombre, String cargo, double sueldo) {
         this.id = id;
         this.nombre = nombre;
         this.cargo = cargo;
@@ -15,7 +15,7 @@ public class Empleado {
     }
 
     // --- GETTERS ---
-    public int getId() {
+    public String getId() {
         return id;
     }
 
@@ -30,7 +30,7 @@ public class Empleado {
     public double getSueldo() {
         return sueldo;
     }
-    public void setId(int id) {
+    public void setId(String id) {
         this.id = id;
     }
 

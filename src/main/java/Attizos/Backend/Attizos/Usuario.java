@@ -5,7 +5,7 @@ public abstract class Usuario extends Empleado {
     protected String username;
     protected String password;
 
-    public Usuario(int id,String nombre, String cargo, double sueldo, String username, String password) {
+    public Usuario(String id,String nombre, String cargo, double sueldo, String username, String password) {
         super(id, nombre, cargo, sueldo);
         this.username = username;
         this.password = password;

@@ -14,13 +14,14 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<AnchorPane prefHeight="700.0" prefWidth="1100.0" style="-fx-background-color: #120524;" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="Attizos.Frontend.ReservasController">
+<AnchorPane prefHeight="700.0" prefWidth="1100.0" style="-fx-background-color: transparent;" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="Attizos.Frontend.ReservasController">
     <children>
         <VBox spacing="15.0" AnchorPane.bottomAnchor="20.0" AnchorPane.leftAnchor="20.0" AnchorPane.rightAnchor="20.0" AnchorPane.topAnchor="20.0">
             <children>
                 <HBox alignment="CENTER_LEFT" spacing="20.0">
                     <children>
-                        <Label text="📅 GESTIÓN INTEGRAL DE RESERVAS" textFill="WHITE">
+                        <!-- Título en texto oscuro -->
+                        <Label text="📅 GESTIÓN INTEGRAL DE RESERVAS" textFill="#111111">
                             <font><Font name="System Bold" size="24.0" /></font>
                         </Label>
                         <AnchorPane HBox.hgrow="ALWAYS" />
@@ -31,7 +32,8 @@
                     <children>
                         <VBox spacing="10.0" HBox.hgrow="ALWAYS">
                             <children>
-                                <TableView fx:id="tablaReservas" style="-fx-base: #1a0a2a; -fx-control-inner-background: #1a0a2a; -fx-background-color: #1a0a2a; -fx-background-radius: 10;" VBox.vgrow="ALWAYS">
+                                <!-- Tabla con estilo claro y moderno -->
+                                <TableView fx:id="tablaReservas" style="-fx-base: #FFFFFF; -fx-control-inner-background: #FFFFFF; -fx-background-color: transparent; -fx-background-radius: 10; -fx-border-color: #DDDDDD; -fx-border-radius: 10;" VBox.vgrow="ALWAYS">
                                     <columns>
                                         <TableColumn fx:id="colId" prefWidth="60.0" text="ID" />
                                         <TableColumn fx:id="colCliente" prefWidth="130.0" text="CLIENTE" />
@@ -45,55 +47,59 @@
                                 </TableView>
                                 <HBox spacing="15.0">
                                     <children>
-                                        <Button maxWidth="Infinity" onAction="#cancelarReservaSeleccionada" prefHeight="40.0" style="-fx-background-color: rgba(255, 76, 76, 0.1); -fx-border-color: #ff4c4c; -fx-border-radius: 8; -fx-border-width: 2; -fx-text-fill: #ff4c4c; -fx-font-weight: bold;" text="🚫 Cancelar" HBox.hgrow="ALWAYS" />
-                                        <Button maxWidth="Infinity" onAction="#finalizarReservaSeleccionada" prefHeight="40.0" style="-fx-background-color: rgba(0, 210, 255, 0.1); -fx-border-color: #00d2ff; -fx-border-radius: 8; -fx-border-width: 2; -fx-text-fill: #00d2ff; -fx-font-weight: bold;" text="✅ Atender" HBox.hgrow="ALWAYS" />
+                                        <Button maxWidth="Infinity" onAction="#cancelarReservaSeleccionada" prefHeight="40.0" style="-fx-background-color: rgba(255, 76, 76, 0.1); -fx-border-color: #ff4c4c; -fx-border-radius: 8; -fx-border-width: 2; -fx-text-fill: #ff4c4c; -fx-font-weight: bold; -fx-cursor: hand;" text="🚫 Cancelar" HBox.hgrow="ALWAYS" />
+
+                                        <!-- Botón Atender en color Dorado Attizos -->
+                                        <Button maxWidth="Infinity" onAction="#finalizarReservaSeleccionada" prefHeight="40.0" style="-fx-background-color: rgba(218, 165, 32, 0.1); -fx-border-color: #DAA520; -fx-border-radius: 8; -fx-border-width: 2; -fx-text-fill: #DAA520; -fx-font-weight: bold; -fx-cursor: hand;" text="✅ Atender" HBox.hgrow="ALWAYS" />
                                     </children>
                                 </HBox>
                             </children>
                         </VBox>
 
-                        <VBox minWidth="350.0" prefWidth="350.0" spacing="10.0" style="-fx-background-color: rgba(255, 255, 255, 0.05); -fx-background-radius: 15; -fx-border-color: rgba(255, 255, 255, 0.1); -fx-border-radius: 15;">
+                        <!-- Panel lateral derecho: Tarjeta blanca flotante -->
+                        <VBox minWidth="350.0" prefWidth="350.0" spacing="10.0" style="-fx-background-color: #FFFFFF; -fx-background-radius: 15; -fx-border-color: rgba(218, 165, 32, 0.3); -fx-border-width: 1.5; -fx-border-radius: 15; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 15, 0, 0, 5);">
                             <padding><Insets bottom="15.0" left="15.0" right="15.0" top="15.0" /></padding>
                             <children>
-                                <Label style="-fx-font-size: 18px; -fx-font-weight: bold;" text="Nueva Reserva" textFill="WHITE" />
+                                <Label style="-fx-font-size: 18px; -fx-font-weight: bold;" text="Nueva Reserva" textFill="#111111" />
 
                                 <VBox spacing="5.0">
                                     <children>
-                                        <Label text="Cliente:" textFill="#b39ddb" />
-                                        <TextField fx:id="txtCliente" style="-fx-background-color: rgba(0,0,0,0.3); -fx-text-fill: white;" />
+                                        <Label text="Cliente:" textFill="#555555" />
+                                        <TextField fx:id="txtCliente" style="-fx-background-color: #F5F5F5; -fx-text-fill: #111111; -fx-border-color: #DDDDDD; -fx-border-radius: 5; -fx-background-radius: 5;" />
 
-                                        <Label text="Teléfono:" textFill="#b39ddb" />
-                                        <TextField fx:id="txtTelefono" style="-fx-background-color: rgba(0,0,0,0.3); -fx-text-fill: white;" />
+                                        <Label text="Teléfono:" textFill="#555555" />
+                                        <TextField fx:id="txtTelefono" style="-fx-background-color: #F5F5F5; -fx-text-fill: #111111; -fx-border-color: #DDDDDD; -fx-border-radius: 5; -fx-background-radius: 5;" />
 
                                         <HBox spacing="10.0">
                                             <children>
                                                 <VBox HBox.hgrow="ALWAYS">
                                                     <children>
-                                                        <Label text="Personas:" textFill="#b39ddb" />
-                                                        <TextField fx:id="txtPersonas" style="-fx-background-color: rgba(0,0,0,0.3); -fx-text-fill: white;" />
+                                                        <Label text="Personas:" textFill="#555555" />
+                                                        <TextField fx:id="txtPersonas" style="-fx-background-color: #F5F5F5; -fx-text-fill: #111111; -fx-border-color: #DDDDDD; -fx-border-radius: 5; -fx-background-radius: 5;" />
                                                     </children>
                                                 </VBox>
                                                 <VBox HBox.hgrow="ALWAYS">
                                                     <children>
-                                                        <Label text="Mesa Nro:" textFill="#b39ddb" />
-                                          <Label text="NO DEFINIDA" />
+                                                        <Label text="Mesa Nro:" textFill="#555555" />
+                                                        <Label style="-fx-font-weight: bold;" text="NO DEFINIDA" textFill="#111111" />
                                                     </children>
                                                 </VBox>
                                             </children>
                                         </HBox>
 
-                                        <Label text="Fecha:" textFill="#b39ddb" />
-                                        <DatePicker fx:id="dpFecha" prefWidth="Infinity" style="-fx-base: #1a0a2a;" />
+                                        <Label text="Fecha:" textFill="#555555" />
+                                        <DatePicker fx:id="dpFecha" prefWidth="Infinity" style="-fx-base: #F5F5F5; -fx-background-color: #F5F5F5; -fx-border-color: #DDDDDD; -fx-border-radius: 5; -fx-background-radius: 5;" />
 
-                                        <Label text="Hora:" textFill="#b39ddb" />
-                                        <ComboBox fx:id="cmbHora" prefWidth="Infinity" style="-fx-base: #1a0a2a;" />
+                                        <Label text="Hora:" textFill="#555555" />
+                                        <ComboBox fx:id="cmbHora" prefWidth="Infinity" style="-fx-base: #F5F5F5; -fx-background-color: #F5F5F5; -fx-border-color: #DDDDDD; -fx-border-radius: 5; -fx-background-radius: 5;" />
 
-                                        <Label text="Observaciones:" textFill="#b39ddb" />
-                                        <TextArea fx:id="txtObservaciones" prefHeight="80.0" style="-fx-control-inner-background: rgba(0,0,0,0.3); -fx-text-fill: white;" wrapText="true" />
+                                        <Label text="Observaciones:" textFill="#555555" />
+                                        <TextArea fx:id="txtObservaciones" prefHeight="80.0" style="-fx-control-inner-background: #F5F5F5; -fx-text-fill: #111111; -fx-background-color: #F5F5F5; -fx-border-color: #DDDDDD; -fx-border-radius: 5; -fx-background-radius: 5;" wrapText="true" />
                                     </children>
                                 </VBox>
 
-                                <Button onAction="#guardarReserva" prefHeight="45.0" prefWidth="Infinity" style="-fx-background-color: linear-gradient(to right, #00ff88, #00cc6a); -fx-text-fill: #120524; -fx-font-weight: bold;" text="💾 CONFIRMAR RESERVA" />
+                                <!-- Botón verde con letras negras -->
+                                <Button onAction="#guardarReserva" prefHeight="45.0" prefWidth="Infinity" style="-fx-background-color: linear-gradient(to right, #00ff88, #00cc6a); -fx-text-fill: #111111; -fx-font-weight: bold; -fx-background-radius: 8; -fx-cursor: hand;" text="💾 CONFIRMAR RESERVA" />
                             </children>
                         </VBox>
                     </children>

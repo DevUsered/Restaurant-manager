@@ -114,6 +114,8 @@ public class CocinaController {
         boolean cancelado = App.attizos.cancelarPedido(seleccionado.getIdPedido());
 
         if (cancelado) {
+            App.attizos.anularFacturaFinanciera(seleccionado.getIdPedido());
+            App.attizos.retrocederCorrelativoFactura();
             mostrarExito("Cancelado", "El pedido fue cancelado y los ingredientes regresaron al inventario.");
             cargarColaDesdeBackend();
         } else {
@@ -140,18 +142,10 @@ public class CocinaController {
     }
 
     private void mostrarAlerta(String titulo, String mensaje) {
-        Alert alert = new Alert(Alert.AlertType.WARNING);
-        alert.setTitle(titulo);
-        alert.setHeaderText(null);
-        alert.setContentText(mensaje);
-        alert.showAndWait();
+        AlertaPersonalizada.mostrarAlerta(titulo,mensaje,Alert.AlertType.WARNING);
     }
 
     private void mostrarExito(String titulo, String mensaje) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle(titulo);
-        alert.setHeaderText(null);
-        alert.setContentText(mensaje);
-        alert.showAndWait();
+        AlertaPersonalizada.mostrarAlerta(titulo, mensaje, Alert.AlertType.INFORMATION);
     }
 }

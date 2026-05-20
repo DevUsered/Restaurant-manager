@@ -4,7 +4,7 @@ package Attizos.Backend.Attizos;
 public class Admin extends Usuario {
 
     // Constructor que recibe los datos y los envía a la clase padre (Usuario)
-    public Admin(int id, String nombre, String username, String password, double sueldo) {
+    public Admin(String id, String nombre, String username, String password, double sueldo) {
         // Llamada al constructor de Usuario con los parámetros correctos
         super(id, nombre, "Administrador", sueldo, username, password);
     }

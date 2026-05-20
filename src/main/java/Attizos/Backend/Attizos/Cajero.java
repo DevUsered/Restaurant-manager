@@ -5,7 +5,7 @@ package Attizos.Backend.Attizos;
 public class Cajero extends Usuario {
 
     // Constructor para el cajero
-    public Cajero(int id, String nombre, double sueldo, String username, String password) {
+    public Cajero(String id, String nombre, double sueldo, String username, String password) {
         // Le pasamos automáticamente el cargo "Cajero" a la clase padre
         super(id, nombre, "Cajero", sueldo, username,password);
     }

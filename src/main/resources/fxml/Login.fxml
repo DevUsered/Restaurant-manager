@@ -12,7 +12,7 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<VBox alignment="CENTER_LEFT" prefHeight="350.0" prefWidth="380.0" spacing="25.0" style="-fx-background-color: rgba(38, 15, 65, 0.95); -fx-padding: 40; -fx-background-radius: 20; -fx-border-color: rgba(255, 255, 255, 0.15); -fx-border-width: 1; -fx-border-radius: 20;" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="Attizos.Frontend.LoginController">
+<VBox alignment="CENTER_LEFT" prefHeight="350.0" prefWidth="380.0" spacing="25.0" style="-fx-background-color: #FFFFFF; -fx-padding: 40; -fx-background-radius: 20; -fx-border-color: #DAA520; -fx-border-width: 1.5; -fx-border-radius: 20; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 15, 0, 0, 5);" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="Attizos.Frontend.LoginController">
     <children>
 
         <HBox alignment="CENTER_LEFT" spacing="15.0">
@@ -26,7 +26,7 @@
                         </ImageView>
                     </children>
                 </StackPane>
-                <Label text="Login" textFill="WHITE">
+                <Label text="Login" textFill="#111111">
                     <font>
                         <Font name="System Bold" size="28.0" />
                     </font>
@@ -35,14 +35,14 @@
         </HBox>
         <VBox spacing="15.0">
             <children>
-                <TextField fx:id="txtUsuario" onAction="#enfocarPassword" promptText="Usuario" style="-fx-background-color: rgba(15, 5, 30, 0.6); -fx-text-fill: white; -fx-prompt-text-fill: #a0a0a0; -fx-background-radius: 10; -fx-padding: 12; -fx-font-size: 14px; -fx-border-color: rgba(255,255,255,0.1); -fx-border-radius: 10;" />
-                <PasswordField fx:id="txtPassword" onAction="#iniciarSesion" promptText="Contraseña" style="-fx-background-color: rgba(15, 5, 30, 0.6); -fx-text-fill: white; -fx-prompt-text-fill: #a0a0a0; -fx-background-radius: 10; -fx-padding: 12; -fx-font-size: 14px; -fx-border-color: rgba(255,255,255,0.1); -fx-border-radius: 10;" />
+                <TextField fx:id="txtUsuario" onAction="#enfocarPassword" promptText="Usuario" style="-fx-background-color: #F5F5F5; -fx-text-fill: #111111; -fx-prompt-text-fill: #999999; -fx-background-radius: 10; -fx-padding: 12; -fx-font-size: 14px; -fx-border-color: #DDDDDD; -fx-border-radius: 10;" />
+                <PasswordField fx:id="txtPassword" onAction="#iniciarSesion" promptText="Contraseña" style="-fx-background-color: #F5F5F5; -fx-text-fill: #111111; -fx-prompt-text-fill: #999999; -fx-background-radius: 10; -fx-padding: 12; -fx-font-size: 14px; -fx-border-color: #DDDDDD; -fx-border-radius: 10;" />
             </children>
         </VBox>
 
-        <Label fx:id="lblMensaje" alignment="CENTER" maxWidth="Infinity" style="-fx-text-fill: #ff4c4c; -fx-font-size: 12px; -fx-font-weight: bold;" />
+        <Label fx:id="lblMensaje" alignment="CENTER" maxWidth="Infinity" style="-fx-text-fill: #ff4c4c; -fx-font-size: 16px; -fx-font-weight: bold;" />
 
-        <Button fx:id="btnLogin" maxWidth="Infinity" mnemonicParsing="false" onAction="#iniciarSesion" style="-fx-background-color: linear-gradient(to right, #7e57c2, #5e35b1); -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 15px; -fx-background-radius: 10; -fx-padding: 12; -fx-cursor: hand;" text="Iniciar Sesión" />
+        <Button fx:id="btnLogin" maxWidth="Infinity" mnemonicParsing="false" onAction="#iniciarSesion" style="-fx-background-color: linear-gradient(to right, #FFC107, #DAA520); -fx-text-fill: #111111; -fx-font-weight: bold; -fx-font-size: 15px; -fx-background-radius: 10; -fx-padding: 12; -fx-cursor: hand;" text="Iniciar Sesión" />
     </children>
     <stylesheets>
         <URL value="@../css/style.css" />
