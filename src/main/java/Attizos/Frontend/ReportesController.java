@@ -1,24 +1,36 @@
 package Attizos.Frontend;
 
 import Attizos.Backend.Attizos.*;
+import Attizos.Backend.Database.*;
 import Attizos.Backend.Listas.NodoDE;
-import javafx.beans.property.SimpleDoubleProperty;
+import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.collections.transformation.FilteredList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.chart.LineChart;
 import javafx.scene.chart.XYChart;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.input.KeyCode;
+import javafx.scene.paint.Color;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
+import java.util.List;
 
 public class ReportesController {
 
@@ -66,21 +78,27 @@ public class ReportesController {
     // --- PESTAÑA 4: GRÁFICOS ---
     @FXML private LineChart<String, Number> chartVentas;
 
-    // Listas observables para las tablas
+    // Listas observables
     private ObservableList<Factura> listaFacturas = FXCollections.observableArrayList();
     private ObservableList<Egreso> listaEgresos = FXCollections.observableArrayList();
     private ObservableList<Empleado> listaEmpleados = FXCollections.observableArrayList();
-    private ObservableList<RegistroAuditoria> listaLogs = FXCollections.observableArrayList();
+
+    // Listas para el buscador en tiempo real de Auditoría
+    private ObservableList<RegistroAuditoria> masterLogs = FXCollections.observableArrayList();
+    private FilteredList<RegistroAuditoria> filteredLogs;
 
     @FXML
     public void initialize() {
         configurarTablas();
         configurarBotonDobleClic();
+        configurarFiltrosTrazabilidad();
         generarReportes();
+
+        UtilidadesUI.formatearDatePicker(dpInicio);
+        UtilidadesUI.formatearDatePicker(dpFin);
     }
 
     private void configurarTablas() {
-        // --- 1. Tabla Ventas ---
         colNroFac.setCellValueFactory(new PropertyValueFactory<>("numeroFactura"));
         colClienteFac.setCellValueFactory(new PropertyValueFactory<>("nombreCliente"));
         colTotalFac.setCellValueFactory(new PropertyValueFactory<>("total"));
@@ -90,24 +108,21 @@ public class ReportesController {
         });
         tablaVentas.setItems(listaFacturas);
 
-        // --- 2. Tabla Egresos ---
-        // Asumiendo que Egreso tiene getFecha(), getMotivo/getConcepto(), getMonto()
-        colConceptoEgreso.setCellValueFactory(new PropertyValueFactory<>("concepto"));
-        colMontoEgreso.setCellValueFactory(new PropertyValueFactory<>("monto"));
+        colConceptoEgreso.setCellValueFactory(new PropertyValueFactory<>("description"));
+        colMontoEgreso.setCellValueFactory(new PropertyValueFactory<>("totalAmount"));
         colFechaEgreso.setCellValueFactory(cellData -> {
             LocalDate fecha = cellData.getValue().getDate();
             return new SimpleStringProperty(fecha != null ? fecha.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) : LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
         });
         tablaEgresos.setItems(listaEgresos);
 
-        // --- 3. Tabla RRHH ---
         colEmpId.setCellValueFactory(new PropertyValueFactory<>("id"));
         colEmpNombre.setCellValueFactory(new PropertyValueFactory<>("nombre"));
         colEmpCargo.setCellValueFactory(new PropertyValueFactory<>("cargo"));
         colEmpSueldo.setCellValueFactory(new PropertyValueFactory<>("sueldo"));
         tablaEmpleadosReporte.setItems(listaEmpleados);
 
-        // --- 4. Tabla Trazabilidad (Seguidor) ---
+        // Tabla de Auditoría
         colFechaLog.setCellValueFactory(new PropertyValueFactory<>("fechaHora"));
         colUsuarioLog.setCellValueFactory(new PropertyValueFactory<>("operador"));
         colTipoItemLog.setCellValueFactory(new PropertyValueFactory<>("tipoArea"));
@@ -115,11 +130,256 @@ public class ReportesController {
         colAccionLog.setCellValueFactory(new PropertyValueFactory<>("accion"));
         colCantidadLog.setCellValueFactory(new PropertyValueFactory<>("cantidad"));
         colJustificacionLog.setCellValueFactory(new PropertyValueFactory<>("motivo"));
-        tablaLogSeguimiento.setItems(listaLogs);
+
+        filteredLogs = new FilteredList<>(masterLogs, p -> true);
+        tablaLogSeguimiento.setItems(filteredLogs);
+    }
+
+    private void configurarFiltrosTrazabilidad() {
+        String estiloInputs = "-fx-text-fill: #111111; -fx-font-weight: bold; -fx-background-color: #f0f0f0; -fx-border-color: #a9a9a9; -fx-border-radius: 4; -fx-background-radius: 4;";
+
+        txtBusquedaLog.setStyle(estiloInputs);
+        cmbTipoLog.setStyle(estiloInputs);
+        cmbAccionLog.setStyle(estiloInputs);
+        cmbUsuarioLog.setStyle(estiloInputs);
+        cmbTipoLog.setItems(FXCollections.observableArrayList("Todos"));
+        cmbTipoLog.setValue("Todos");
+
+        cmbAccionLog.setItems(FXCollections.observableArrayList("Todas"));
+        cmbAccionLog.setValue("Todas");
+
+        cmbUsuarioLog.setItems(FXCollections.observableArrayList("Todos"));
+        cmbUsuarioLog.setValue("Todos");
+
+        txtBusquedaLog.textProperty().addListener((obs, old, newVal) -> aplicarFiltroAuditoria());
+        cmbTipoLog.valueProperty().addListener((obs, old, newVal) -> aplicarFiltroAuditoria());
+        cmbAccionLog.valueProperty().addListener((obs, old, newVal) -> aplicarFiltroAuditoria());
+        cmbUsuarioLog.valueProperty().addListener((obs, old, newVal) -> aplicarFiltroAuditoria());
+    }
+
+    private void actualizarFiltrosDinamicos() {
+        Set<String> tipos = new HashSet<>();
+        Set<String> acciones = new HashSet<>();
+        Set<String> usuarios = new HashSet<>();
+
+        tipos.add("Todos");
+        acciones.add("Todas");
+        usuarios.add("Todos");
+
+        // Leer los datos reales que existen
+        for (RegistroAuditoria log : masterLogs) {
+            if (log.getTipoArea() != null) tipos.add(log.getTipoArea());
+            if (log.getAccion() != null) acciones.add(log.getAccion());
+            if (log.getOperador() != null) usuarios.add(log.getOperador());
+        }
+
+        String tipoAct = cmbTipoLog.getValue();
+        String accionAct = cmbAccionLog.getValue();
+        String userAct = cmbUsuarioLog.getValue();
+
+        cmbTipoLog.setItems(FXCollections.observableArrayList(tipos));
+        cmbAccionLog.setItems(FXCollections.observableArrayList(acciones));
+        cmbUsuarioLog.setItems(FXCollections.observableArrayList(usuarios));
+
+        cmbTipoLog.setValue(tipos.contains(tipoAct) ? tipoAct : "Todos");
+        cmbAccionLog.setValue(acciones.contains(accionAct) ? accionAct : "Todas");
+        cmbUsuarioLog.setValue(usuarios.contains(userAct) ? userAct : "Todos");
+    }
+
+    private void aplicarFiltroAuditoria() {
+        filteredLogs.setPredicate(log -> {
+            boolean matchBuscador = true;
+            boolean matchTipo = true;
+            boolean matchAccion = true;
+            boolean matchUsuario = true;
+
+            String texto = txtBusquedaLog.getText();
+            if (texto != null && !texto.isEmpty()) {
+                String filter = texto.toLowerCase();
+                String fechaHoraStr = log.getFechaHora() != null ? log.getFechaHora().toLowerCase() : "";
+                String operadorStr = log.getOperador() != null ? log.getOperador().toLowerCase() : "";
+                String tipoAreaStr = log.getTipoArea() != null ? log.getTipoArea().toLowerCase() : "";
+                String nombreItemStr = log.getNombreItem() != null ? log.getNombreItem().toLowerCase() : "";
+                String accionStr = log.getAccion() != null ? log.getAccion().toLowerCase() : "";
+                String cantidadStr = String.valueOf(log.getCantidad()).toLowerCase();
+                String motivoStr = log.getMotivo() != null ? log.getMotivo().toLowerCase() : "";
+
+                matchBuscador = fechaHoraStr.contains(filter) ||
+                        operadorStr.contains(filter) ||
+                        tipoAreaStr.contains(filter) ||
+                        nombreItemStr.contains(filter) ||
+                        accionStr.contains(filter) ||
+                        cantidadStr.contains(filter) ||
+                        motivoStr.contains(filter);
+            }
+
+            if (cmbTipoLog.getValue() != null && !cmbTipoLog.getValue().equals("Todos")) {
+                matchTipo = log.getTipoArea() != null && log.getTipoArea().equalsIgnoreCase(cmbTipoLog.getValue());
+            }
+
+            if (cmbAccionLog.getValue() != null && !cmbAccionLog.getValue().equals("Todas")) {
+                matchAccion = log.getAccion() != null && log.getAccion().equalsIgnoreCase(cmbAccionLog.getValue());
+            }
+
+            if (cmbUsuarioLog.getValue() != null && !cmbUsuarioLog.getValue().equals("Todos")) {
+                matchUsuario = log.getOperador() != null && log.getOperador().equalsIgnoreCase(cmbUsuarioLog.getValue());
+            }
+
+            return matchBuscador && matchTipo && matchAccion && matchUsuario;
+        });
+    }
+
+    @FXML
+    void actualizarPorFechas(ActionEvent event) {
+        LocalDate inicio = dpInicio.getValue();
+        LocalDate fin = dpFin.getValue();
+
+        if (inicio != null && fin != null) {
+            if (inicio.isAfter(fin) || inicio.isEqual(fin)) {
+                AlertaPersonalizada.mostrarAlerta("Rango de Fechas Inválido",
+                        "La fecha de inicio debe ser anterior a la fecha de fin.", Alert.AlertType.WARNING);
+                return;
+            }
+        }
+        generarReportes();
+    }
+
+    private void generarReportes() {
+        double ingresosTotales = 0.0;
+        double egresosTotales = 0.0;
+        int contadorVentas = 0;
+
+        LocalDate filtroInicio = dpInicio.getValue();
+        LocalDate filtroFin = dpFin.getValue();
+
+        listaFacturas.clear();
+        listaEgresos.clear();
+        listaEmpleados.clear();
+        masterLogs.clear(); 
+        Map<String, Double> ventasPorDia = new TreeMap<>();
+
+        List<Factura> facturasDB = ReportesDAO.obtenerFacturas();
+        for(Factura f : facturasDB){
+            boolean enRango = true;
+            if(f.getFecha() != null){
+                LocalDate fechaFac = f.getFecha().toLocalDate();
+                if (filtroInicio != null && fechaFac.isBefore(filtroInicio)) enRango = false;
+                if (filtroFin != null && fechaFac.isAfter(filtroFin)) enRango = false;
+            }
+            if(enRango){
+                listaFacturas.add(f);
+                ingresosTotales += f.getTotal();
+                contadorVentas++;
+                if(f.getFecha() != null){
+                    String dia = f.getFecha().format(DateTimeFormatter.ofPattern("dd/MM"));
+                    ventasPorDia.put(dia, ventasPorDia.getOrDefault(dia, 0.0) + f.getTotal());
+                }
+            }
+        }
+
+        List<Egreso> egresosDB = ReportesDAO.obtenerEgresos();
+        for (Egreso e : egresosDB) {
+            boolean enRango = true;
+            if (e.getDate() != null) {
+                LocalDate fechaEgr = e.getDate();
+                if (filtroInicio != null && fechaEgr.isBefore(filtroInicio)) enRango = false;
+                if (filtroFin != null && fechaEgr.isAfter(filtroFin)) enRango = false;
+            }
+            if(enRango) {
+                listaEgresos.add(e);
+                egresosTotales += e.getTotalAmount();
+            }
+        }
+
+        List<Empleado> empleadosDB = ReportesDAO.obtenerEmpleados();
+        double sumaSueldos = 0.0;
+        for (Empleado emp : empleadosDB) {
+            listaEmpleados.add(emp);
+            sumaSueldos += emp.getSueldo();
+        }
+        List<RegistroAuditoria> auditoriaDB = ReportesDAO.obtenerAuditoria();
+        masterLogs.addAll(auditoriaDB);
+
+
+        double balance = ingresosTotales - egresosTotales;
+        double ticketPromedio = (contadorVentas > 0) ? (ingresosTotales / contadorVentas) : 0.0;
+
+        lblIngresos.setText("Bs. " + String.format("%.2f", ingresosTotales));
+        lblEgresos.setText("Bs. " + String.format("%.2f", egresosTotales));
+        lblBalance.setText("Bs. " + String.format("%.2f", balance));
+        lblTicketProm.setText("Bs. " + String.format("%.2f", ticketPromedio));
+        lblTotalSueldos.setText("Bs. " + String.format("%.2f", sumaSueldos));
+
+        if (balance >= 0) {
+            lblBalance.setStyle("-fx-text-fill: #218c4e;");
+        } else {
+            lblBalance.setStyle("-fx-text-fill: #ff4c4c;");
+        }
+
+        chartVentas.getData().clear();
+        XYChart.Series<String, Number> serieVentas = new XYChart.Series<>();
+        serieVentas.setName("Ingresos por Día");
+        for (Map.Entry<String, Double> entry : ventasPorDia.entrySet()) {
+            serieVentas.getData().add(new XYChart.Data<>(entry.getKey(), entry.getValue()));
+        }
+        chartVentas.getData().add(serieVentas);
+        Platform.runLater(() ->{
+            if(serieVentas.getNode() != null){
+                serieVentas.getNode().setStyle("-fx-stroke: #2c3e50; -fx-stroke-width: 3px;");
+            }
+            for(XYChart.Data<String, Number> data : serieVentas.getData()){
+                if(data.getNode() != null){
+                    data.getNode().setStyle("-fx-background-color: #2c3e50, white; -fx-background-radius: 5px; -fx-padding: 5px;");
+                }
+            }
+            chartVentas.lookupAll(".axis").forEach(axis ->
+                    axis.setStyle("-fx-tick-label-fill: #111111; -fx-font-weight: bold; -fx-font-size: 13px;")
+            );
+            chartVentas.lookupAll(".chart-legend-item").forEach(legend ->
+                    legend.setStyle("-fx-text-fill: #111111; -fx-font-weight: bold;")
+            );
+        });
+
+        actualizarFiltrosDinamicos(); // Llenamos los ComboBox con los datos reales encontrados
+    }
+
+    @FXML
+    void registrarGastoManual(ActionEvent event) {
+        DialogoPersonalizado.mostrarDialogo("Gasto Manual", "Registrar un nuevo egreso externo", "Concepto del gasto (Ej: Pago luz):", "")
+                .ifPresent(concepto -> {
+                    if (concepto.trim().isEmpty()) {
+                        AlertaPersonalizada.mostrarAlerta("Error", "Debe ingresar una descripción obligatoria.", Alert.AlertType.WARNING);
+                        return;
+                    }
+                    DialogoPersonalizado.mostrarDialogo("Monto del Gasto", "Monto para: " + concepto, "Ingrese el monto en Bs:", "0.00")
+                            .ifPresent(montoStr -> {
+                                try {
+                                    double monto = Double.parseDouble(montoStr.replace(",", "."));
+                                    if (monto <= 0) {
+                                        AlertaPersonalizada.mostrarAlerta("Error", "El monto debe ser mayor a 0.", Alert.AlertType.WARNING);
+                                        return;
+                                    }
+
+                                    // Registrar Gasto
+                                    boolean exito = ReportesDAO.registrarEgreso(concepto, monto);
+
+                                    if(exito){
+                                        String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
+                                        ReportesDAO.registrarAuditoria(operador, "Finanzas", "Gasto Manual", "Egreso", monto, concepto);
+
+                                        generarReportes();
+                                        AlertaPersonalizada.mostrarAlerta("Éxito", "El gasto manual ha sido registrado.", Alert.AlertType.INFORMATION);
+                                    }else{
+                                        AlertaPersonalizada.mostrarAlerta("Error", "No se pudo guardar el gasto.", Alert.AlertType.ERROR);
+                                    }
+                                } catch (NumberFormatException e) {
+                                    AlertaPersonalizada.mostrarAlerta("Error", "Debe ingresar un número válido.", Alert.AlertType.ERROR);
+                                }
+                            });
+                });
     }
 
     private void configurarBotonDobleClic() {
-        // En lugar de un botón "Ver Factura", usamos doble clic en la fila
         tablaVentas.setRowFactory(tv -> {
             TableRow<Factura> row = new TableRow<>();
             row.setOnMouseClicked(event -> {
@@ -131,91 +391,50 @@ public class ReportesController {
         });
     }
 
-    private void generarReportes() {
-        double ingresosTotales = 0.0;
-        double egresosTotales = 0.0;
-        int contadorVentas = 0;
+    private void verDetalleFacturaTicket(Factura seleccionada) {
+        try {
+            Factura facDetalles = ReportesDAO.obtenerFacturaConDetalles(seleccionada.getNumeroFactura());
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Ticket.fxml"));
+            Parent root = loader.load();
 
-        // 1. CARGAR VENTAS E INGRESOS
-        listaFacturas.clear();
-        Map<String, Double> ventasPorDia = new TreeMap<>(); // Para el gráfico
+            TicketController controller = loader.getController();
+            controller.inicializarTicket(seleccionada, "Copia - Sistema", seleccionada.getNumeroFactura());
 
-        if (App.attizos != null && App.attizos.getHistorialVentas() != null) {
-            NodoDE<Factura> actual = App.attizos.getHistorialVentas().getCabeza();
-            while (actual != null) {
-                Factura f = actual.getDato();
-                listaFacturas.add(f);
-                ingresosTotales += f.getTotal();
-                contadorVentas++;
+            Stage dialogStage = new Stage();
+            dialogStage.initStyle(StageStyle.TRANSPARENT);
+            dialogStage.initModality(Modality.APPLICATION_MODAL);
 
-                // Agrupar para el gráfico
-                if (f.getFecha() != null) {
-                    String dia = f.getFecha().format(DateTimeFormatter.ofPattern("dd/MM"));
-                    ventasPorDia.put(dia, ventasPorDia.getOrDefault(dia, 0.0) + f.getTotal());
+            Scene scene = new Scene(root);
+            scene.setFill(Color.TRANSPARENT);
+            dialogStage.setScene(scene);
+            scene.setOnKeyPressed(event -> {
+                if((event.getCode() == KeyCode.ESCAPE) || event.getCode() == KeyCode.ENTER){
+                    dialogStage.close();
                 }
-                actual = actual.getSiguiente();
-            }
+            });
+
+            final double[] xOffset = {0};
+            final double[] yOffset = {0};
+            root.setOnMousePressed(event -> {
+                xOffset[0] = event.getSceneX();
+                yOffset[0] = event.getSceneY();
+            });
+            root.setOnMouseDragged(event -> {
+                dialogStage.setX(event.getScreenX() - xOffset[0]);
+                dialogStage.setY(event.getScreenY() - yOffset[0]);
+            });
+
+            dialogStage.showAndWait();
+        } catch (Exception e) {
+            AlertaPersonalizada.mostrarAlerta("Error", "No se pudo cargar el Ticket.", Alert.AlertType.ERROR);
         }
-
-        // 2. CARGAR EGRESOS
-        listaEgresos.clear();
-        if (App.attizos != null && App.attizos.getExpenseHistory() != null) {
-            NodoDE<Egreso> actual = App.attizos.getExpenseHistory().getCabeza();
-            while (actual != null) {
-                Egreso e = actual.getDato();
-                listaEgresos.add(e);
-                egresosTotales += e.getTotalAmount();
-                actual = actual.getSiguiente();
-            }
-        }
-
-        // 3. CARGAR EMPLEADOS Y PLANILLA
-        listaEmpleados.clear();
-        double sumaSueldos = 0.0;
-        if (App.attizos != null && App.attizos.getEmpleados() != null) {
-            for (Empleado emp : App.attizos.getEmpleados()) {
-                listaEmpleados.add(emp);
-                sumaSueldos += emp.getSueldo();
-            }
-        }
-
-        // Sumamos los sueldos a los egresos totales (Gasto fijo)
-        egresosTotales += sumaSueldos;
-
-        // 4. ACTUALIZAR KPIS (FINANZAS)
-        double balance = ingresosTotales - egresosTotales;
-        double ticketPromedio = (contadorVentas > 0) ? (ingresosTotales / contadorVentas) : 0.0;
-
-        lblIngresos.setText("Bs. " + String.format("%.2f", ingresosTotales));
-        lblEgresos.setText("Bs. " + String.format("%.2f", egresosTotales));
-        lblBalance.setText("Bs. " + String.format("%.2f", balance));
-        lblTicketProm.setText("Bs. " + String.format("%.2f", ticketPromedio));
-        lblTotalSueldos.setText("Bs. " + String.format("%.2f", sumaSueldos));
-
-        // Colorear el balance (Verde si hay ganancia, Rojo si hay pérdida)
-        if (balance >= 0) {
-            lblBalance.setStyle("-fx-text-fill: #218c4e;"); // Verde
-        } else {
-            lblBalance.setStyle("-fx-text-fill: #c0392b;"); // Rojo
-        }
-
-        // 5. ACTUALIZAR GRÁFICO
-        chartVentas.getData().clear();
-        XYChart.Series<String, Number> serieVentas = new XYChart.Series<>();
-        serieVentas.setName("Ingresos por Día");
-        for (Map.Entry<String, Double> entry : ventasPorDia.entrySet()) {
-            serieVentas.getData().add(new XYChart.Data<>(entry.getKey(), entry.getValue()));
-        }
-        chartVentas.getData().add(serieVentas);
     }
 
-    // --- MÉTODO ANTIGUO RESCATADO Y MEJORADO ---
     @FXML
     void verDetalleEmpleado(ActionEvent event) {
         Empleado seleccionado = tablaEmpleadosReporte.getSelectionModel().getSelectedItem();
-
         if (seleccionado == null) {
-            mostrarAlerta("Selección requerida", "Por favor, seleccione un empleado de la tabla para ver su detalle.");
+            AlertaPersonalizada.mostrarAlerta("Selección requerida", "Seleccione un empleado.", Alert.AlertType.WARNING);
             return;
         }
 
@@ -227,84 +446,11 @@ public class ReportesController {
         if (seleccionado instanceof Usuario) {
             detalle += "--- DATOS DEL SISTEMA ---\n"
                     + "Usuario: " + ((Usuario) seleccionado).getUsername() + "\n"
-                    + "Rol en Sistema: Acceso Permitido\n";
+                    + "Rol: Acceso Permitido\n";
         } else {
             detalle += "--- DATOS DEL SISTEMA ---\n"
-                    + "Sin acceso a la caja o computadora.\n";
+                    + "Sin acceso a la caja.\n";
         }
-
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Ficha Técnica del Empleado");
-        alert.setHeaderText("Detalles de Planilla: " + seleccionado.getNombre());
-        alert.setContentText(detalle);
-        aplicarEstiloClaro(alert);
-        alert.showAndWait();
-    }
-
-    // --- MÉTODO ANTIGUO RESCATADO (AHORA POR DOBLE CLIC) ---
-    private void verDetalleFacturaTicket(Factura seleccionada) {
-        String textoTicket = seleccionada.generarTicket(); // Método de tu clase Factura
-
-        Alert alertaTicket = new Alert(Alert.AlertType.INFORMATION);
-        alertaTicket.setTitle("Detalle de Venta");
-        alertaTicket.setHeaderText("Copia de Ticket - Factura N° " + seleccionada.getNumeroFactura());
-
-        // Formato letra de cajero térmica
-        TextArea areaTicket = new TextArea(textoTicket);
-        areaTicket.setEditable(false);
-        areaTicket.setFont(javafx.scene.text.Font.font("Monospaced", 14));
-        areaTicket.setPrefSize(340, 500);
-
-        alertaTicket.getDialogPane().setContent(areaTicket);
-        alertaTicket.showAndWait();
-    }
-
-    // --- ESTILOS VISUALES PARA LAS ALERTAS (Combina con la estética Crema/Negro) ---
-    private void aplicarEstiloClaro(Dialog<?> dialog) {
-        DialogPane dialogPane = dialog.getDialogPane();
-        dialogPane.setStyle("-fx-background-color: #FDF6E3; -fx-border-color: #111111; -fx-border-width: 2px;");
-        dialogPane.lookupAll(".label").forEach(node -> ((Label) node).setStyle("-fx-text-fill: #111111; -fx-font-weight: bold;"));
-    }
-
-    private void mostrarAlerta(String titulo, String mensaje) {
-        Alert alert = new Alert(Alert.AlertType.WARNING);
-        alert.setTitle(titulo);
-        alert.setHeaderText(null);
-        alert.setContentText(mensaje);
-        aplicarEstiloClaro(alert);
-        alert.showAndWait();
-    }
-
-    // =========================================================================
-    // CLASE INTERNA PARA LA TABLA DE AUDITORÍA / TRAZABILIDAD (EL SEGUIDOR)
-    // =========================================================================
-    // Esta clase permite que tu tabla visual funcione ya mismo.
-    // Te avisaré cuando necesitemos vincularla a tu clase Restaurante / Inventario.
-    public static class RegistroAuditoria {
-        private String fechaHora;
-        private String operador;
-        private String tipoArea;
-        private String nombreItem;
-        private String accion;
-        private double cantidad;
-        private String motivo;
-
-        public RegistroAuditoria(String fechaHora, String operador, String tipoArea, String nombreItem, String accion, double cantidad, String motivo) {
-            this.fechaHora = fechaHora;
-            this.operador = operador;
-            this.tipoArea = tipoArea;
-            this.nombreItem = nombreItem;
-            this.accion = accion;
-            this.cantidad = cantidad;
-            this.motivo = motivo;
-        }
-
-        public String getFechaHora() { return fechaHora; }
-        public String getOperador() { return operador; }
-        public String getTipoArea() { return tipoArea; }
-        public String getNombreItem() { return nombreItem; }
-        public String getAccion() { return accion; }
-        public double getCantidad() { return cantidad; }
-        public String getMotivo() { return motivo; }
+        AlertaPersonalizada.mostrarAlerta("Ficha Técnica - " + seleccionado.getNombre(), detalle, Alert.AlertType.INFORMATION);
     }
 }

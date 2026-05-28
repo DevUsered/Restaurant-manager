@@ -31,4 +31,8 @@ public class Pizza extends Producto
     public boolean isExtraQueso(){
         return extraQueso;
     }
+
+    public String getTamano() {
+        return tamano;
+    }
 }

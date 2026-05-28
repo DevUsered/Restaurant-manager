@@ -30,4 +30,8 @@ public class Bebida extends Producto
         return super.toString() + String.format(" | Tam: %-10s | Tipo: %-10s",
                     tamano.getDescripcion(), tipo);
     }
+
+    public String getTipoBebida() {
+        return tipo;
+    }
 }

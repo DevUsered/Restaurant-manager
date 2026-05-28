@@ -1,23 +1,19 @@
+# --- Compilación y Salidas ---
 target/
-!.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
+build/
 .kotlin
+*.log
 
-### IntelliJ IDEA ###
-*.iws
-*.iml
-*.ipr
+# --- Archivos de Configuración Sensibles (Mantener ocultos) ---
+config.properties
+
+# --- IntelliJ IDEA ---
 .idea/
-.mvn/
-mvnw
-mvnw.cmd
-pom.xml
-src/main/resources/logo.png
+*.iml
+*.iws
+*.ipr
 
-
-
-### Eclipse ###
+# --- Eclipse ---
 .apt_generated
 .classpath
 .factorypath
@@ -26,19 +22,16 @@ src/main/resources/logo.png
 .springBeans
 .sts4-cache
 
-### NetBeans ###
+# --- NetBeans ---
 /nbproject/private/
 /nbbuild/
 /dist/
 /nbdist/
 /.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
 
-### VS Code ###
+# --- VS Code ---
 .vscode/
 
-### Mac OS ###
-.DS_Store/
-src/main/resources/images/
+# --- Sistemas Operativos ---
+.DS_Store
+Thumbs.db

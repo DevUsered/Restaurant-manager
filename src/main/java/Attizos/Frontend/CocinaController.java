@@ -1,7 +1,10 @@
 package Attizos.Frontend;
 
 import Attizos.Backend.Attizos.*;
-import Attizos.Backend.Listas.NodoDE;
+import Attizos.Backend.Database.PedidoDAO;
+import Attizos.Backend.Database.FacturaDAO;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
@@ -12,22 +15,28 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.paint.Color;
 import javafx.stage.Stage;
+import javafx.stage.StageStyle;
+import javafx.util.Duration;
 
 public class CocinaController {
 
-
     @FXML private TableView<Pedido> tablaPedidos;
-    @FXML private TableColumn<Pedido, Integer> colIdPedido;
+    // Sugerencia: En tu FXML, cambia el texto de colIdPedido a "TICKET" o "N°"
+    @FXML private TableColumn<Pedido, Integer> colIdPedido; 
+    
+    // Sugerencia: Agrega esta columna en tu FXML para la descripción rápida
+    @FXML private TableColumn<Pedido, String> colDescripcion; 
     @FXML private TableColumn<Pedido, String> colEstado;
-
 
     @FXML private ListView<String> listaDetallesCocina;
     @FXML private Label lblPedidoActual;
     @FXML private Button btnCerrar;
     @FXML private Button btnConfirmar;
 
-    private ObservableList<Pedido> listaColaPedidos;
+    private ObservableList<Pedido> listaColaPedidos = FXCollections.observableArrayList();
+    private Timeline radarDePedidos; // Nuestro reloj automático
 
     @FXML
     public void initialize() {
@@ -35,70 +44,75 @@ public class CocinaController {
             btnCerrar.setVisible(false);
             btnConfirmar.setVisible(false);
         }
-        colIdPedido.setCellValueFactory(new PropertyValueFactory<>("idPedido"));
+        
+        colIdPedido.setCellValueFactory(new PropertyValueFactory<>("numeroTicket")); // Usamos el número diario
+        
+        // colDescripcion.setCellValueFactory(new PropertyValueFactory<>("descripcionBreve"));
         colEstado.setCellValueFactory(new PropertyValueFactory<>("estado"));
 
-        listaColaPedidos = FXCollections.observableArrayList();
         tablaPedidos.setItems(listaColaPedidos);
-
-        // 2. Cargar los datos desde el backend
-        cargarColaDesdeBackend();
 
         tablaPedidos.getSelectionModel().selectedItemProperty().addListener((obs, viejo, nuevo) -> {
             mostrarDetallesPedido(nuevo);
         });
+
+        iniciarRadarDePedidos();
+    }
+
+    private void iniciarRadarDePedidos() {
+        cargarColaDesdeBackend(); // Primera carga inmediata
+
+        // Se ejecuta cada 4 segundos
+        radarDePedidos = new Timeline(new KeyFrame(Duration.seconds(4), evento -> {
+            // Guardamos qué pedido estaba viendo el cocinero para no quitarle la selección
+            int indiceSeleccionado = tablaPedidos.getSelectionModel().getSelectedIndex();
+            
+            cargarColaDesdeBackend();
+            
+            if(indiceSeleccionado >= 0 && indiceSeleccionado < listaColaPedidos.size()){
+                tablaPedidos.getSelectionModel().select(indiceSeleccionado);
+            }
+        }));
+        radarDePedidos.setCycleCount(Timeline.INDEFINITE);
+        radarDePedidos.play();
     }
 
     private void cargarColaDesdeBackend() {
         listaColaPedidos.clear();
-
-        NodoDE<Pedido> actual = App.attizos.getPedidos().getCabeza();
-
-        while (actual != null) {
-            listaColaPedidos.add(actual.getDato());
-            actual = actual.getSiguiente();
-        }
-
-        // Limpiamos la vista de detalles si se recarga
-        listaDetallesCocina.getItems().clear();
-        lblPedidoActual.setText("Seleccione un pedido...");
+        // Llamamos al nuevo DAO que se conecta con la tabla temporal
+        listaColaPedidos.addAll(PedidoDAO.obtenerPedidosPendientes());
     }
 
     private void mostrarDetallesPedido(Pedido pedido) {
         listaDetallesCocina.getItems().clear();
-
         if (pedido == null) {
             lblPedidoActual.setText("Seleccione un pedido...");
             return;
         }
 
-        lblPedidoActual.setText("Pedido #" + String.format("%03d", pedido.getIdPedido()) + " - " + pedido.getCliente());
-
-
-        NodoDE<DetalleFactura> actual = pedido.getProductos().getCabeza();
-        while (actual != null) {
-            DetalleFactura det = actual.getDato();
-            // Formato de cocina: "3x Pizza Hawaiana"
-            String itemCocina = det.getCantidad() + "x  " + det.getProducto().getNombre();
-            listaDetallesCocina.getItems().add(itemCocina);
-
-            actual = actual.getSiguiente();
-        }
+        lblPedidoActual.setText("Ticket #" + pedido.getNumeroTicket() + " - " + pedido.getCliente());
+        
+        listaDetallesCocina.getItems().addAll(PedidoDAO.obtenerDetallesParaCocina(pedido.getIdPedido()));
     }
 
     @FXML
     void atenderSiguiente(ActionEvent event) {
-        if (listaColaPedidos.isEmpty()) {
-            mostrarAlerta("Sin pedidos", "No hay pedidos pendientes en la cola.");
-            return;
+        if (listaColaPedidos.isEmpty()) return;
+        
+        Pedido pedidoAtendido = tablaPedidos.getSelectionModel().getSelectedItem();
+        if(pedidoAtendido == null){
+            pedidoAtendido = listaColaPedidos.get(0);
         }
-        Pedido pedidoAtendido = App.attizos.atenderSiguientePedido();
+        
+        boolean eliminado = PedidoDAO.eliminarPedidoDespachado(pedidoAtendido.getIdPedido());
 
-        if (pedidoAtendido != null) {
-            mostrarExito("¡Plato Listo!", "El Pedido #" + pedidoAtendido.getIdPedido() + " ha sido despachado.");
+        if(eliminado){
+            mostrarExito("¡Plato Listo!", "El Ticket #" + pedidoAtendido.getIdPedido() + " ha sido despachado.");
             cargarColaDesdeBackend();
-        } else {
-            mostrarAlerta("Error", "No se pudo despachar el pedido.");
+            listaDetallesCocina.getItems().clear();
+            lblPedidoActual.setText("Seleccione un pedido...");
+        }else{
+            mostrarAlerta("Error", "No se pudo despachar el pedido en la Base de Datos.");
         }
     }
 
@@ -107,36 +121,38 @@ public class CocinaController {
         Pedido seleccionado = tablaPedidos.getSelectionModel().getSelectedItem();
 
         if (seleccionado == null) {
-            mostrarAlerta("Selección requerida", "Seleccione un pedido de la lista para cancelarlo.");
+            mostrarAlerta("Atención", "Seleccione un pedido para cancelarlo.");
             return;
         }
 
-        boolean cancelado = App.attizos.cancelarPedido(seleccionado.getIdPedido());
+        boolean cancelado = FacturaDAO.anularVenta(seleccionado.getIdPedido());
 
         if (cancelado) {
-            App.attizos.anularFacturaFinanciera(seleccionado.getIdPedido());
-            App.attizos.retrocederCorrelativoFactura();
-            mostrarExito("Cancelado", "El pedido fue cancelado y los ingredientes regresaron al inventario.");
+            mostrarExito("Anulado", "El pedido se anuló contablemente y los ingredientes regresaron al inventario.");
             cargarColaDesdeBackend();
+            listaDetallesCocina.getItems().clear();
         } else {
-            mostrarAlerta("Error", "No se pudo cancelar el pedido.");
+            mostrarAlerta("Error Crítico", "No se pudo anular el pedido o falló la devolución del stock.");
         }
     }
 
     @FXML
     void cerrarVentana(ActionEvent event) {
         try{
+            if(radarDePedidos != null) radarDePedidos.stop(); // Apagamos el reloj antes de irnos
+
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Home.fxml"));
             Parent root = loader.load();
             Stage stage = new Stage();
+            stage.initStyle(StageStyle.TRANSPARENT);
             Scene scene = new Scene(root);
+            scene.setFill(Color.TRANSPARENT);
             stage.setScene(scene);
             stage.show();
 
             Stage vAc = (Stage) ((Node) event.getSource()).getScene().getWindow();
             vAc.close();
         }catch (Exception e){
-            System.out.println("Error al cerrar");
             e.printStackTrace();
         }
     }
@@ -144,7 +160,6 @@ public class CocinaController {
     private void mostrarAlerta(String titulo, String mensaje) {
         AlertaPersonalizada.mostrarAlerta(titulo,mensaje,Alert.AlertType.WARNING);
     }
-
     private void mostrarExito(String titulo, String mensaje) {
         AlertaPersonalizada.mostrarAlerta(titulo, mensaje, Alert.AlertType.INFORMATION);
     }

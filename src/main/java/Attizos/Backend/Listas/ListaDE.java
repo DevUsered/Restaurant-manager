@@ -148,6 +148,34 @@ public class ListaDE <T>{
             ac = siguiente;
         }
     }
+    public boolean removerPorValor(T val){
+        if(esVacia()){
+            return false;
+        };
+        NodoDE<T> ac = cabeza;
+        while (ac != null){
+            NodoDE<T> siguiente = ac.getSiguiente();
+            boolean iguales = (ac.getDato() == null) ? (val == null) : ac.getDato().equals(val);
+            if(iguales){
+                if(ac == cabeza){
+                    eliminarElInicio();
+                } else if (ac == cola) {
+                    cola = cola.getAnterior();
+                    cola.setSiguiente(null);
+                    longitud--;
+                }else{
+                    ac.getAnterior().setSiguiente(ac.getSiguiente());
+                    ac.getSiguiente().setAnterior(ac.getAnterior());
+                    longitud --;
+                }
+                return true;
+            }
+            ac = siguiente;
+        }
+        return false;
+    }
+
+
     public boolean buscar(T val){
         NodoDE<T> ac = cabeza;
         while(ac != null){

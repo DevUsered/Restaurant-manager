@@ -27,16 +27,6 @@
                     <Label styleClass="logo-text" text="Attizos" />
                 </HBox>
 
-                <AnchorPane fx:id="apSearch" prefHeight="21.0" prefWidth="220.0" styleClass="search-box">
-                    <VBox.margin>
-                        <Insets bottom="10.0" top="15.0" />
-                    </VBox.margin>
-                    <children>
-                        <Label layoutX="15" layoutY="12" styleClass="search-icon" text="🔍" />
-                        <Label layoutX="45" layoutY="12" styleClass="search-text" text="Search..." />
-                    </children>
-                </AnchorPane>
-
                 <ScrollPane fitToWidth="true" style="-fx-background: transparent; -fx-background-color: transparent; -fx-border-color: transparent;" VBox.vgrow="ALWAYS">
                     <content>
                         <VBox spacing="8" style="-fx-background-color: transparent; -fx-padding: 0 5 0 0;">

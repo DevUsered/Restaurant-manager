@@ -13,19 +13,17 @@
 
 <AnchorPane style="-fx-background-color: transparent;" stylesheets="@../css/style.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="Attizos.Frontend.VentasController">
     <children>
-        <!-- TÍTULO EN GRIS OSCURO/NEGRO -->
         <Label text="Punto de Venta" textFill="#111111" AnchorPane.leftAnchor="20.0" AnchorPane.topAnchor="20.0">
             <font>
                 <Font name="System Bold" size="28.0" />
             </font>
         </Label>
 
-        <!-- BARRA DE BÚSQUEDA (Con ID y colores claros) -->
         <TextField fx:id="tfBuscar" prefHeight="35.0" prefWidth="237.0" promptText="🔍 Buscar producto..." style="-fx-background-color: #F5F5F5; -fx-text-fill: #111111; -fx-prompt-text-fill: #999999; -fx-background-radius: 10; -fx-padding: 8 15; -fx-border-color: #DDDDDD; -fx-border-radius: 10;" AnchorPane.leftAnchor="268.0" AnchorPane.topAnchor="22.0" />
 
         <Label styleClass="section-title" text="Categorías" AnchorPane.leftAnchor="20.0" AnchorPane.topAnchor="80.0" />
 
-        <ScrollPane fx:id="sPCategoria" fitToHeight="true" fitToWidth="true" hbarPolicy="NEVER" prefHeight="60.0" style="-fx-background: transparent; -fx-background-color: transparent;" vbarPolicy="NEVER" AnchorPane.leftAnchor="20.0" AnchorPane.rightAnchor="340.0" AnchorPane.topAnchor="110.0">
+        <ScrollPane fx:id="sPCategoria" fitToHeight="true" fitToWidth="true" hbarPolicy="NEVER" prefHeight="60.0" style="-fx-background: transparent; -fx-background-color: transparent;" vbarPolicy="NEVER" AnchorPane.leftAnchor="20.0" AnchorPane.rightAnchor="370.0" AnchorPane.topAnchor="110.0">
             <content>
                 <HBox fx:id="hBCategoria" alignment="CENTER_LEFT" spacing="10.0" style="-fx-background-color: transparent;" />
             </content>
@@ -33,22 +31,20 @@
 
         <Label layoutX="14.0" layoutY="153.0" styleClass="section-title" text="Menú de Productos" AnchorPane.leftAnchor="14.0" AnchorPane.topAnchor="153.0" />
 
-        <ScrollPane fx:id="sPProductos" fitToWidth="true" hbarPolicy="NEVER" style="-fx-background: transparent; -fx-background-color: transparent;" AnchorPane.bottomAnchor="20.0" AnchorPane.leftAnchor="20.0" AnchorPane.rightAnchor="340.0" AnchorPane.topAnchor="215.0">
+        <ScrollPane fx:id="sPProductos" fitToWidth="true" hbarPolicy="NEVER" style="-fx-background: transparent; -fx-background-color: transparent;" AnchorPane.bottomAnchor="20.0" AnchorPane.leftAnchor="20.0" AnchorPane.rightAnchor="370.0" AnchorPane.topAnchor="215.0">
             <content>
                 <FlowPane fx:id="flPProductos" hgap="15.0" style="-fx-background-color: transparent;" vgap="15.0" />
             </content>
         </ScrollPane>
 
-        <AnchorPane fx:id="aPCarrito" prefWidth="300.0" styleClass="glass-container" AnchorPane.bottomAnchor="20.0" AnchorPane.rightAnchor="20.0" AnchorPane.topAnchor="20.0">
+        <AnchorPane fx:id="aPCarrito" prefWidth="330.0" style="-fx-background-color: #FFFFFF; -fx-background-radius: 15; -fx-border-color: rgba(218, 165, 32, 0.4); -fx-border-width: 1.5; -fx-border-radius: 15; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 20, 0, 0, 5);" AnchorPane.bottomAnchor="20.0" AnchorPane.rightAnchor="20.0" AnchorPane.topAnchor="20.0">
             <children>
-                <!-- TÍTULO ORDEN EN GRIS OSCURO/NEGRO -->
                 <Label text="Orden Actual" textFill="#111111" AnchorPane.leftAnchor="20.0" AnchorPane.topAnchor="20.0">
                     <font>
                         <Font name="System Bold" size="18.0" />
                     </font>
                 </Label>
 
-                <!-- INPUT NOMBRE CLIENTE (Colores claros) -->
                 <TextField fx:id="tfNombreCli" prefHeight="35.0" promptText="Nombre del cliente..." style="-fx-background-color: #F5F5F5; -fx-text-fill: #111111; -fx-prompt-text-fill: #999999; -fx-background-radius: 10; -fx-padding: 8 15; -fx-border-color: #DDDDDD; -fx-border-radius: 10;" AnchorPane.leftAnchor="20.0" AnchorPane.rightAnchor="20.0" AnchorPane.topAnchor="55.0" />
 
                 <ScrollPane fitToWidth="true" hbarPolicy="NEVER" style="-fx-background: transparent; -fx-background-color: transparent;" AnchorPane.bottomAnchor="160.0" AnchorPane.leftAnchor="15.0" AnchorPane.rightAnchor="15.0" AnchorPane.topAnchor="100.0">
@@ -59,7 +55,6 @@
 
                 <VBox spacing="15.0" AnchorPane.bottomAnchor="15.0" AnchorPane.leftAnchor="15.0" AnchorPane.rightAnchor="15.0">
                     <children>
-                        <!-- SEPARADOR (Gris claro) -->
                         <AnchorPane prefHeight="1.0" style="-fx-background-color: #DDDDDD;" />
 
                         <HBox alignment="CENTER_LEFT">

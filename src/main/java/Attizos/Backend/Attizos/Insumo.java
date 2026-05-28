@@ -10,7 +10,6 @@ public class Insumo {
     private double stockActual;
     private double stockMinimo;
     private double stockMaximo;
-    private double precioUnitario;
     private LocalDate fechaVencimiento;
 
     public Insumo(String codigo, String nombre, String categoria, String unidad,
@@ -23,7 +22,6 @@ public class Insumo {
         this.stockActual = stockActual;
         this.stockMinimo = stockMinimo;
         this.stockMaximo = stockMaximo;
-        this.precioUnitario = 0.0;
         this.fechaVencimiento = fechaVencimiento;
     }
 
@@ -35,7 +33,6 @@ public class Insumo {
     public double getStockActual() { return stockActual; }
     public double getStockMinimo() { return stockMinimo; }
     public double getStockMaximo() { return stockMaximo; }
-    public double getPrecioUnitario() { return precioUnitario; }
     public LocalDate getFechaVencimiento(){return fechaVencimiento;}
 
     //Control de vencimiento
@@ -53,8 +50,6 @@ public class Insumo {
 
     // Setters principales
     public void setStockActual(double stockActual) { this.stockActual = stockActual; }
-    public void setPrecioUnitario(double precio) { this.precioUnitario = precio; }
-
     public void setFechaVencimiento(LocalDate fechaVencimiento) {
         this.fechaVencimiento = fechaVencimiento;
     }

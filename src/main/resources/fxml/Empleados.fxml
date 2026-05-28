@@ -14,15 +14,15 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<ScrollPane fitToHeight="true" fitToWidth="true" style="-fx-background-color: transparent; -fx-background: transparent; -fx-border-color: transparent;" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="Attizos.Frontend.EmpleadosController">
+<ScrollPane fitToHeight="true" fitToWidth="true" style="-fx-background-color: transparent; -fx-background: transparent; -fx-border-color: transparent;" stylesheets="@../css/style.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="Attizos.Frontend.EmpleadosController">
     <content>
-        <AnchorPane style="-fx-background-color: #120524;">
+        <AnchorPane style="-fx-background-color: transparent;">
             <children>
                 <VBox spacing="15.0" AnchorPane.bottomAnchor="20.0" AnchorPane.leftAnchor="20.0" AnchorPane.rightAnchor="20.0" AnchorPane.topAnchor="20.0">
                     <children>
                         <HBox alignment="CENTER_LEFT" spacing="20.0">
                             <children>
-                                <Label text="👥 GESTIÓN DE EMPLEADOS Y USUARIOS" textFill="WHITE">
+                                <Label text="👥 GESTIÓN DE EMPLEADOS Y USUARIOS" textFill="#111111">
                                     <font><Font name="System Bold" size="24.0" /></font>
                                 </Label>
                                 <AnchorPane HBox.hgrow="ALWAYS" />
@@ -31,20 +31,19 @@
 
                         <HBox spacing="20.0" VBox.vgrow="ALWAYS">
                             <children>
-
                                 <VBox spacing="10.0" HBox.hgrow="ALWAYS">
                                     <children>
 
-                                        <HBox alignment="CENTER_LEFT" spacing="10.0" style="-fx-background-color: rgba(255,255,255,0.05); -fx-background-radius: 8; -fx-padding: 10;">
+                                        <HBox alignment="CENTER_LEFT" spacing="10.0" style="-fx-background-color: #FFFFFF; -fx-background-radius: 8; -fx-padding: 10; -fx-border-color: #DDDDDD; -fx-border-radius: 8;">
                                             <children>
-                                                <Label text="🔍 Buscar:" textFill="#00d2ff">
+                                                <Label text="🔍 Buscar:" textFill="#555555">
                                                     <font><Font name="System Bold" size="14.0" /></font>
                                                 </Label>
-                                                <TextField fx:id="txtBuscador" promptText="Nombre, CI o Cargo..." style="-fx-background-color: rgba(0,0,0,0.3); -fx-text-fill: white;" HBox.hgrow="ALWAYS" />
+                                                <TextField fx:id="txtBuscador" promptText="Nombre, CI o Cargo..." style="-fx-background-color: #F5F5F5; -fx-text-fill: #111111; -fx-border-color: transparent; -fx-border-radius: 5;" HBox.hgrow="ALWAYS" />
                                             </children>
                                         </HBox>
 
-                                        <TableView fx:id="tablaEmpleados" minHeight="300.0" style="-fx-base: #1a0a2a; -fx-control-inner-background: #1a0a2a; -fx-background-color: #1a0a2a; -fx-background-radius: 10;" VBox.vgrow="ALWAYS">
+                                        <TableView fx:id="tablaEmpleados" minHeight="300.0" styleClass="modern-table" VBox.vgrow="ALWAYS">
                                             <columnResizePolicy><TableView fx:constant="CONSTRAINED_RESIZE_POLICY" /></columnResizePolicy>
                                             <columns>
                                                 <TableColumn fx:id="colId" prefWidth="90.0" text="CI / ID" />
@@ -57,17 +56,18 @@
 
                                         <HBox spacing="10.0">
                                             <children>
-                                                <Button maxWidth="Infinity" mnemonicParsing="false" onAction="#cargarParaEditar" prefHeight="35.0" style="-fx-background-color: rgba(243, 156, 18, 0.2); -fx-text-fill: #f39c12; -fx-border-color: #f39c12; -fx-border-radius: 5; -fx-font-weight: bold; -fx-cursor: hand;" text="✏️ Cargar para Editar" HBox.hgrow="ALWAYS" />
-                                                <Button maxWidth="Infinity" mnemonicParsing="false" onAction="#eliminarEmpleado" prefHeight="35.0" style="-fx-background-color: rgba(255, 76, 76, 0.2); -fx-text-fill: #ff4c4c; -fx-border-color: #ff4c4c; -fx-border-radius: 5; -fx-font-weight: bold; -fx-cursor: hand;" text="🗑️ Despedir Seleccionado" HBox.hgrow="ALWAYS" />
+                                                <Button maxWidth="Infinity" mnemonicParsing="false" onAction="#cargarParaEditar" prefHeight="35.0" style="-fx-background-color: rgba(243, 156, 18, 0.1); -fx-text-fill: #f39c12; -fx-border-color: #f39c12; -fx-border-radius: 5; -fx-font-weight: bold; -fx-cursor: hand;" text="✏ Cargar para Editar" HBox.hgrow="ALWAYS" />
+                                                <Button maxWidth="Infinity" mnemonicParsing="false" onAction="#eliminarEmpleado" prefHeight="35.0" style="-fx-background-color: rgba(255, 76, 76, 0.1); -fx-text-fill: #ff4c4c; -fx-border-color: #ff4c4c; -fx-border-radius: 5; -fx-font-weight: bold; -fx-cursor: hand;" text="🗑 Despedir Seleccionado" HBox.hgrow="ALWAYS" />
+                                    <Button layoutX="10.0" layoutY="10.0" maxWidth="Infinity" mnemonicParsing="false" onAction="#pagarSueldoEmpleado" prefHeight="35.0" style="-fx-background-color: rgba(39, 176, 86, 0.7); -fx-text-fill: #111111; -fx-border-color: #27b0a7; -fx-border-radius: 5; -fx-font-weight: bold; -fx-cursor: hand;" text="Pagar" />
                                             </children>
                                         </HBox>
                                     </children>
                                 </VBox>
 
-                                <VBox minWidth="340.0" prefWidth="340.0" spacing="12.0" style="-fx-background-color: rgba(255, 255, 255, 0.05); -fx-background-radius: 15; -fx-border-color: rgba(255, 255, 255, 0.1); -fx-border-radius: 15;">
+                                <VBox minWidth="340.0" prefWidth="340.0" spacing="12.0" style="-fx-background-color: #FFFFFF; -fx-background-radius: 15; -fx-border-color: rgba(218, 165, 32, 0.3); -fx-border-width: 1.5; -fx-border-radius: 15; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 15, 0, 0, 5);">
                                     <padding><Insets bottom="20.0" left="20.0" right="20.0" top="20.0" /></padding>
                                     <children>
-                                        <Label text="Datos del Empleado" textFill="WHITE">
+                                        <Label text="Datos del Empleado" textFill="#111111">
                                             <font><Font name="System Bold" size="18.0" /></font>
                                         </Label>
 
@@ -75,14 +75,14 @@
                                             <children>
                                                 <VBox HBox.hgrow="ALWAYS">
                                                     <children>
-                                                        <Label text="CI / ID:" textFill="#b39ddb" />
-                                                        <TextField fx:id="txtId" promptText="Ej: 1234567" style="-fx-background-color: rgba(0,0,0,0.3); -fx-text-fill: white;" />
+                                                        <Label text="CI / ID:" textFill="#555555" />
+                                                        <TextField fx:id="txtId" promptText="Ej: 1234567" style="-fx-background-color: #F5F5F5; -fx-text-fill: #111111; -fx-border-color: #DDDDDD; -fx-border-radius: 5;" />
                                                     </children>
                                                 </VBox>
                                                 <VBox HBox.hgrow="ALWAYS">
                                                     <children>
-                                                        <Label text="Sueldo (Bs):" textFill="#b39ddb" />
-                                                        <TextField fx:id="txtSueldo" promptText="Ej: 2500" style="-fx-background-color: rgba(0,0,0,0.3); -fx-text-fill: white;" />
+                                                        <Label text="Sueldo (Bs):" textFill="#555555" />
+                                                        <TextField fx:id="txtSueldo" promptText="Ej: 3300" style="-fx-background-color: #F5F5F5; -fx-text-fill: #111111; -fx-border-color: #DDDDDD; -fx-border-radius: 5;" />
                                                     </children>
                                                 </VBox>
                                             </children>
@@ -90,34 +90,34 @@
 
                                         <VBox spacing="2.0">
                                             <children>
-                                                <Label text="Nombre Completo:" textFill="#b39ddb" />
-                                                <TextField fx:id="txtNombre" promptText="Ej: Ana María Lopez" style="-fx-background-color: rgba(0,0,0,0.3); -fx-text-fill: white;" />
+                                                <Label text="Nombre Completo:" textFill="#555555" />
+                                                <TextField fx:id="txtNombre" style="-fx-background-color: #F5F5F5; -fx-text-fill: #111111; -fx-border-color: #DDDDDD; -fx-border-radius: 5;" />
                                             </children>
                                         </VBox>
 
                                         <VBox spacing="2.0">
                                             <children>
-                                                <Label text="Rol / Cargo:" textFill="#b39ddb" />
-                                                <ComboBox fx:id="cmbCargo" maxWidth="Infinity" promptText="Seleccione el cargo..." style="-fx-base: #1a0a2a;" />
+                                                <Label text="Rol / Cargo:" textFill="#555555" />
+                                                <ComboBox fx:id="cmbCargo" maxWidth="Infinity" promptText="Seleccione el cargo..." style="-fx-base: #FFFFFF; -fx-background-color: #F5F5F5; -fx-border-color: #DDDDDD; -fx-border-radius: 5;" />
                                             </children>
                                         </VBox>
 
-                                        <Label text="Credenciales de Acceso (Admin/Cajero)" textFill="#00d2ff">
+                                        <Label text="Credenciales de Acceso (Admin/Cajero/Cocinero)" textFill="#218c4e">
                                             <font><Font name="System Bold" size="13.0" /></font>
                                             <VBox.margin><Insets top="10.0" /></VBox.margin>
                                         </Label>
 
                                         <VBox spacing="2.0">
                                             <children>
-                                                <Label text="Nombre de Usuario:" textFill="#b39ddb" />
-                                                <TextField fx:id="txtUsername" promptText="Ej: alopez" style="-fx-background-color: rgba(0,0,0,0.3); -fx-text-fill: white;" />
+                                                <Label text="Nombre de Usuario:" textFill="#555555" />
+                                                <TextField fx:id="txtUsername" promptText="Ej: alopez" style="-fx-background-color: #F5F5F5; -fx-text-fill: #111111; -fx-border-color: #DDDDDD; -fx-border-radius: 5;" />
                                             </children>
                                         </VBox>
 
                                         <VBox spacing="2.0">
                                             <children>
-                                                <Label text="Contraseña:" textFill="#b39ddb" />
-                                                <PasswordField fx:id="txtPassword" promptText="******" style="-fx-background-color: rgba(0,0,0,0.3); -fx-text-fill: white;" />
+                                                <Label text="Contraseña:" textFill="#555555" />
+                                                <PasswordField fx:id="txtPassword" promptText="******" style="-fx-background-color: #F5F5F5; -fx-text-fill: #111111; -fx-border-color: #DDDDDD; -fx-border-radius: 5;" />
                                             </children>
                                         </VBox>
 
@@ -125,9 +125,9 @@
 
                                         <VBox spacing="10.0">
                                             <children>
-                                                <Button maxWidth="Infinity" mnemonicParsing="false" onAction="#guardarEmpleado" prefHeight="40.0" style="-fx-background-color: linear-gradient(to right, #00ff88, #00cc6a); -fx-text-fill: #120524; -fx-font-weight: bold; -fx-font-size: 14px; -fx-background-radius: 8; -fx-cursor: hand;" text="💾 GUARDAR NUEVO" />
-                                                <Button maxWidth="Infinity" mnemonicParsing="false" onAction="#actualizarEmpleado" prefHeight="40.0" style="-fx-background-color: linear-gradient(to right, #00d2ff, #3a7bd5); -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14px; -fx-background-radius: 8; -fx-cursor: hand;" text="🔄 ACTUALIZAR CAMBIOS" />
-                                                <Button maxWidth="Infinity" mnemonicParsing="false" onAction="#limpiarFormulario" prefHeight="30.0" style="-fx-background-color: rgba(255, 255, 255, 0.1); -fx-text-fill: white; -fx-border-color: rgba(255, 255, 255, 0.3); -fx-border-radius: 5; -fx-cursor: hand;" text="🧹 Limpiar / Cancelar Edición" />
+                                                <Button maxWidth="Infinity" mnemonicParsing="false" onAction="#guardarEmpleado" prefHeight="40.0" style="-fx-background-color: linear-gradient(to right, #00ff88, #00cc6a); -fx-text-fill: #111111; -fx-font-weight: bold; -fx-font-size: 14px; -fx-background-radius: 8; -fx-cursor: hand;" text="💾 GUARDAR NUEVO" />
+                                                <Button maxWidth="Infinity" mnemonicParsing="false" onAction="#actualizarEmpleado" prefHeight="40.0" style="-fx-background-color: rgba(218, 165, 32, 0.2); -fx-text-fill: #DAA520; -fx-border-color: #DAA520; -fx-border-width: 1.5; -fx-font-weight: bold; -fx-font-size: 14px; -fx-background-radius: 8; -fx-border-radius: 8; -fx-cursor: hand;" text="🔄 ACTUALIZAR CAMBIOS" />
+                                                <Button maxWidth="Infinity" mnemonicParsing="false" onAction="#limpiarFormulario" prefHeight="30.0" style="-fx-background-color: transparent; -fx-text-fill: #555555; -fx-border-color: #DDDDDD; -fx-border-radius: 5; -fx-cursor: hand;" text="🧹 Limpiar / Cancelar Edición" />
                                             </children>
                                         </VBox>
                                     </children>

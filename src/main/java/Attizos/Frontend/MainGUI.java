@@ -12,7 +12,7 @@ public class MainGUI extends Application {
     @Override
     public void start(Stage ventanaPrincipal){
         try {
-            Attizos.Backend.Attizos.App.cargarDatosEnRAM();
+            Attizos.Backend.Attizos.App.iniciarSistema();
             Application.setUserAgentStylesheet(new atlantafx.base.theme.PrimerDark().getUserAgentStylesheet());
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Home.fxml"));
             Parent root = loader.load();

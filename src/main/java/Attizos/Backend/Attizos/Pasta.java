@@ -25,5 +25,9 @@ public class Pasta extends Producto
     public String getSalsa(){
         return salsa;
     }
+
+    public String getTipoSalsa() {
+        return salsa;
+    }
 }
 

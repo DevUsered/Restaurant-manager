@@ -1,10 +1,8 @@
 package Attizos.Backend.Attizos;
 
 import Attizos.Backend.Listas.*;
-
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Map;
 
 public class Factura {
     private int numeroFactura;
@@ -12,290 +10,122 @@ public class Factura {
     private String nombreCliente;
     private ListaDE<DetalleFactura> detalles;
     private double total;
+    private String estado;
 
     public Factura(int numeroFactura, String nombreCliente) {
         this.numeroFactura = numeroFactura;
         this.nombreCliente = nombreCliente;
-        this.fecha = LocalDateTime.now(); // Guarda la fecha y hora exacta de la creación
+        this.fecha = LocalDateTime.now();
+        this.estado = "Completada";
         this.detalles = new ListaDE<>();
         this.total = 0.0;
     }
 
-
-    public boolean agregarProducto(Producto producto, int cantidad, Inventario inventario) {
-        if(producto != null && cantidad > 0){
-            // CASO A: EL PRODUCTO SE COCINA (TIENE RECETA)
-            if(producto.tieneReceta()){
-                Receta receta = producto.getReceta();
-
-                // 1. VALIDACIÓN ESTRICTA: Verificamos si hay stock VÁLIDO (no vencido)
-                for(Map.Entry<String, Double> entry : receta.getIngredientes().entrySet()){
-                    String codInsumoBase = entry.getKey();
-                    double cantidadNecesariaTotal = entry.getValue() * cantidad;
-
-                    double stockValidoDisponible = 0;
-                    String nombreInsumo = codInsumoBase;
-
-                    for (Insumo ins : inventario.getInventarioInsumos().values()) {
-                        if (ins.getCodigo().equals(codInsumoBase) || ins.getCodigo().startsWith(codInsumoBase + "-L")) {
-                            nombreInsumo = ins.getNombre().split(" \\(Lote")[0];
-                            // Aquí está la clave: Solo sumamos si NO está vencido
-                            if (ins.getStockActual() > 0 && !ins.isVencido()) {
-                                stockValidoDisponible += ins.getStockActual();
-                            }
-                        }
-                    }
-
-                    if(stockValidoDisponible < cantidadNecesariaTotal){
-                        System.out.println("❌ Error de Venta: No hay suficiente stock VÁLIDO de [" + nombreInsumo +
-                                "] para preparar " + cantidad + "x " + producto.getNombre());
-                        return false; // Cancelamos la venta antes de tocar nada
-                    }
-                }
-
-                // 2. DESCUENTO EN COCINA (Ahora sabemos que es 100% seguro)
-                for (Map.Entry<String, Double> entry : receta.getIngredientes().entrySet()) {
-                    boolean exito = inventario.consumirInsumoFEFO(entry.getKey(), entry.getValue() * cantidad);
-                    if (!exito) return false; // Por si acaso ocurre un error extraordinario
-                }
-
-                // 3. AGREGAMOS A LA FACTURA
-                DetalleFactura nuevoDetalle = new DetalleFactura(producto, cantidad);
-                detalles.insertarAlFinal(nuevoDetalle);
-                calcularTotal();
-                System.out.println("✅ " + cantidad + "x " + producto.getNombre() + " agregado (Ingredientes descontados por lotes).");
-                return true;
-            }
-            // CASO B: PRODUCTO DIRECTO (EJ. BEBIDA CERRADA)
-            else {
-                if (producto.reducirStock(cantidad)) {
-                    DetalleFactura nuevoDetalle = new DetalleFactura(producto, cantidad);
-                    detalles.insertarAlFinal(nuevoDetalle);
-                    calcularTotal();
-                    System.out.println("✅ " + cantidad + "x " + producto.getNombre() + " agregado.");
-                    return true;
-                } else {
-                    System.out.println("❌ Error: No hay stock suficiente. Quedan " + producto.getStock() + " unidades.");
-                    return false;
-                }
-            }
+    // Agrega el producto al carrito sin tocar el almacén
+    public boolean agregarProducto(Producto producto, int cantidad) {
+        if (producto != null && cantidad > 0) {
+            DetalleFactura nuevoDetalle = new DetalleFactura(producto, cantidad);
+            detalles.insertarAlFinal(nuevoDetalle);
+            calcularTotal();
+            return true;
         }
-        System.out.println("Error: Producto no válido o cantidad no válida.");
         return false;
     }
-    // Método para eliminar un producto de la factura
-    public void eliminarProducto(Producto producto, Inventario inventario) {
+
+    // Elimina el producto de la lista del carrito sin devolver nada al almacén
+    public void eliminarProducto(Producto producto) {
         if (producto != null) {
             NodoDE<DetalleFactura> ac = detalles.getCabeza();
             while (ac != null) {
-                DetalleFactura detalle = ac.getDato();
-
-                if (detalle.getProducto().getId() == producto.getId()) {
-                    int cantDevolver = detalle.getCantidad();
-
-                    // Si tiene receta, devolvemos los ingredientes al inventario
-                    if (producto.tieneReceta()) {
-                        for (Map.Entry<String, Double> entry : producto.getReceta().getIngredientes().entrySet()) {
-                            // Usamos registrarCompra para sumar el stock de vuelta
-                            inventario.registrarCompra(entry.getKey(), entry.getValue() * cantDevolver);
-                        }
-                    } else {
-                        // Si es directo, devolvemos la botella a la nevera
-                        producto.aumentarStock(cantDevolver);
-                    }
-
-                    detalles.eliminarPorValor(detalle);
+                if (ac.getDato().getProducto().getId() == producto.getId()) {
+                    detalles.eliminarPorValor(ac.getDato());
                     calcularTotal();
-                    System.out.println("✅ Producto eliminado. Stock devuelto al almacén.");
                     return;
                 }
                 ac = ac.getSiguiente();
             }
-            System.out.println("❌ Error: El producto no se encuentra en la factura.");
         }
     }
-    public boolean modificarCantidad(Producto producto, int nuevaCantidad, Inventario inventario) {
-        if (producto == null || nuevaCantidad < 0) {
-            System.out.println("❌ Error: Producto o cantidad no válida.");
-            return false;
-        }
+
+    // Modifica la cantidad en la lista del carrito sin alterar el almacén
+    public boolean modificarCantidad(Producto producto, int nuevaCantidad) {
+        if (producto == null || nuevaCantidad < 0) return false;
 
         NodoDE<DetalleFactura> ac = detalles.getCabeza();
         while (ac != null) {
             DetalleFactura detalle = ac.getDato();
             if (detalle.getProducto().getId() == producto.getId()) {
-                int cantidadActual = detalle.getCantidad();
-
                 if (nuevaCantidad == 0) {
-                    eliminarProducto(producto, inventario);
-                    return true;
-                } else if (nuevaCantidad > cantidadActual) {
-                    // Quiere MÁS. Simulamos agregar la diferencia.
-                    int diferencia = nuevaCantidad - cantidadActual;
-
-                    if (producto.tieneReceta()) {
-                        // Verificar si hay stock para la diferencia
-                        for (Map.Entry<String, Double> entry : producto.getReceta().getIngredientes().entrySet()) {
-                            Insumo ins = inventario.buscarInsumo(entry.getKey());
-                            if (ins == null || ins.getStockActual() < (entry.getValue() * diferencia)) {
-                                System.out.println("❌ Error: No hay suficientes ingredientes para aumentar la cantidad.");
-                                return false;
-                            }
-                        }
-                        // Si hay, los consumimos
-                        for (Map.Entry<String, Double> entry : producto.getReceta().getIngredientes().entrySet()) {
-                            inventario.consumirInsumo(entry.getKey(), entry.getValue() * diferencia);
-                        }
-                        detalle.setCantidad(nuevaCantidad);
-                        calcularTotal();
-                        System.out.println("✅ Cantidad modificada a " + nuevaCantidad + ".");
-                        return true;
-
-                    } else { // Sin receta
-                        if (producto.reducirStock(diferencia)) {
-                            detalle.setCantidad(nuevaCantidad);
-                            calcularTotal();
-                            System.out.println("✅ Cantidad modificada a " + nuevaCantidad + ".");
-                            return true;
-                        } else {
-                            System.out.println("❌ Error: No hay stock suficiente para aumentar.");
-                            return false;
-                        }
-                    }
-
-                } else if (nuevaCantidad < cantidadActual) {
-                    // Quiere MENOS. Devolvemos la diferencia al almacén.
-                    int diferencia = cantidadActual - nuevaCantidad;
-
-                    if (producto.tieneReceta()) {
-                        for (Map.Entry<String, Double> entry : producto.getReceta().getIngredientes().entrySet()) {
-                            inventario.registrarCompra(entry.getKey(), entry.getValue() * diferencia);
-                        }
-                    } else {
-                        producto.aumentarStock(diferencia);
-                    }
-
+                    eliminarProducto(producto);
+                } else {
                     detalle.setCantidad(nuevaCantidad);
                     calcularTotal();
-                    System.out.println("✅ Cantidad reducida a " + nuevaCantidad + ". Ingredientes devueltos.");
-                    return true;
-                } else {
-                    System.out.println("⚠️ La cantidad es la misma, no se realizaron cambios.");
-                    return true;
                 }
+                return true;
             }
             ac = ac.getSiguiente();
-        }
-
-        // Si no estaba en la factura y la cantidad es mayor a 0, lo agregamos nuevo
-        if (nuevaCantidad > 0) {
-            return agregarProducto(producto, nuevaCantidad, inventario);
         }
         return false;
     }
 
-    // Método privado que suma los precios recorriendo tu ListaDE
     private void calcularTotal() {
         this.total = 0.0;
         NodoDE<DetalleFactura> actual = detalles.getCabeza();
-
         while (actual != null) {
-            DetalleFactura det = actual.getDato();
-            this.total += det.getSubtotal();
+            this.total += actual.getDato().getSubtotal();
             actual = actual.getSiguiente();
         }
     }
 
-
-    public void imprimirFactura() {
-        DateTimeFormatter formato = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm");
-        String fechaStr = fecha.format(formato);
-        System.out.println("\n=========================================");
-        System.out.println("             RESTAURANTE ATTIZOS         ");
-        System.out.println("=========================================");
-        System.out.printf("                  %03d\n", numeroFactura);
-        System.out.println("-----------------------------------------");
-        System.out.println("Fecha:       " + fechaStr);
-        System.out.println("Cliente:     " + nombreCliente);
-        System.out.println("-----------------------------------------");
-        System.out.printf("%-5s | %-20s | %-10s\n", "CANT", "PRODUCTO", "SUBTOTAL");
-        System.out.println("-----------------------------------------");
-
-        NodoDE<DetalleFactura> actual = detalles.getCabeza();
-        if (actual == null) {
-            System.out.println("        (Sin productos registrados)      ");
-        } else {
-            while (actual != null) {
-                DetalleFactura det = actual.getDato();
-                System.out.printf("%-5d | %-20.20s | Bs.%8.2f\n",
-                        det.getCantidad(), det.getProducto().getNombre(), det.getSubtotal());
-                actual = actual.getSiguiente();
-            }
-        }
-        System.out.println("-----------------------------------------");
-        System.out.printf("TOTAL A PAGAR:               Bs.%8.2f\n", total);
-        System.out.println("=========================================");
-    }
-
-    // --- Getters ---
-
-    public int getNumeroFactura() {
-        return numeroFactura;
-    }
-
-    public String getNombreCliente() {
-        return nombreCliente;
-    }
-
-    public LocalDateTime getFecha() {
-        return fecha;
-    }
-
-    public ListaDE<DetalleFactura> getDetalles() {
-        return detalles;
-    }
-
-    public double getTotal() {
-        return total;
-    }
-    public String generarTicket(){
+    public String generarTicket() {
         StringBuilder sb = new StringBuilder();
-        java.time.format.DateTimeFormatter formato = java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm");
-        String fechaStr = fecha.format(formato);
-
+        DateTimeFormatter formato = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm");
         sb.append("\n=========================================\n");
         sb.append("             RESTAURANTE ATTIZOS         \n");
         sb.append("=========================================\n");
         sb.append(String.format("                  %03d\n", numeroFactura));
         sb.append("-----------------------------------------\n");
-        sb.append("Fecha:       ").append(fechaStr).append("\n");
+        sb.append("Fecha:       ").append(fecha.format(formato)).append("\n");
         sb.append("Cliente:     ").append(nombreCliente).append("\n");
         sb.append("-----------------------------------------\n");
         sb.append(String.format("%-5s | %-20s | %-10s\n", "CANT", "PRODUCTO", "SUBTOTAL"));
         sb.append("-----------------------------------------\n");
 
         NodoDE<DetalleFactura> actual = detalles.getCabeza();
-        if (actual == null) {
-            sb.append("        (Sin productos registrados)      \n");
-        } else {
-            while (actual != null) {
-                DetalleFactura det = actual.getDato();
-                sb.append(String.format("%-5d | %-20.20s | Bs.%8.2f\n",
-                        det.getCantidad(), det.getProducto().getNombre(), det.getSubtotal()));
-                actual = actual.getSiguiente();
-            }
+        while (actual != null) {
+            DetalleFactura det = actual.getDato();
+            sb.append(String.format("%-5d | %-20.20s | Bs.%8.2f\n",
+                    det.getCantidad(), det.getProducto().getNombre(), det.getSubtotal()));
+            actual = actual.getSiguiente();
         }
         sb.append("-----------------------------------------\n");
         sb.append(String.format("TOTAL A PAGAR:               Bs.%8.2f\n", total));
         sb.append("=========================================\n");
-
         return sb.toString();
     }
-    public void setNombreCliente(String nombreCliente) {
-        this.nombreCliente = nombreCliente;
+
+    // --- Getters y Setters ---
+    public int getNumeroFactura() { return numeroFactura; }
+    public void setNumeroFactura(int numeroFactura) { this.numeroFactura = numeroFactura; }
+    public String getNombreCliente() { return nombreCliente; }
+    public void setNombreCliente(String nombreCliente) { this.nombreCliente = nombreCliente; }
+    public LocalDateTime getFecha() { return fecha; }
+    public ListaDE<DetalleFactura> getDetalles() { return detalles; }
+
+    public void setTotal(double total) {
+        this.total = total;
     }
 
-    public void setNumeroFactura(int numeroFactura) {
-        this.numeroFactura = numeroFactura;
+    public void setDetalles(ListaDE<DetalleFactura> detalles) {
+        this.detalles = detalles;
+    }
+
+    public void setFecha(LocalDateTime fecha) {
+        this.fecha = fecha;
+    }
+
+    public double getTotal() { return total; }
+
+    public void setEstado(String estado) {
     }
 }

@@ -9,6 +9,7 @@ import javafx.scene.control.Label;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import java.time.format.DateTimeFormatter;
+import java.time.LocalDateTime;
 
 public class TicketController {
     @FXML private Label lblNumFacturaCaja;
@@ -26,6 +27,7 @@ public class TicketController {
 
     public void inicializarTicket(Factura factura, String nombreCajero, int turno){
         DateTimeFormatter formato = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+        LocalDateTime fechaSegura = factura.getFecha() != null ? factura.getFecha() : LocalDateTime.now();
         String fechaStr = factura.getFecha().format(formato);
         String numFac = String.format("%03d", factura.getNumeroFactura());
 

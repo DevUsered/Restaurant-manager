@@ -1,6 +1,9 @@
 package Attizos.Frontend;
 
 import Attizos.Backend.Attizos.*;
+import Attizos.Backend.Database.FacturaDAO;
+import Attizos.Backend.Database.InsumoDAO;
+import Attizos.Backend.Database.ProductoDAO;
 import Attizos.Backend.Listas.ListaDE;
 import Attizos.Backend.Listas.NodoDE;
 import javafx.fxml.FXML;
@@ -14,7 +17,9 @@ import javafx.scene.text.Font;
 import javafx.scene.text.TextAlignment;
 
 import java.io.InputStream;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 public class VentasController {
@@ -30,6 +35,11 @@ public class VentasController {
 
     private Producto productoSeleccionadoEnCarrito;
     private HBox filaSeleccionada;
+
+
+    private ListaDE<Producto> menuDB;
+    //Cache
+    private HashMap<String, Insumo> inventarioFrescoBD;
 
     @FXML
     public void initialize() {
@@ -48,6 +58,8 @@ public class VentasController {
         productoSeleccionadoEnCarrito = null;
         filaSeleccionada = null;
 
+        inventarioFrescoBD = InsumoDAO.obtenerInventarioActivo();
+        menuDB = ProductoDAO.obtenerMenuCompleto();
         cargarCategorias();
         mostrarProductosPorCategoria("Todos");
         actualizarVistaCarrito();
@@ -59,12 +71,13 @@ public class VentasController {
         hBCategoria.getChildren().add(btnAll);
 
         Set<String> cats = new HashSet<>();
-        NodoDE<Producto> actual = App.attizos.getMenu().getCabeza();
-        while (actual != null) {
-            cats.add(actual.getDato().getCategoria());
-            actual = actual.getSiguiente();
+        if(menuDB != null){
+            NodoDE<Producto> actualDB = menuDB.getCabeza();
+            while (actualDB != null) {
+                cats.add(actualDB.getDato().getCategoria());
+                actualDB = actualDB.getSiguiente();
+            }
         }
-
         for (String c : cats) {
             hBCategoria.getChildren().add(crearBotonCategoria(c));
         }
@@ -83,19 +96,21 @@ public class VentasController {
     private void mostrarProductosPorCategoria(String categoria) {
         flPProductos.getChildren().clear();
         String busqueda = (tfBuscar != null && tfBuscar.getText() != null) ? tfBuscar.getText().toLowerCase() : "";
-        NodoDE<Producto> actual = App.attizos.getMenu().getCabeza();
-        while (actual != null) {
-            Producto p = actual.getDato();
-            boolean coincideCategoria = categoria.equals("Todos") || p.getCategoria().equalsIgnoreCase(categoria);
-            boolean coincideBusqueda = p.getNombre().toLowerCase().contains(busqueda);
-            if (coincideCategoria && coincideBusqueda) {
-                crearTarjetaProducto(p);
+        if(menuDB != null) {
+            NodoDE<Producto> actual = App.attizos.getMenu().getCabeza();
+            while (actual != null) {
+                Producto p = actual.getDato();
+                boolean coincideCategoria = categoria.equals("Todos") || p.getCategoria().equalsIgnoreCase(categoria);
+                boolean coincideBusqueda = p.getNombre().toLowerCase().contains(busqueda);
+                if (coincideCategoria && coincideBusqueda) {
+                    crearTarjetaProducto(p);
+                }
+                actual = actual.getSiguiente();
             }
-            actual = actual.getSiguiente();
         }
     }
     private void agregarAlCarrito(Producto p) {
-        int disponible = p.calcularDisponibilidad(App.attizos.getInventario());
+        int disponible = calcularDisponibilidadEnVivo(p);
         if(disponible <= 0){
             mostrarAlerta("Sin Stock", p.getNombre() + "esta agotado o falta insumos. ",Alert.AlertType.WARNING);
             return;
@@ -105,17 +120,14 @@ public class VentasController {
         while (ac != null) {
             if(ac.getDato().getProducto().getId() == p.getId()){
                 int nuevaCant = ac.getDato().getCantidad() + 1;
-                facturaActual.modificarCantidad(p, nuevaCant, App.attizos.getInventario());
+                facturaActual.modificarCantidad(p, nuevaCant);
                 existe = true;
                 break;
             }
             ac = ac.getSiguiente();
         }
         if (!existe) {
-            boolean agregado = facturaActual.agregarProducto(p, 1, App.attizos.getInventario());
-            if (!agregado) {
-                mostrarAlerta("Error de Stock", "No hay ingredientes suficientes para: " + p.getNombre(), Alert.AlertType.ERROR);
-            }
+            boolean agregado = facturaActual.agregarProducto(p, 1);;
         }
         actualizarVistaCarrito();
         mostrarProductosPorCategoria(categoriaActiva);
@@ -141,9 +153,9 @@ public class VentasController {
                 if (actual.getDato().getProducto().getId() == productoSeleccionadoEnCarrito.getId()) {
                     int nuevaCant = actual.getDato().getCantidad() - 1;
                     if (nuevaCant > 0) {
-                        facturaActual.modificarCantidad(productoSeleccionadoEnCarrito, nuevaCant, App.attizos.getInventario());
+                        facturaActual.modificarCantidad(productoSeleccionadoEnCarrito, nuevaCant);
                     } else {
-                        facturaActual.eliminarProducto(productoSeleccionadoEnCarrito, App.attizos.getInventario());
+                        facturaActual.eliminarProducto(productoSeleccionadoEnCarrito);
                         productoSeleccionadoEnCarrito = null;
                         filaSeleccionada = null;
                     }
@@ -161,7 +173,7 @@ public class VentasController {
             mostrarAlerta("Atención", "Seleccione un producto del carrito para eliminarlo.", Alert.AlertType.WARNING);
             return;
         }
-            facturaActual.eliminarProducto(productoSeleccionadoEnCarrito, App.attizos.getInventario());
+            facturaActual.eliminarProducto(productoSeleccionadoEnCarrito);
         productoSeleccionadoEnCarrito = null;
         filaSeleccionada = null;
             actualizarVistaCarrito();
@@ -176,69 +188,47 @@ public class VentasController {
             mostrarAlerta("Carrito Vacío", "⚠ Agregue productos antes de cobrar.", Alert.AlertType.WARNING);
             return;
         }
-        int nroFactura = App.attizos.generarNumeroFactura();
-        facturaActual.setNumeroFactura(nroFactura);
-        facturaActual.setNombreCliente(nombreCli);
 
-        ListaDE<DetalleFactura> productosParaCocina = new ListaDE<>();
+        Map<Producto, Integer> carritoDB = new HashMap<>();
         NodoDE<DetalleFactura> actual = facturaActual.getDetalles().getCabeza();
-        boolean requiereCocina = false;
-
         while (actual != null){
-            if(actual.getDato().getProducto().tieneReceta()){
-                productosParaCocina.insertarAlFinal(actual.getDato());
-                requiereCocina = true;
-            }
+            DetalleFactura det = actual.getDato();
+            carritoDB.put(det.getProducto(), det.getCantidad());
             actual = actual.getSiguiente();
         }
+        int  numeroFactura = FacturaDAO.registrarVenta(nombreCli, facturaActual.getTotal(), carritoDB);
+        if(numeroFactura > 0) {
+            facturaActual.setNumeroFactura(numeroFactura);
+            facturaActual.setNombreCliente(nombreCli);
 
-        if(requiereCocina){
-            Pedido nuevoPedido = new Pedido(facturaActual.getNumeroFactura(), nombreCli, productosParaCocina, facturaActual.getTotal());
-            App.attizos.agregarPedido(nuevoPedido);
+            try {
+                javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(getClass().getResource("/fxml/Ticket.fxml"));
+                javafx.scene.Parent nodoTicket = loader.load();
+
+                TicketController controller = loader.getController();
+                String nombreCajero = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Caja Principal";
+
+                controller.inicializarTicket(facturaActual, nombreCajero, facturaActual.getNumeroFactura());
+                imprimirEnImpresoraTermica(nodoTicket);
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                mostrarAlerta("Error", "La venta se registró pero no se pudo mandar al ticket.", Alert.AlertType.ERROR);
+            }
+            iniciarNuevaVenta();
+        } else {
+            mostrarAlerta("Error Crítico", "No se pudo registrar la venta en la Base de Datos. Revise el stock de cocina o la conexión.", Alert.AlertType.ERROR);
         }
-
-        App.attizos.registrarVentaFinalizada(facturaActual);
-
-        try {
-            javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(getClass().getResource("/fxml/Ticket.fxml"));
-            javafx.scene.Parent nodoTicket = loader.load();
-
-            TicketController controller = loader.getController();
-            String nombreCajero = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Caja Principal";
-
-            controller.inicializarTicket(facturaActual, nombreCajero, facturaActual.getNumeroFactura());
-            imprimirEnImpresoraTermica(nodoTicket);
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            mostrarAlerta("Error", "La venta se registró pero no se pudo mandar al ticket.", Alert.AlertType.ERROR);
-        }
-        iniciarNuevaVenta();
     }
 
     private void imprimirEnImpresoraTermica(javafx.scene.Node nodoTicket){
         javafx.print.PrinterJob printerJob = javafx.print.PrinterJob.createPrinterJob();
         if (printerJob != null){
             try{
-                // ========================================================
-                // OPCIÓN 1: MOSTRAR PANTALLA DE IMPRESIÓN DE WINDOWS
-                // ========================================================
-               /*boolean procede = printerJob.showPrintDialog(null);
-                if(procede){
-                    boolean impreso = printerJob.printPage(nodoTicket);
-                    if (impreso) {
-                        printerJob.endJob();
-                        System.out.println("✅ Ticket enviado a la impresora exitosamente.");
-                    }
-                }*/
-
                boolean impreso = printerJob.printPage(nodoTicket);
                 if (impreso) {
                     printerJob.endJob();
                 }
-                // ========================================================
-
-
             } catch(Exception e) {
                 e.printStackTrace();
             }
@@ -258,21 +248,17 @@ public class VentasController {
         imgView.setFitWidth(80);
         imgView.setPreserveRatio(true);
         imgView.getStyleClass().add("product-image-view");
-        try {
-           String url = p.getImagenURL();
-           String rutaF = url.startsWith("/") ? url : "/images/Productos/"+url;
-           try(InputStream streamImg = getClass().getResourceAsStream(rutaF)){
-               if(streamImg != null){
-                   imgView.setImage(new Image(streamImg));
-               }else{
-                   try (InputStream streamDefault = getClass().getResourceAsStream("/images/default.png")) {
-                       if (streamDefault != null) imgView.setImage(new Image(streamDefault));
-                   }
-               }
-           }catch (Exception e){}
-        } catch (Exception e) {
+        String datoImagen = p.getImagenURL();
+        if (datoImagen != null && !datoImagen.equals("default.png")) {
+            Image imgReal = UtilidadesImagen.convertirBase64AImagen(datoImagen);
+            if (imgReal != null) {
+                imgView.setImage(imgReal);
+            } else {
+                imgView.setImage(new Image(getClass().getResourceAsStream("/images/default.png")));
+            }
+        } else {
+            imgView.setImage(new Image(getClass().getResourceAsStream("/images/default.png")));
         }
-
         Label name = new Label(p.getNombre());
         name.getStyleClass().add("product-name");
         name.setWrapText(true);
@@ -281,7 +267,7 @@ public class VentasController {
         Label price = new Label("Bs. " + String.format("%.2f", p.getPrecio()));
         price.getStyleClass().add("product-price");
 
-        int stock = p.calcularDisponibilidad(App.attizos.getInventario());
+        int stock = calcularDisponibilidadEnVivo(p);
         Label lblStock = new Label("Stock: " + stock);
         lblStock.setStyle("-fx-text-fill: " + (stock > 0 ? "#218c4e;" : "#ff4c4c;"));
 
@@ -308,18 +294,17 @@ public class VentasController {
             }
 
             ImageView imgView = new ImageView();
-            try {
-                String archivoImagen = p.getImagenURL();
-                String rutaFinal = archivoImagen.startsWith("/") ? archivoImagen : "/images/Productos/" + archivoImagen;
-                java.io.InputStream streamImg = getClass().getResourceAsStream(rutaFinal);
-
-                if (streamImg != null) {
-                    imgView.setImage(new Image(streamImg));
+            String datoImagen = p.getImagenURL();
+            if (datoImagen != null && !datoImagen.equals("default.png")) {
+                Image imgReal = UtilidadesImagen.convertirBase64AImagen(datoImagen);
+                if (imgReal != null) {
+                    imgView.setImage(imgReal);
                 } else {
-                    imgView.setImage(new Image(getClass().getResourceAsStream("/images/Productos/default.png")));
+                    imgView.setImage(new Image(getClass().getResourceAsStream("/images/default.png")));
                 }
-            } catch (Exception e) {}
-
+            } else {
+                imgView.setImage(new Image(getClass().getResourceAsStream("/images/default.png")));
+            }
             imgView.setFitHeight(imgSize);
             imgView.setFitWidth(imgSize);
             imgView.setPreserveRatio(false);
@@ -360,5 +345,56 @@ public class VentasController {
             actual = actual.getSiguiente();
         }
         lblTotal.setText(String.format("%.2f", facturaActual.getTotal()));
+    }
+    private int calcularDisponibilidadEnVivo(Producto p){
+        if(!p.tieneReceta()){
+            int enCarrito = 0;
+            NodoDE<DetalleFactura> ac = facturaActual.getDetalles().getCabeza();
+            while(ac != null){
+                if(ac.getDato().getProducto().getId() == p.getId()){
+                    enCarrito += ac.getDato().getCantidad();
+                }
+                ac = ac.getSiguiente();
+            }
+            return (int) p.getStock() - enCarrito;
+        }else{
+            Map<String, Double> insumoAtrapados = new HashMap<>();
+            NodoDE<DetalleFactura> ac = facturaActual.getDetalles().getCabeza();
+            while(ac != null){
+                Producto prodCarrito = ac.getDato().getProducto();
+                int cantEnCarrito = ac.getDato().getCantidad();
+               if(prodCarrito.tieneReceta()){
+                   for(Map.Entry<String, Double> entry : prodCarrito.getReceta().getIngredientes().entrySet()){
+                       String codInsumo = entry.getKey();
+                       double cantTotalUsada = entry.getValue() * cantEnCarrito;
+                       insumoAtrapados.put(codInsumo, insumoAtrapados.getOrDefault(codInsumo,0.0) + cantTotalUsada);
+
+                   }
+               }
+               ac = ac.getSiguiente();
+            }
+            int maxPlatosPosibles = Integer.MAX_VALUE;
+            Inventario inv = App.attizos.getInventario();
+
+            for(Map.Entry<String, Double> entry : p.getReceta().getIngredientes().entrySet()){
+                String codInsumoBase = entry.getKey();
+                double cantNecesariaPorPlato = entry.getValue();
+
+                double stockValidoReal = 0;
+
+                Insumo insumoFisico = (inventarioFrescoBD != null) ? inventarioFrescoBD.get(codInsumoBase) : null;
+                if(insumoFisico != null && !insumoFisico.isVencido()){
+                    stockValidoReal = insumoFisico.getStockActual();
+                }
+                double stockReservado = insumoAtrapados.getOrDefault(codInsumoBase, 0.0);
+                double stockLibre = stockValidoReal - stockReservado;
+                if(stockLibre < 0) stockLibre = 0;
+                int porciones = (int) (stockLibre / cantNecesariaPorPlato);
+                if(porciones < maxPlatosPosibles){
+                    maxPlatosPosibles = porciones;
+                }
+            }
+            return maxPlatosPosibles == Integer.MAX_VALUE ? 0 : maxPlatosPosibles;
+        }
     }
 }

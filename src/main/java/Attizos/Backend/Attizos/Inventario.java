@@ -167,6 +167,15 @@ public class Inventario {
         }
         return true;
     }
+    public boolean hayStockSuficiente(String codigoBase, double cantidadRequerida) {
+        double stockTotal = 0;
+        for(Insumo ins : inventarioInsumos.values()){
+            if((ins.getCodigo().equals(codigoBase) || ins.getCodigo().startsWith(codigoBase + "-L")) && !ins.isVencido()){
+                stockTotal += ins.getStockActual();
+            }
+        }
+        return stockTotal >= cantidadRequerida;
+    }
     public HashMap<String, Insumo> getInventarioInsumos(){
         return inventarioInsumos;
     }

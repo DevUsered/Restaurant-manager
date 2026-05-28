@@ -268,3 +268,297 @@
     -fx-font-weight: bold;
     -fx-font-size: 14px;
 }
+
+/* =========================================
+   ESTILOS PARA TABLAS MODERNAS
+   ========================================= */
+.modern-table {
+    -fx-background-color: transparent;
+    -fx-background-radius: 10;
+    -fx-border-color: #dddddd;
+    -fx-border-radius: 10;
+    -fx-padding: 5;
+}
+.modern-table .column-header-background {
+    -fx-background-color: transparent;
+}
+.modern-table .column-header {
+    -fx-background-color: #f5f5f5;
+    -fx-border-color: transparent transparent #dddddd transparent;
+    -fx-border-width: 0 0 1 0;
+}
+.modern-table .column-header .label {
+    -fx-text-fill: #555555;
+    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+}
+.modern-table .table-cell {
+    -fx-text-fill: #111111;
+    -fx-font-size: 14px;
+    -fx-border-color: transparent;
+}
+.modern-table .table-row-cell {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: transparent transparent #F0F0F0 transparent;
+    -fx-border-width: 0 0 1 0;
+}
+.modern-table .table-row-cell:hover {
+    -fx-background-color: #FDF6E3;
+}
+.modern-table .table-row-cell:selected {
+    -fx-background-color: rgba(218, 165, 32, 0.2);
+    -fx-font-weight: bold;
+}
+
+/* =========================================
+   ESTILOS PARA MENÚS DESPLEGABLES (COMBOBOX)
+   ========================================= */
+.combo-box-popup .list-view {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #DDDDDD;
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 10, 0, 0, 5);
+}
+.combo-box-popup .list-cell {
+    -fx-background-color: #FFFFFF;
+    -fx-text-fill: #111111;
+    -fx-padding: 8 10;
+    -fx-font-size: 14px;
+}
+.combo-box-popup .list-cell:hover {
+    -fx-background-color: #FDF6E3;
+    -fx-text-fill: #111111;
+}
+.combo-box-popup .list-cell:filled:selected,
+.combo-box-popup .list-cell:filled:selected:hover {
+    -fx-background-color: rgba(218, 165, 32, 0.2);
+    -fx-text-fill: #111111;
+    -fx-font-weight: bold;
+}
+
+/* =========================================
+   ESTILOS PARA EL CALENDARIO (DATEPICKER)
+   ========================================= */
+.date-picker-popup {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #DAA520;
+    -fx-border-radius: 5;
+    -fx-background-radius: 5;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 10, 0, 0, 5);
+}
+.date-picker-popup .month-year-pane {
+    -fx-background-color: #F5F5F5;
+    -fx-background-radius: 5 5 0 0;
+}
+.date-picker-popup .month-year-pane .label {
+    -fx-text-fill: #111111;
+    -fx-font-weight: bold;
+}
+.date-picker-popup .month-year-pane .left-button,
+.date-picker-popup .month-year-pane .right-button {
+    -fx-background-color: transparent;
+    -fx-cursor: hand;
+}
+.date-picker-popup .calendar-grid .day-name-cell {
+    -fx-text-fill: #555555;
+    -fx-font-weight: bold;
+    -fx-padding: 5 0 5 0;
+}
+.date-picker-popup .calendar-grid .day-cell {
+    -fx-background-color: #FFFFFF;
+    -fx-text-fill: #111111;
+    -fx-padding: 5;
+    -fx-cursor: hand;
+}
+.date-picker-popup .calendar-grid .day-cell:hover {
+    -fx-background-color: #FDF6E3;
+}
+.date-picker-popup .calendar-grid .selected,
+.date-picker-popup .calendar-grid .selected:hover {
+    -fx-background-color: #DAA520;
+    -fx-text-fill: #FFFFFF;
+    -fx-font-weight: bold;
+}
+.date-picker-popup .calendar-grid .today {
+    -fx-background-color: rgba(218, 165, 32, 0.15);
+    -fx-border-color: #DAA520;
+    -fx-border-width: 1px;
+}
+
+/* =========================================
+   DISEÑO PARA GRÁFICOS (REPORTES)
+   ========================================= */
+.chart {
+    -fx-background-color: #FFFFFF;
+    -fx-background-radius: 15;
+    -fx-padding: 10px;
+}
+.chart-plot-background {
+    -fx-background-color: #FDF6E3;
+}
+.chart-title {
+    -fx-text-fill: #111111;
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+}
+/* =========================================
+   ESTILO PARA LISTAS (LISTVIEW DE COCINA)
+   ========================================= */
+.modern-list {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #DDDDDD;
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+    -fx-padding: 5;
+}
+
+/* Celdas con contenido */
+.modern-list .list-cell {
+    -fx-background-color: #F5F5F5;
+    -fx-text-fill: #111111;
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+    -fx-padding: 10;
+    -fx-border-color: transparent transparent #DDDDDD transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+/* Celdas vacías (para que no pinten rayas de más) */
+.modern-list .list-cell:empty {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+/* Al pasar el mouse */
+.modern-list .list-cell:filled:hover {
+    -fx-background-color: #FDF6E3;
+}
+
+/* Al hacer clic en un ingrediente */
+.modern-list .list-cell:filled:selected {
+    -fx-background-color: rgba(218, 165, 32, 0.2);
+    -fx-text-fill: #111111;
+}
+
+.check-box {
+    -fx-text-fill: #111111;
+    -fx-font-weight: bold;
+    -fx-cursor: hand;
+}
+
+.check-box .box {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #DAA520; /* Borde dorado */
+    -fx-border-width: 1.5;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+}
+
+.check-box:selected .mark {
+    -fx-background-color: #ea8a2a; /* Palomita negra para contrastar */
+}
+.modern-table {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #DDDDDD;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+}
+
+/* Cabecera de la tabla (Crema) */
+.modern-table .column-header-background {
+    -fx-background-color: #FDF6E3;
+    -fx-background-radius: 8 8 0 0;
+}
+
+.modern-table .column-header {
+    -fx-background-color: transparent;
+}
+
+.modern-table .column-header .label {
+    -fx-text-fill: #111111;
+    -fx-font-weight: bold;
+}
+
+/* Fila seleccionada (Dorado suave) */
+.modern-table .table-row-cell:selected {
+    -fx-background-color: rgba(218, 165, 32, 0.25);
+    -fx-table-cell-border-color: transparent;
+}
+
+.modern-table .table-row-cell:selected .text {
+    -fx-fill: #111111;
+    -fx-font-weight: bold;
+}
+
+/* ========================================= */
+/* 10. MENÚ CLIC DERECHO (Context Menu)      */
+/* ========================================= */
+
+/* Fondo del menú: Blanco con un poco de cremita */
+.context-menu {
+    -fx-background-color: #FFFAF0; /* Blanco cremita cálido */
+    -fx-border-color: #DAA520;
+    -fx-border-width: 1.5;
+    -fx-border-radius: 5;
+    -fx-background-radius: 5;
+    -fx-padding: 5;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 10, 0, 0, 5);
+}
+
+.context-menu .menu-item {
+    -fx-background-color: transparent;
+    -fx-padding: 8 15 8 15;
+}
+
+.context-menu .menu-item .label {
+    -fx-text-fill: #111111;
+    -fx-font-weight: bold;
+}
+
+/* Al pasar el mouse: Crema fuerte */
+.context-menu .menu-item:hover,
+.context-menu .menu-item:focused {
+    -fx-background-color: #FDE3A7; /* Crema fuerte / tono mantequilla */
+    -fx-background-radius: 4;
+}
+
+.context-menu .menu-item:hover .label,
+.context-menu .menu-item:focused .label {
+    -fx-text-fill: #111111;
+    -fx-font-weight: bold;
+}
+
+/* ========================================= */
+/* 11. CORRECCIÓN TABLAS AL PERDER FOCO      */
+/* ========================================= */
+
+/* Evita que la fila de la tabla (como los ingredientes) se vuelva negra al dar clic derecho */
+.modern-table .table-row-cell:selected,
+.modern-table:focused .table-row-cell:selected,
+.modern-table:disabled .table-row-cell:selected {
+    -fx-background-color: rgba(218, 165, 32, 0.25); /* Mantiene el dorado suave siempre */
+    -fx-table-cell-border-color: transparent;
+}
+
+.modern-table .table-row-cell:selected .text,
+.modern-table:focused .table-row-cell:selected .text {
+    -fx-fill: #111111;
+    -fx-font-weight: bold;
+}
+
+.modern-table .table-cell {
+    -fx-text-fill: #111111; /* Asegura que el texto nunca se ponga gris claro */
+}
+
+
+.combo-box:editable .text-field {
+    -fx-background-color: #FFFFFF; /* Fondo blanco forzado */
+    -fx-text-fill: #111111;        /* Letra negra forzada */
+    -fx-font-weight: bold;
+    -fx-prompt-text-fill: #888888; /* Color del texto fantasma (Ej: Escriba aquí...) */
+}
+
+
+.combo-box:editable:focused {
+    -fx-border-color: #DAA520;
+}

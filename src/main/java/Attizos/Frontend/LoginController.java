@@ -2,6 +2,8 @@ package Attizos.Frontend;
 
 import Attizos.Backend.Attizos.App;
 import Attizos.Backend.Attizos.Cocinero;
+import Attizos.Backend.Attizos.Usuario;
+import Attizos.Backend.Database.LoginDAO;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -22,6 +24,7 @@ public class LoginController {
     @FXML private PasswordField txtPassword;
     @FXML private Button btnLogin;
     @FXML private Label lblMensaje;
+
     @FXML
     void enfocarPassword(ActionEvent event) {
         txtPassword.requestFocus();
@@ -36,7 +39,7 @@ public class LoginController {
             lblMensaje.setText("Por favor, ingrese usuario y contraseña");
             return;
         }
-        boolean accesoConcedido = App.validarAcceso(user, pass);
+        boolean accesoConcedido = App.autenticarUsuario(user, pass);
         if(accesoConcedido){
             lblMensaje.setText("-fx-text-fill: #00ff88;");
             lblMensaje.setText("!Acceso concedido! Cargando...");
@@ -46,7 +49,7 @@ public class LoginController {
                 abrirDashboard();
             }
         }else{
-            lblMensaje.setStyle("-fx-text-fill: #ff4c4c;");
+            lblMensaje.setStyle("-fx-text-fill: #ff4c4c; -fx-border-color: #ff4cbc; -fx-border-width: 1; -fx-border-radius: 5; -fx-padding: 5; -fx-font: bold 14px 'Arial';");
             lblMensaje.setText("Usuario o contraseña incorrectos");
         }
     }

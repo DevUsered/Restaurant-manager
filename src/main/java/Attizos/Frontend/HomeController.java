@@ -101,20 +101,25 @@ public class HomeController {
         price.getStyleClass().add("product-price");
 
         ImageView imagen = new ImageView();
-        try {
-            String rutaImg = "/images/Productos/" + p.getImagenURL();
-            java.io.InputStream is = getClass().getResourceAsStream(rutaImg);
-            if (is != null) {
-                imagen.setImage(new Image(is));
-            } else {
-                imagen.setImage(new Image(getClass().getResourceAsStream("/images/default.png"))); // Carga imagen por defecto si falla
+        String datoImagen = p.getImagenURL();
+        if(datoImagen != null && !datoImagen.trim().isEmpty() && !datoImagen.equals("default.png")){
+            try{
+                Image imgReal = UtilidadesImagen.convertirBase64AImagen(datoImagen);
+                if(imgReal != null){
+                    imagen.setImage(imgReal);
+                }
+                else{
+                    imagen.setImage(new Image(getClass().getResourceAsStream("/images/default.png")));
+                }
+            }catch (Exception e){
+                System.out.println("Error al cargar imagen desde Base64 para: " + p.getNombre() + " - " + e.getMessage());
+                imagen.setImage(new Image(getClass().getResourceAsStream("/images/default.png")));
             }
-            imagen.setFitHeight(120);
-            imagen.setPreserveRatio(true);
-        } catch (Exception e) {
-            System.out.println("No se encontró imagen para: " + p.getNombre());
+        } else{
+            imagen.setImage(new Image(getClass().getResourceAsStream("/images/default.png")));
         }
-
+        imagen.setFitHeight(120);
+        imagen.setPreserveRatio(true);
         content.getChildren().addAll(name, imagen, price);
 
         VBox overlay = new VBox(15);

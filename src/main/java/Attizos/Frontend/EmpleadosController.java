@@ -1,16 +1,30 @@
 package Attizos.Frontend;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
+
 import Attizos.Backend.Attizos.*;
+import Attizos.Backend.Database.EmpleadoDAO;
+import Attizos.Backend.Database.ReportesDAO;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
-import javafx.scene.control.*;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.PasswordField;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableView;
+import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
 
-import java.util.Comparator;
+import javax.swing.*;
 
 public class EmpleadosController {
 
@@ -89,7 +103,7 @@ public class EmpleadosController {
         );
         cmbCargo.setItems(cargosComunes);
         cmbCargo.setEditable(true);
-
+        cmbCargo.getEditor().setStyle("-fx-background-color: transparent; -fx-text-fill: #111111;");
         cmbCargo.valueProperty().addListener((observable, valorViejo, valorNuevo) -> {
             if (valorNuevo != null && (valorNuevo.equalsIgnoreCase("Administrador") || valorNuevo.equalsIgnoreCase("Cajero") ||
                     valorNuevo.equalsIgnoreCase("Cocinero"))) {
@@ -111,6 +125,10 @@ public class EmpleadosController {
         try {
             String id = txtId.getText().trim();
             double sueldo = Double.parseDouble(txtSueldo.getText().trim().replace(",", "."));
+            if(sueldo <= 0){
+                mostrarAlerta("Sueldo inválido","Ingrese un sueldo válido.");
+                return;
+            }
             String nombre = txtNombre.getText().trim();
             String cargo = cmbCargo.getValue();
 
@@ -153,16 +171,19 @@ public class EmpleadosController {
             }else{
                 nuevoEmpleado = new Empleado(id,nombre,cargo,sueldo);
             }
-            masterData.add(nuevoEmpleado);
-
-            if (App.attizos != null ) {
-                App.attizos.agregarEmpleado(nuevoEmpleado);
+            boolean guardadoDB = EmpleadoDAO.insertarEmpleado(nuevoEmpleado);
+            if(guardadoDB) {
+                masterData.add(nuevoEmpleado);
+                if (App.attizos != null) {
+                    App.attizos.agregarEmpleado(nuevoEmpleado);
+                }
+                limpiarFormulario(null);
+                mostrarExito("Contratado", "El empleado " + nombre + " fue registrado con éxito.");
+            }else{
+                mostrarAlerta("Error de Persistencia", "No se pudo registrar el empleado.");
             }
-            limpiarFormulario(null);
-            mostrarExito("Contratado", "El empleado " + nombre + " fue registrado con éxito.");
-
         } catch (NumberFormatException e) {
-            mostrarAlerta("Error de formato", "El ID y el Sueldo deben ser números.");
+            mostrarAlerta("Error de formato", "El ID y el Sueldo deben ser válidos.");
         }
     }
 
@@ -170,23 +191,27 @@ public class EmpleadosController {
     void eliminarEmpleado(ActionEvent event) {
         int index = tablaEmpleados.getSelectionModel().getSelectedIndex();
         if (index >= 0) {
-            Empleado despedido = masterData.get(index);
+            Empleado despedido = filteredData.get(index);
 
-            Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-            alert.setTitle("Confirmar Despido");
-            alert.setHeaderText(null);
-            alert.setContentText("¿Está seguro que desea despedir a " + despedido.getNombre() + "?");
-            aplicarEstiloOscuro(alert);
-
-            alert.showAndWait().ifPresent(response -> {
-                if (response == ButtonType.OK) {
-                    masterData.remove(index);
-                    if (App.attizos != null) {
-                        App.attizos.eliminarEmpleado(despedido.getId());
-                    }
-                    mostrarExito("Despedido", "El empleado ha sido removido de la planilla.");
-                }
-            });
+            DialogoPersonalizado.mostrarDialogo("Confirmar Despido", "Cuidado: Va a eliminar al empleado " + despedido.getNombre(), "Escriba 'SI' para confirmar el despido:", "")
+                    .ifPresent(respuesta -> {
+                        if (respuesta.trim().equalsIgnoreCase("SI")) {
+                            boolean eliminadoDB = EmpleadoDAO.eliminarEmpleado(despedido.getId());
+                            if(eliminadoDB) {
+                                masterData.remove(index);
+                                if (App.attizos != null) {
+                                    App.attizos.eliminarEmpleado(despedido.getId());
+                                    String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
+                                    App.registrarAuditoria(operador, "Empleado", despedido.getNombre(), "Despido", 0, "Despedir un empleado");
+                                }
+                                mostrarExito("Despedido", "El empleado ha sido removido de la planilla.");
+                            }else{
+                                mostrarAlerta("Error de persistencia", "No se pudo eliminar el empleado.");
+                            }
+                        } else {
+                            mostrarAlerta("Cancelado", "El empleado NO fue despedido.");
+                        }
+                    });
         } else {
             mostrarAlerta("Selección requerida", "Seleccione un empleado de la tabla para despedirlo.");
         }
@@ -208,10 +233,9 @@ public class EmpleadosController {
 
     private void cargarEmpleados() {
         masterData.clear();
-        if (App.attizos != null && App.attizos.getEmpleados() != null) {
-            for (Empleado emp : App.attizos.getEmpleados()) {
-                masterData.add(emp);
-            }
+        List<Empleado> listaDB = EmpleadoDAO.obtenerEmpleadosActivos();
+        if(listaDB != null){
+            masterData.addAll(listaDB);
         }
         masterData.sort(Comparator.comparing(Empleado::getCargo));
     }
@@ -240,7 +264,6 @@ public class EmpleadosController {
             txtPassword.setDisable(true);
         }
         txtId.setDisable(true);
-        txtNombre.setDisable(true);
     }
 
     @FXML
@@ -253,6 +276,10 @@ public class EmpleadosController {
         try {
             String id = txtId.getText().trim();
             double sueldo = Double.parseDouble(txtSueldo.getText().trim().replace(",", "."));
+            if(sueldo <= 0){
+                mostrarAlerta("Sueldo inválido","Ingrese un sueldo válido.");
+                return;
+            }
             String nombre = txtNombre.getText().trim();
             String cargo = cmbCargo.getValue();
 
@@ -291,44 +318,101 @@ public class EmpleadosController {
             } else {
                 empleadoActualizado = new Empleado(id, nombre, cargo, sueldo);
             }
-            int index = tablaEmpleados.getSelectionModel().getSelectedIndex();
-            if (index >= 0) {
-                masterData.set(index, empleadoActualizado);
-            }
+            boolean actualizadoDB = EmpleadoDAO.actualizarEmpleado(empleadoActualizado);
+            if(actualizadoDB) {
+                for(int i = 0; i < masterData.size(); i++){
+                    if(masterData.get(i).getId().equals(id)){
+                        masterData.set(i, empleadoActualizado);
+                        break;
+                    }
+                }
 
-            if (App.attizos != null) {
-                App.attizos.eliminarEmpleado(id);
-                App.attizos.agregarEmpleado(empleadoActualizado);
-            }
+                if (App.attizos != null) {
+                    App.attizos.eliminarEmpleado(id);
+                    App.attizos.agregarEmpleado(empleadoActualizado);
+                }
 
-            limpiarFormulario(null);
-            mostrarExito("Actualizado", "Los datos de " + nombre + " fueron actualizados correctamente.");
+                limpiarFormulario(null);
+                mostrarExito("Actualizado", "Los datos de " + nombre + " fueron actualizados correctamente.");
+            }else{
+                mostrarAlerta("Error de Persistencia", "No se pudieron actualizar los cambios.");
+            }
 
         } catch (NumberFormatException e) {
             mostrarAlerta("Error", "Revise que el sueldo sea un número válido.");
         }
     }
-    private void aplicarEstiloOscuro(Dialog<?> dialog) {
-        DialogPane dialogPane = dialog.getDialogPane();
-        dialogPane.setStyle("-fx-background-color: #1a0a2a; -fx-border-color: #00d2ff; -fx-border-width: 2px;");
-        dialogPane.lookupAll(".label").forEach(node -> ((Label) node).setStyle("-fx-text-fill: white; -fx-font-weight: bold;"));
-    }
 
     private void mostrarAlerta(String titulo, String mensaje) {
-        Alert alert = new Alert(Alert.AlertType.WARNING);
-        alert.setTitle(titulo);
-        alert.setHeaderText(null);
-        alert.setContentText(mensaje);
-        aplicarEstiloOscuro(alert);
-        alert.showAndWait();
+        AlertaPersonalizada.mostrarAlerta(titulo, mensaje, Alert.AlertType.WARNING);
     }
 
     private void mostrarExito(String titulo, String mensaje) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle(titulo);
-        alert.setHeaderText(null);
-        alert.setContentText(mensaje);
-        aplicarEstiloOscuro(alert);
-        alert.showAndWait();
+        AlertaPersonalizada.mostrarAlerta(titulo, mensaje, Alert.AlertType.INFORMATION);
+    }
+    @FXML
+    void pagarSueldoEmpleado(ActionEvent event){
+        Empleado sel = tablaEmpleados.getSelectionModel().getSelectedItem();
+
+        if(sel == null){
+            mostrarAlerta("Atención", "Seleccione un empleado paar cancelar. ");
+            return;
+        }
+        String mesActual = LocalDate.now().format(DateTimeFormatter.ofPattern("MMMM yyyy", new Locale("es","ES")));
+        mesActual = mesActual.substring(0, 1).toUpperCase() + mesActual.substring(1);
+        DialogoPersonalizado.mostrarDialogo(
+                "Pago de Sueldo",
+                "Iniciando pago para: "+sel.getNombre() + "\nSueldo base registrado: Bs" + sel.getSueldo(),
+                "Ingrese el mes o periodo a pagar (Ej: Mayo 2026, Adelanto, etc.):",
+                mesActual
+        ).ifPresent(periodo ->{
+            if(periodo.trim().isEmpty()){
+                mostrarAlerta("Periodo requerido", "Debe ingresar un periodo para registrar el pago.");
+                return;
+            }
+            String conceptoEgreso = "Sueldo: "+sel.getNombre() + " ("+periodo.trim()+")";
+
+            boolean yaPagado = ReportesDAO.existeEgresoPorConcepto(conceptoEgreso);
+            if(yaPagado){
+                Optional<String> confirmacion = DialogoPersonalizado.mostrarDialogo(
+                        "⚠ ADVERTENCIA DE PAGO DUPLICADO",
+                        "El sistema detecta que YA SE LE CANCELÓ a " + sel.getNombre() + " por el periodo: " + periodo + ".",
+                        "Si esto es un bono extra o saldo restante, escriba 'CONFIRMAR'. De lo contrario, deje en blanco para abortar:",
+                        ""
+                );
+                if (confirmacion.isEmpty() || !confirmacion.get().equalsIgnoreCase("CONFIRMAR")) {
+                    mostrarAlerta("Operación Cancelada", "Se abortó el pago para evitar duplicidad.");
+                    return;
+                }
+                conceptoEgreso += " (Pago Adicional/Extra)";
+            }
+            final String conceptoFinal = conceptoEgreso;
+            DialogoPersonalizado.mostrarDialogo(
+                    "Monto a Cancelar",
+                    "Periodo a pagar: "+periodo,
+                    "Verifique o modifique el monto exacto a pagar (Bs)",
+                    String.valueOf((sel.getSueldo()))
+            ).ifPresent(montoStr ->{
+                try{
+                    double montoPagar = Double.parseDouble(montoStr.replace(",", "."));
+                    if(montoPagar <= 0){
+                        mostrarAlerta("Error", "El monto a cancelar debe ser mayor a 0.");
+                        return;
+                    }
+                    boolean egresoRegistrado = ReportesDAO.registrarEgreso(conceptoFinal, montoPagar);
+
+                    if(egresoRegistrado){
+                        String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
+                        App.registrarAuditoria(operador, "Empleado", sel.getNombre(), "Pago de Sueldo", montoPagar, "Pago del periodo: " + periodo);
+
+                        mostrarExito("Pago Registrado", "✅ Se han cancelado Bs. " + montoPagar + " a " + sel.getNombre() + ".\nEl gasto ya figura en los reportes de la empresa.");
+                    }else{
+                        mostrarAlerta("Error", "No se pudo registrar el pago en la base de datos. Revise su conexión.");
+                    }
+                }catch (NumberFormatException e){
+                    mostrarAlerta("Error de formato", "El monto ingresado no es válido. Ingrese un número para el monto a pagar.");
+                }
+            });
+        });
     }
 }

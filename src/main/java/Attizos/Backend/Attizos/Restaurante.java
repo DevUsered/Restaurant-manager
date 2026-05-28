@@ -2,6 +2,7 @@ package Attizos.Backend.Attizos;
 
 import Attizos.Backend.Listas.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.time.LocalDate;
@@ -15,9 +16,10 @@ public class Restaurante
     private ListaDE<Reserva> reservas = new ListaDE<>();
     private ListaDE<Pedido> colaPedidos = new ListaDE<>();
     private ListaDE<Factura> historialVentas;
-    private LocalDate fechaFacturacion;
-    private int contadorFacturasDiarias;
     private ListaDE<Egreso> expenseHistory;
+    private ListaDE<RegistroAuditoria> historialAuditoria;
+
+    private HashMap<Integer, HashMap<String, Double>> lotesConsumidosPorPedido;
 
     public Restaurante(String nombre){
         this.nombre = nombre;
@@ -27,9 +29,9 @@ public class Restaurante
         this.reservas = new ListaDE<>();
         this.colaPedidos = new ListaDE<>();
         this.historialVentas = new ListaDE<>();
-        this.fechaFacturacion = LocalDate.now();
         this.expenseHistory = new ListaDE<>();
-        this.contadorFacturasDiarias = 0;
+        this.historialAuditoria = new ListaDE<>();
+        this.lotesConsumidosPorPedido = new HashMap<>();
     }
     public void agregarProducto(Producto nuevo) {
         if (nuevo != null) {
@@ -164,68 +166,45 @@ public class Restaurante
     public Pedido atenderSiguientePedido(){
         return colaPedidos.eliminarElInicio();
     }
-    public boolean cancelarPedido(int idPedido) {
-        NodoDE<Pedido> actual = colaPedidos.getCabeza();
+    public boolean cancelarPedido(int idPedido){
+        NodoDE<Pedido> ac = colaPedidos.getCabeza();
+        while(ac != null){
+            if(ac.getDato().getIdPedido() == idPedido){
+                Pedido pedidoCancelado = ac.getDato();
 
-        while (actual != null) {
-            if (actual.getDato().getIdPedido() == idPedido) {
-                // 1. Guardamos el pedido que vamos a cancelar
-                Pedido pedidoCancelado = actual.getDato();
+                HashMap<String, Double> lotesUsados = lotesConsumidosPorPedido.get(idPedido);
+                if(lotesUsados != null){
+                    for(Map.Entry<String, Double> entry : lotesUsados.entrySet()){
+                        String codLoteExacto = entry.getKey();
+                        double cantidadADevolver = entry.getValue();
 
-                NodoDE<DetalleFactura> detActual = pedidoCancelado.getProductos().getCabeza();
-                while (detActual != null) {
-                    DetalleFactura df = detActual.getDato();
-                    Producto p = df.getProducto();
-                    int cantDevolver = df.getCantidad();
-
-                    if (p.tieneReceta()) {
-                        for (Map.Entry<String, Double> entry : p.getReceta().getIngredientes().entrySet()) {
-                            devolverIngredienteInteligente(entry.getKey(), entry.getValue() * cantDevolver);
+                        Insumo loteReal = inventario.buscarInsumo(codLoteExacto);
+                        if(loteReal != null){
+                            loteReal.setStockActual(loteReal.getStockActual() + cantidadADevolver);
+                        }else{
+                            String base = codLoteExacto.split("-L")[0];
+                            Insumo insumoBase = inventario.buscarInsumo(base);
+                            if(insumoBase != null) insumoBase.setStockActual(insumoBase.getStockActual() + cantidadADevolver);
                         }
                     }
-                    else {
-                        p.aumentarStock(cantDevolver);
-                    }
-                    detActual = detActual.getSiguiente();
+                    lotesConsumidosPorPedido.remove(idPedido);
                 }
-
+                NodoDE<DetalleFactura> detAc = pedidoCancelado.getProductos().getCabeza();
+                while(detAc != null){
+                    Producto p = detAc.getDato().getProducto();
+                    if(!p.tieneReceta()){
+                        p.aumentarStock(detAc.getDato().getCantidad());
+                    }
+                    detAc = detAc.getSiguiente();
+                }
+                String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Cocina/Admin";
+                this.registrarAuditoria(operador, "Pedido", "Pedido #" + idPedido, "Cancelación", 1, "Orden cancelada y stock devuelto");
                 colaPedidos.eliminarPorValor(pedidoCancelado);
-                return true;
+                return  true;
             }
-            actual = actual.getSiguiente();
+            ac = ac.getSiguiente();
         }
         return false;
-    }
-    private void devolverIngredienteInteligente(String codBase, double cantidad) {
-        Insumo insumoDestino = null;
-
-        for (Insumo i : inventario.getInventarioInsumos().values()) {
-            if (i.getCodigo().equals(codBase) || i.getCodigo().startsWith(codBase + "-L")) {
-
-                if (!i.isVencido()) {
-                    if (insumoDestino == null) {
-                        insumoDestino = i;
-                    } else if (i.getFechaVencimiento() != null && insumoDestino.getFechaVencimiento() != null) {
-                        if (i.getFechaVencimiento().isBefore(insumoDestino.getFechaVencimiento())) {
-                            insumoDestino = i;
-                        }
-                    }
-                }
-            }
-        }
-
-        if (insumoDestino == null) {
-            insumoDestino = inventario.buscarInsumo(codBase);
-        }
-
-        if (insumoDestino != null) {
-            insumoDestino.setStockActual(insumoDestino.getStockActual() + cantidad);
-        }
-    }
-    public void retrocederCorrelativoFactura() {
-        if (contadorFacturasDiarias > 0) {
-            contadorFacturasDiarias--;
-        }
     }
     public void mostrarMenuCompleto() {
         System.out.println("\n===============================================================");
@@ -252,17 +231,11 @@ public class Restaurante
         }
         System.out.println("===============================================================");
     }
-    public int generarNumeroFactura(){
-        LocalDate hoy = LocalDate.now();
-        if(!hoy.isEqual(fechaFacturacion)){
-            fechaFacturacion = hoy;
-            contadorFacturasDiarias = 0;
-        }
-        return ++ contadorFacturasDiarias ;
-    }
     public void registrarVentaFinalizada(Factura f){
         historialVentas.insertarAlFinal(f);
         NodoDE<DetalleFactura> ac = f.getDetalles().getCabeza();
+
+        HashMap<String, Double> consumoExactoDeEstaFactura = new HashMap<>();
         while(ac != null){
             DetalleFactura df = ac.getDato();
             Producto p = df.getProducto();
@@ -271,16 +244,34 @@ public class Restaurante
                 for(Map.Entry<String, Double> entry : p.getReceta().getIngredientes().entrySet()){
                     String codigoInsumo = entry.getKey();
                     double cantidadNecesaria = entry.getValue() * cantVendida;
+                    HashMap<String, Double> stockAntes = new HashMap<>();
+                    for(Insumo i : inventario.getInventarioInsumos().values()){
+                        if(i.getCodigo().equals(codigoInsumo) || i.getCodigo().startsWith(codigoInsumo + "-L")){
+                            stockAntes.put(i.getCodigo(), i.getStockActual());
+                        }
+                    }
                     boolean exito = inventario.consumirInsumoFEFO(codigoInsumo, cantidadNecesaria);
                     if(!exito){
                         System.out.println("⚠️ ALERTA CRÍTICA: Faltó stock en almacén para el insumo " + codigoInsumo);
+                    }
+                    for(String codLote : stockAntes.keySet()){
+                        Insumo i = inventario.buscarInsumo(codLote);
+                        double scockDespues = (i != null) ? i.getStockActual() : 0.0;
+                        double diferencia = stockAntes.get(codLote) - scockDespues;
+
+                        if(diferencia > 0){
+                            consumoExactoDeEstaFactura.put(codLote, consumoExactoDeEstaFactura.getOrDefault(codLote, 0.0) + diferencia);
+                        }
                     }
                 }
             }else{
                 p.reducirStock(cantVendida);
             }
+            String operador = App.usuarioLogueado.getUsername();
+            this.registrarAuditoria(operador, "Producto", p.getNombre(), "Venta", cantVendida, "Factura N° " + f.getNumeroFactura());
             ac = ac.getSiguiente();
         }
+        lotesConsumidosPorPedido.put(f.getNumeroFactura(), consumoExactoDeEstaFactura);
     }
     public boolean anularFacturaFinanciera(int numeroFactura){
         NodoDE<Factura> actual = historialVentas.getCabeza();
@@ -344,5 +335,12 @@ public class Restaurante
     }
     public ListaDE<Egreso> getExpenseHistory() {
         return expenseHistory;
+    }
+    public void registrarAuditoria(String operador, String tipoArea, String nombreItem, String accion, double cantidad, String motivo){
+        RegistroAuditoria log = new RegistroAuditoria(operador, tipoArea, nombreItem, accion, cantidad, motivo);
+        historialAuditoria.insertarAlFinal(log);
+    }
+    public ListaDE<RegistroAuditoria> getHistorialAuditoria() {
+        return historialAuditoria;
     }
 }

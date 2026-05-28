@@ -21,8 +21,10 @@ import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 import javafx.util.Duration;
 
 import java.io.IOException;
@@ -225,8 +227,20 @@ public class DashboardController {
             e.printStackTrace();
         }
     }
-    @FXML void openReports(ActionEvent event) { System.out.println("Abriendo Reportes..."); }
-
+    @FXML void openReports(ActionEvent event) {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Reportes.fxml"));
+            Parent view = loader.load();
+            contentArea.getChildren().setAll(view);
+            Stage stage = (Stage) rootPane.getScene().getWindow();
+            if (!stage.isMaximized()) {
+                stage.sizeToScene();
+                stage.centerOnScreen();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 
     private void restriccion(){
         if(App.usuarioLogueado instanceof Cajero){
@@ -241,9 +255,12 @@ public class DashboardController {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Home.fxml"));
             Stage stage = new Stage();
             Parent root = loader.load();
+            stage.initStyle(StageStyle.TRANSPARENT);
             Scene scene = new Scene(root);
+            scene.setFill(Color.TRANSPARENT);
             stage.setScene(scene);
             stage.show();
+
 
             Stage vAc = (Stage) ((Node) event.getSource()).getScene().getWindow();
             vAc.close();
