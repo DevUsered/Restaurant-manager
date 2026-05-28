@@ -23,7 +23,6 @@ public class App {
                 cargarProductos();
                 RecetaDAO.cargarRecetas();
 
-                // 3. (Más adelante cargaremos el inventario, recetas, etc.)
 
             }
         } catch (SQLException e) {

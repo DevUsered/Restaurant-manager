@@ -3,6 +3,7 @@ package Attizos.Frontend;
 import Attizos.Backend.Attizos.App;
 import Attizos.Backend.Attizos.Cocinero;
 import Attizos.Backend.Attizos.Usuario;
+import Attizos.Backend.Database.ConexionBD;
 import Attizos.Backend.Database.LoginDAO;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -19,6 +20,9 @@ import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 
 import java.io.IOException;
+import java.sql.Connection;
+import java.sql.SQLException;
+
 public class LoginController {
     @FXML private TextField txtUsuario;
     @FXML private PasswordField txtPassword;
@@ -37,6 +41,14 @@ public class LoginController {
 
         if(user.isEmpty() || pass.isEmpty()){
             lblMensaje.setText("Por favor, ingrese usuario y contraseña");
+            return;
+        }
+        try{
+            Connection conTest = ConexionBD.getConexion();
+            conTest.close();
+        } catch (SQLException e){
+            lblMensaje.setStyle("-fx-text-fill: #ff4c4c; -fx-border-color: #ff4cbc; -fx-border-width: 1; -fx-border-radius: 5; -fx-padding: 5; -fx-font: bold 14px 'Arial';");
+            lblMensaje.setText("Error de conexión a la base de datos. Servidor apagado o sin red. ");
             return;
         }
         boolean accesoConcedido = App.autenticarUsuario(user, pass);
