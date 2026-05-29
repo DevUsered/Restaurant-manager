@@ -2,6 +2,7 @@ package Attizos.Backend.Database;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -14,8 +15,16 @@ public class  ConexionBD {
     private static String password;
 
     static {
+        String rutaAppData = System.getProperty("APPDATA");
+        File carpetaAttizos = new File(rutaAppData, "Attizos");
+
+        if(!carpetaAttizos.exists()){
+            carpetaAttizos.mkdirs();
+        }
+
+        File archivoConfig = new File(carpetaAttizos, "config.properties");
+
         Properties propiedades = new Properties();
-        File archivoConfig = new File("config.properties");
         if(archivoConfig.exists()){
             try(FileInputStream fis = new FileInputStream(archivoConfig)){
                 propiedades.load(fis);
@@ -23,19 +32,29 @@ public class  ConexionBD {
                 user = propiedades.getProperty("db.user");
                 password = propiedades.getProperty("db.password");
                 System.out.println("Archivo config.properties cargado correctamente.");
-            }catch (IOException e){
-                System.err.println("Error al cargar config.properties, usando valores por defecto: " + e.getMessage());
+            } catch (IOException e) {
+                System.out.println("Error al cargar config.properties: " + e.getMessage());
                 cargarValoresPorDefecto();
             }
         }else{
-            System.out.println("⚠️ No se encontró config.properties en la raíz. Usando configuración de desarrollo (localhost).");
+            System.out.println("Creando archivo config.properties. ");
             cargarValoresPorDefecto();
+            propiedades.setProperty("db.url",url);
+            propiedades.setProperty("db.user",user);
+            propiedades.setProperty("db.password",password);
+
+            try(FileOutputStream fos = new FileOutputStream(archivoConfig)){
+                propiedades.store(fos, "Configuración de Base de datos");
+                System.out.println("Archivo creado exitosamente en: " + archivoConfig.getAbsolutePath());
+            }catch (IOException e){
+                System.err.println("Error al crear archivo config.properties: " + e.getMessage());
+            }
         }
     }
     private static void cargarValoresPorDefecto(){
         url = "jdbc:postgresql://localhost:5432/attizos_db";
         user = "postgres";
-        password = "Abril2026Temporal";
+        password = "admin";
     }
     public static Connection getConexion() throws SQLException {
         try{
