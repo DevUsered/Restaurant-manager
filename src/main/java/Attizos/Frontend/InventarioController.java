@@ -326,4 +326,43 @@ public class InventarioController {
     private void mostrarExito(String titulo, String mensaje) {
         AlertaPersonalizada.mostrarAlerta(titulo, mensaje, Alert.AlertType.INFORMATION);
     }
+    @FXML
+    void limpiarLotesCaducados(ActionEvent event){
+        Insumo seleccionado = tablaInventario.getSelectionModel().getSelectedItem();
+
+        if(seleccionado == null){
+            mostrarAlerta("Selección requerida", "Seleccione un insumo de la tabla.");
+            return;
+        }
+        if (!seleccionado.isVencido()) {
+            mostrarExito("Todo en orden", "El insumo '" + seleccionado.getNombre() + "' no tiene lotes caducados actualmente.");
+            return;
+        }
+        DialogoPersonalizado.mostrarDialogo(
+                "Retirar Merma por Caducidad",
+                "Limpieza de lotes vencidos de: " + seleccionado.getNombre(),
+                "Escriba una justificación para los reportes de almacén:",
+                "Retiro por fecha de vencimiento superada"
+        ).ifPresent(motivo -> {
+            if (motivo.trim().isEmpty()) {
+                mostrarAlerta("Obligatorio", "Debe ingresar una justificación válida para retirar la merma.");
+            } else {
+                double retirado = InsumoDAO.darDeBajaLotesVencidos(seleccionado.getCodigo());
+
+                if (retirado > 0) {
+                    App.attizos.getInventario().getInventarioInsumos().clear();
+                    App.attizos.getInventario().getInventarioInsumos().putAll(InsumoDAO.obtenerInventarioActivo());
+
+                    String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
+                    App.registrarAuditoria(operador, "Insumo", seleccionado.getNombre(), "Merma por Caducidad", retirado, "Limpieza manual: " + motivo);
+
+                    cargarDatos();
+                    mostrarExito("Limpieza Exitosa", "Se retiraron " + retirado + " " + seleccionado.getUnidad() + " caducados.\nLos lotes frescos siguen intactos en el inventario.");
+                } else {
+                    mostrarAlerta("Error", "No se pudo realizar la limpieza en la base de datos.");
+                }
+            }
+        });
+
+    }
 }

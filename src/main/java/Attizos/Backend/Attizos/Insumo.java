@@ -37,15 +37,13 @@ public class Insumo {
 
     //Control de vencimiento
     public boolean isVencido(){
-        if(fechaVencimiento == null) return false;
-        return LocalDate.now().isAfter(fechaVencimiento) ||
-                LocalDate.now().isEqual(fechaVencimiento);
+        return fechaVencimiento != null && fechaVencimiento.isBefore(LocalDate.now());
     }
     //Retorna los días restantes para el vencimiento (negativo si ya venció)
     public boolean isPorVencer(){
         if(fechaVencimiento == null || isVencido()) return false;
         long diasRestantes = ChronoUnit.DAYS.between(LocalDate.now(), fechaVencimiento);
-        return diasRestantes > 0 && diasRestantes <= 7; // Consideramos "por vencer" si quedan 7 días o menos
+        return diasRestantes >= 0 && diasRestantes <= 7; // Consideramos "por vencer" si quedan 7 días o menos
     }
 
     // Setters principales

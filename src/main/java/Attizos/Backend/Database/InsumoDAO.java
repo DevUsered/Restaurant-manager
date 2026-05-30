@@ -166,6 +166,7 @@ public class InsumoDAO {
     public static boolean descontarStockFEFO(String codigoInsumo, double cantidadRequerida) {
         String sqlSelect = "SELECT id_lote, stock_actual FROM insumos_lotes " +
                 "WHERE codigo_insumo = ? AND estado = 'Activo' AND stock_actual > 0 " +
+                "AND fecha_vencimiento >= CURRENT_DATE " +
                 "ORDER BY fecha_vencimiento ASC, id_lote ASC";
 
         String sqlUpdateLote = "UPDATE insumos_lotes SET stock_actual = ?, estado = ? WHERE id_lote = ?";
@@ -230,5 +231,46 @@ public class InsumoDAO {
                 }
             }
         }
+    }
+    public static double darDeBajaLotesVencidos(String codigoInsumo) {
+        String sqlSelect = "SELECT id_lote, stock_actual FROM insumos_lotes " +
+                            "WHERE codigo_insumo = ? AND fecha_vencimiento < CURRENT_DATE AND estado = 'Activo'";
+        String sqlUpdateLote = "UPDATE insumos_lotes SET estado = 'Inactivo', stock_actual = 0 WHERE id_lote = ?";
+
+        Connection con = null;
+        double totalDescontado = 0;
+        try {
+            con = ConexionBD.getConexion();
+            con.setAutoCommit(false);
+
+            try (PreparedStatement psSelect = con.prepareStatement(sqlSelect)) {
+                psSelect.setString(1, codigoInsumo);
+                try (ResultSet rs = psSelect.executeQuery()) {
+                    try (PreparedStatement psUpdate = con.prepareStatement(sqlUpdateLote)) {
+                        while (rs.next()) {
+                            int idLote = rs.getInt("id_lote");
+                            double stock = rs.getDouble("stock_actual");
+                            totalDescontado += stock;
+
+                            psUpdate.setInt(1, idLote);
+                            psUpdate.executeUpdate();
+                        }
+                    }
+                }
+            }
+            con.commit();
+            return totalDescontado;
+        }catch (SQLException e){
+            System.err.println("❌ Error retirando lotes vencidos: " + e.getMessage());
+            if (con != null) {
+                try { con.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
+            }
+            return -1;
+        } finally {
+            if (con != null) {
+                try { con.setAutoCommit(true); con.close(); } catch (SQLException ex) { ex.printStackTrace(); }
+            }
+        }
+
     }
 }
