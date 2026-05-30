@@ -1,5 +1,6 @@
 package Attizos.Frontend;
 
+import Attizos.Backend.Database.ConexionSQLite;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -11,6 +12,8 @@ import javafx.stage.StageStyle;
 public class MainGUI extends Application {
     @Override
     public void start(Stage ventanaPrincipal){
+        ConexionSQLite.inicializarTablasLocales();
+        ConexionSQLite.sincronizarEmpleados();
         try {
             Attizos.Backend.Attizos.App.iniciarSistema();
             Application.setUserAgentStylesheet(new atlantafx.base.theme.PrimerDark().getUserAgentStylesheet());

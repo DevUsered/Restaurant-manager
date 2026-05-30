@@ -15,7 +15,7 @@ public class  ConexionBD {
     private static String password;
 
     static {
-        String rutaAppData = System.getProperty("APPDATA");
+        String rutaAppData = System.getenv("APPDATA");
         File carpetaAttizos = new File(rutaAppData, "Attizos");
 
         if(!carpetaAttizos.exists()){
