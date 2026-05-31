@@ -13,6 +13,8 @@ public class Empleado {
         this.cargo = cargo;
         this.sueldo = sueldo;
     }
+    public Empleado(){
+    }
 
     // --- GETTERS ---
     public String getId() {

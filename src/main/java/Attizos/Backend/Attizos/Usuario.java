@@ -10,6 +10,7 @@ public abstract class Usuario extends Empleado {
         this.username = username;
         this.password = password;
     }
+    public Usuario(){}
     public boolean login(String user, String pass){
         return this.username.equals(user) && this.password.equals(pass);
     }

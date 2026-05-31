@@ -13,7 +13,7 @@ public class MainGUI extends Application {
     @Override
     public void start(Stage ventanaPrincipal){
         ConexionSQLite.inicializarTablasLocales();
-        ConexionSQLite.sincronizarEmpleados();
+        ConexionSQLite.actualizarCacheCompleta();
         try {
             Attizos.Backend.Attizos.App.iniciarSistema();
             Application.setUserAgentStylesheet(new atlantafx.base.theme.PrimerDark().getUserAgentStylesheet());
