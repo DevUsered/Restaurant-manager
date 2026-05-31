@@ -243,9 +243,12 @@ public class DashboardController {
     }
 
     private void restriccion(){
-        if(App.usuarioLogueado instanceof Cajero){
+        if(App.usuarioLogueado != null && !App.usuarioLogueado.getCargo().equalsIgnoreCase("Administrador") && !App.usuarioLogueado.getCargo().equalsIgnoreCase("Admin"))
+        {
             vBAdmin.setVisible(false);
+            vBAdmin.setManaged(false);
             lblAdmin.setVisible(false);
+            lblAdmin.setManaged(false);
         }
     }
 

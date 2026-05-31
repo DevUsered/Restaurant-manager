@@ -28,8 +28,10 @@ public class TicketController {
     public void inicializarTicket(Factura factura, String nombreCajero, int turno){
         DateTimeFormatter formato = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
         LocalDateTime fechaSegura = factura.getFecha() != null ? factura.getFecha() : LocalDateTime.now();
-        String fechaStr = factura.getFecha().format(formato);
+        String fechaStr = fechaSegura.format(formato);
+
         String numFac = String.format("%03d", factura.getNumeroFactura());
+
 
         lblNumFacturaCaja.setText("Ticket Nro: " + numFac);
         lblFechaCaja.setText("Fecha: " + fechaStr);
