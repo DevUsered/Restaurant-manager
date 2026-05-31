@@ -65,12 +65,11 @@ public class ReportesDAO{
              ResultSet rs = ps.executeQuery()) {
              
             while (rs.next()) {
-                Empleado emp = new Empleado(
-                        rs.getString("id_empleado"),
-                        rs.getString("nombre"),
-                        rs.getString("cargo"),
-                        rs.getDouble("sueldo")
-                );
+                Empleado emp = new Empleado();
+                emp.setIdEmpleado(rs.getString("id_empleado"));
+                emp.setNombre(rs.getString("nombre"));
+                emp.setCargo(rs.getString("cargo"));
+                emp.setSueldo(rs.getDouble("sueldo"));
                 lista.add(emp);
             }
         } catch (SQLException e) {
@@ -172,12 +171,10 @@ public class ReportesDAO{
                     psDet.setInt(1, numeroFactura);
                     try (ResultSet rsDet = psDet.executeQuery()) {
                         while (rsDet.next()) {
-                            Producto p = new Producto(
-                                    rsDet.getInt("id_producto"),
-                                    rsDet.getString("nombre"),
-                                    rsDet.getDouble("precio"),
-                                    "", 0, ""
-                            );
+                            Producto p = new Producto();
+                            p.setId(rsDet.getInt("id_producto"));
+                            p.setNombre(rsDet.getString("nombre"));
+                            p.setPrecio(rsDet.getDouble("precio"));
                             factura.agregarProducto(p, rsDet.getInt("cantidad"));
                         }
                     }
