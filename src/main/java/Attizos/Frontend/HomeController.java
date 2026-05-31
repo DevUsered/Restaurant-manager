@@ -23,6 +23,7 @@ import javafx.util.Duration;
 
 import java.io.IOException;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 public class HomeController {
@@ -52,7 +53,7 @@ public class HomeController {
             actual = actual.getSiguiente();
         }
 
-        // 3. Creamos un botón automático por cada categoría
+
         for (String cat : categorias) {
             flowCategorias.getChildren().add(crearBotonCategoria(cat));
         }
@@ -78,9 +79,11 @@ public class HomeController {
         NodoDE<Producto> actual = App.attizos.getMenu().getCabeza();
         while(actual != null){
             Producto p = actual.getDato();
-            if(categorie.equals("Todo") || p.getCategoria().equalsIgnoreCase(categorie)){
-                StackPane newCard = createCard(p);
-                containerProducts.getChildren().add(newCard);
+            if(p.getEstado() != null && p.getEstado().equals("Activo")) {
+                if (categorie.equals("Todo") || p.getCategoria().equalsIgnoreCase(categorie)) {
+                    StackPane newCard = createCard(p);
+                    containerProducts.getChildren().add(newCard);
+                }
             }
             actual = actual.getSiguiente();
         }
@@ -131,19 +134,29 @@ public class HomeController {
         lblInfo.getStyleClass().add("overlay-text");
         lblInfo.setWrapText(true);
 
+        StringBuilder infoTexto = new StringBuilder();
+        if(p.getAtributosDinamicos() != null && !p.getAtributosDinamicos().isEmpty()){
+            infoTexto.append("✨ Detalles:\n\n");
+            for(Map.Entry<String, String> entry : p.getAtributosDinamicos().entrySet()){
+                String clave = entry.getKey().replace("_","");
+                clave = clave.substring(0,1).toUpperCase() + clave.substring(1);
+                infoTexto.append(" * ").append(clave).append(": ").append(entry.getValue()).append("\n");
+            }
+            infoTexto.append("\n");
+        }
         if (p.tieneReceta() && p.getReceta() != null && App.attizos.getInventario() != null) {
-            StringBuilder ingredientes = new StringBuilder("✨ Preparado con:\n\n");
+            infoTexto.append("✨ Preparado con:\n\n");
             for (String codInsumo : p.getReceta().getIngredientes().keySet()) {
                 Insumo ins = App.attizos.getInventario().buscarInsumo(codInsumo);
                 if (ins != null) {
-                    ingredientes.append("• ").append(ins.getNombre()).append("\n");
+                    infoTexto.append(" * ").append(ins.getNombre()).append("\n");
                 }
             }
-            lblInfo.setText(ingredientes.toString());
-        } else {
-            lblInfo.setText("🍕 Especialidad de la casa\n¡Listo para disfrutar!");
         }
-
+        if(infoTexto.length() == 0){
+            infoTexto.append("✨ Especialidad de la casa\n¡Listo para disfrutar!");
+        }
+        lblInfo.setText(infoTexto.toString());
         overlay.getChildren().add(lblInfo);
 
         // --- ANIMACIONES ---
