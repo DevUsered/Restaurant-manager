@@ -72,22 +72,30 @@ public class ConexionSQLite {
                 + "fecha_hora TEXT NOT NULL, "
                 + "estado TEXT DEFAULT 'pendiente'"
                 + ");";
+        String sqlAuditoria = "CREATE TABLE IF NOT EXISTS auditoria_pendiente ("
+                + "id_local INTEGER PRIMARY KEY AUTOINCREMENT, "
+                + "operador TEXT, "
+                + "tipo_area TEXT, "
+                + "nombre_item TEXT, "
+                + "accion TEXT, "
+                + "cantidad REAL, "
+                + "motivo TEXT, "
+                + "estado TEXT DEFAULT 'pendiente'"
+                + ");";
+
         try (Connection conn = getConexion();
              Statement stmt = conn.createStatement()) {
             stmt.execute(sqlEmpleados);
             stmt.execute(sqlProductos);
             stmt.execute(sqlInsumos);
             stmt.execute(sqlVentasPendientes);
+            stmt.execute(sqlAuditoria);
 
             System.out.println("Caché SQLite inicializada correctamente. ");
         } catch (SQLException e) {
             System.out.println("Error al inicializar tablas locales: " + e.getMessage());
         }
     }
-
-    // ==========================================================
-    // MÉTODOS DE SINCRONIZACIÓN (Postgres -> SQLite)
-    // ==========================================================
     public static void actualizarCacheCompleta() {
         System.out.println("Actualizando caché local completa...");
         sincronizarEmpleados();
@@ -328,5 +336,54 @@ public class ConexionSQLite {
             System.err.println("❌ Error en autenticación local SQLite: " + e.getMessage());
         }
         return null;
+    }
+    public static boolean guardarAuditoriaOffline(String operador, String tipoArea, String nombreItem, String accion, double cantidad, String motivo) {
+        String sql = "INSERT INTO auditoria_pendiente (operador, tipo_area, nombre_item, accion, cantidad, motivo) VALUES (?, ?, ?, ?, ?, ?)";
+        try (Connection conn = getConexion();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, operador);
+            ps.setString(2, tipoArea);
+            ps.setString(3, nombreItem);
+            ps.setString(4, accion);
+            ps.setDouble(5, cantidad);
+            ps.setString(6, motivo);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.err.println("❌ Error al guardar auditoría offline: " + e.getMessage());
+            return false;
+        }
+    }
+    public static void subirAuditoriaPendiente() {
+        String sqlLeer = "SELECT id_local, operador, tipo_area, nombre_item, accion, cantidad, motivo FROM auditoria_pendiente WHERE estado = 'pendiente'";
+        String sqlActualizar = "UPDATE auditoria_pendiente SET estado = 'sincronizado' WHERE id_local = ?";
+
+        try (Connection connLocal = getConexion();
+             PreparedStatement psLeer = connLocal.prepareStatement(sqlLeer);
+             ResultSet rs = psLeer.executeQuery()) {
+
+            int sincronizadas = 0;
+            while (rs.next()) {
+                int idLocal = rs.getInt("id_local");
+                boolean exito = ReportesDAO.registrarAuditoria(
+                        rs.getString("operador"), rs.getString("tipo_area"),
+                        rs.getString("nombre_item"), rs.getString("accion"),
+                        rs.getDouble("cantidad"), rs.getString("motivo")
+                );
+
+                if (exito) {
+                    try (PreparedStatement psActualizar = connLocal.prepareStatement(sqlActualizar)) {
+                        psActualizar.setInt(1, idLocal);
+                        psActualizar.executeUpdate();
+                        sincronizadas++;
+                    }
+                }
+            }
+            if (sincronizadas > 0) {
+                System.out.println("☁️ ✅ Se subieron " + sincronizadas + " registros de auditoría a la nube.");
+            }
+        } catch (SQLException e) {
+            System.err.println("❌ Error al sincronizar auditoría: " + e.getMessage());
+        }
     }
 }

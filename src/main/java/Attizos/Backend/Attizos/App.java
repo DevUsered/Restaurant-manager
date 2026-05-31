@@ -11,49 +11,59 @@ import java.util.HashMap;
 
 public class App {
     public static Restaurante attizos;
-    public static Usuario usuarioLogueado;
+    public static Empleado usuarioLogueado;
+    public static boolean modoOffline = true;
 
     public static void iniciarSistema() {
         attizos = new Restaurante("Pizzería Attizos");
 
-        try (Connection con = ConexionBD.getConexion()) {
-            if (con != null && !con.isClosed()) {
-                System.out.println("✅ Base de Datos conectada. Descargando datos a la memoria RAM...");
-                cargarEmpleados();
-                cargarInventario();
-                cargarProductos();
-                RecetaDAO.cargarRecetas();
+        ConexionSQLite.inicializarTablasLocales();
+        System.out.println("Cargando datos locales...");
+        cargarEmpleados();
+        cargarInventario();
+        cargarProductos();
+        System.out.println("✅ Datos locales cargados.");
 
+        //Sincronización Invisible segundo plano
+        new Thread(() ->{
+            try(Connection con = ConexionBD.getConexion()){
+                if(con != null && !con.isClosed()){
+                    System.out.println("🔄 Sincronizando datos con la Base de Datos...");
+                    modoOffline = false;
+                    ConexionSQLite.subirAuditoriaPendiente();
 
+                    ConexionSQLite.actualizarCacheCompleta();
+                    RecetaDAO.cargarRecetas();
+                }
+            }catch (SQLException e){
+                System.err.println("[Segundo Plano] Sin internet. Attizos sigue funcionando al 100% en modo local.");
             }
-        } catch (SQLException e) {
-            System.err.println("❌ Falla crítica: No se pudo conectar a PostgreSQL. " + e.getMessage());
-        }
+        }).start();
     }
-
     private static void cargarInventario() {
-        HashMap<String, Insumo> inventario = InsumoDAO.obtenerInventarioActivo();
-        if (!inventario.isEmpty()) {
+        HashMap<String, Insumo> inventario = ConexionSQLite.obtenerInventarioLocal();
+        if (inventario != null && !inventario.isEmpty()) {
             for (Insumo i : inventario.values()) {
                 attizos.getInventario().agregarInsumo(i);
             }
             System.out.println("✅ Inventario cargado en RAM con " + inventario.size() + " insumos.");
         } else {
-            System.out.println("La BD esta vacio");
+            System.out.println("La BD local esta vacio");
         }
     }
 
     public static void cargarEmpleados() {
-        ArrayList<Empleado> personaDB = EmpleadoDAO.obtenerEmpleadosActivos();
-        if (!personaDB.isEmpty()) {
+        ArrayList<Empleado> personaDB = ConexionSQLite.obtenerEmpleadosLocal();
+        if (personaDB != null && !personaDB.isEmpty()) {
             for (Empleado emp : personaDB) {
                 attizos.agregarEmpleado(emp);
             }
+            System.out.println("Empleados cargados");
         }
     }
 
     public static void cargarProductos() {
-        ListaDE<Producto> menuDB = ProductoDAO.obtenerMenuCompleto();
+        ListaDE<Producto> menuDB = ConexionSQLite.obtenerMenuLocal();
         if (menuDB != null && !menuDB.esVacia()) {
             NodoDE<Producto> actual = menuDB.getCabeza();
             while (actual != null) {
@@ -68,20 +78,29 @@ public class App {
     }
 
     public static boolean autenticarUsuario(String username, String pass) {
-        Usuario user = LoginDAO.autenticarUsuario(username, pass);
+        Empleado user = ConexionSQLite.autenticarUsuarioLocal(username, pass);
         if (user != null) {
             usuarioLogueado = user;
             return true;
-        } else {
-            return false;
+        } else if(!modoOffline){
+            user = LoginDAO.autenticarUsuario(username, pass);
+            if(user != null){
+                usuarioLogueado = user;
+                return  true;
+            }
         }
+        return false;
     }
 
     public static void registrarAuditoria(String operador, String tipoArea, String nombreItem, String accion, double cantidad, String motivo) {
-        boolean guardadoDB = ReportesDAO.registrarAuditoria(operador, tipoArea, nombreItem, accion, cantidad, motivo);
+        if(modoOffline){
+            ConexionSQLite.guardarAuditoriaOffline(operador,tipoArea,nombreItem,accion,cantidad,motivo);
+        }else {
+            boolean guardadoDB = ReportesDAO.registrarAuditoria(operador, tipoArea, nombreItem, accion, cantidad, motivo);
 
-        if (!guardadoDB) {
-            System.err.println("⚠️ Error: No se pudo guardar la auditoría en la Base de Datos.");
+            if (!guardadoDB) {
+                ConexionSQLite.guardarAuditoriaOffline(operador, tipoArea, nombreItem, accion, cantidad, motivo);
+            }
         }
     }
 }
