@@ -1,6 +1,7 @@
 package Attizos.Frontend;
 
 import Attizos.Backend.Attizos.*;
+import Attizos.Backend.Database.ConexionSQLite;
 import Attizos.Backend.Database.FacturaDAO;
 import Attizos.Backend.Database.InsumoDAO;
 import Attizos.Backend.Database.ProductoDAO;
@@ -37,7 +38,7 @@ public class VentasController {
     private HBox filaSeleccionada;
 
 
-    private ListaDE<Producto> menuDB;
+    private ListaDE<Producto> menuRAM;
     //Cache
     private HashMap<String, Insumo> inventarioFrescoBD;
 
@@ -58,8 +59,8 @@ public class VentasController {
         productoSeleccionadoEnCarrito = null;
         filaSeleccionada = null;
 
-        inventarioFrescoBD = InsumoDAO.obtenerInventarioActivo();
-        menuDB = ProductoDAO.obtenerMenuCompleto();
+        inventarioFrescoBD = App.attizos.getInventario().getInventarioInsumos();
+        menuRAM = App.attizos.getMenu();
         cargarCategorias();
         mostrarProductosPorCategoria("Todos");
         actualizarVistaCarrito();
@@ -71,11 +72,13 @@ public class VentasController {
         hBCategoria.getChildren().add(btnAll);
 
         Set<String> cats = new HashSet<>();
-        if(menuDB != null){
-            NodoDE<Producto> actualDB = menuDB.getCabeza();
-            while (actualDB != null) {
-                cats.add(actualDB.getDato().getCategoria());
-                actualDB = actualDB.getSiguiente();
+        if(menuRAM != null){
+            NodoDE<Producto> actual = menuRAM.getCabeza();
+            while (actual != null) {
+                if(actual.getDato().getEstado() != null && actual.getDato().getEstado().equals("Activo")){
+                    cats.add(actual.getDato().getCategoria());
+                }
+                actual = actual.getSiguiente();
             }
         }
         for (String c : cats) {
@@ -96,14 +99,17 @@ public class VentasController {
     private void mostrarProductosPorCategoria(String categoria) {
         flPProductos.getChildren().clear();
         String busqueda = (tfBuscar != null && tfBuscar.getText() != null) ? tfBuscar.getText().toLowerCase() : "";
-        if(menuDB != null) {
+        if(menuRAM != null) {
             NodoDE<Producto> actual = App.attizos.getMenu().getCabeza();
             while (actual != null) {
                 Producto p = actual.getDato();
-                boolean coincideCategoria = categoria.equals("Todos") || p.getCategoria().equalsIgnoreCase(categoria);
-                boolean coincideBusqueda = p.getNombre().toLowerCase().contains(busqueda);
-                if (coincideCategoria && coincideBusqueda) {
-                    crearTarjetaProducto(p);
+
+                if(p.getEstado() != null && p.getEstado().equals("Activo")) {
+                    boolean coincideCategoria = categoria.equals("Todos") || p.getCategoria().equalsIgnoreCase(categoria);
+                    boolean coincideBusqueda = p.getNombre().toLowerCase().contains(busqueda);
+                    if (coincideCategoria && coincideBusqueda) {
+                        crearTarjetaProducto(p);
+                    }
                 }
                 actual = actual.getSiguiente();
             }
@@ -132,7 +138,7 @@ public class VentasController {
         actualizarVistaCarrito();
         mostrarProductosPorCategoria(categoriaActiva);
     }
-    private void seleccionarItemCarrito(HBox row, Producto p) {
+    /*private void seleccionarItemCarrito(HBox row, Producto p) {
         if (filaSeleccionada != null) {
             filaSeleccionada.setStyle("-fx-border-color: transparent");
         }
@@ -140,7 +146,7 @@ public class VentasController {
         filaSeleccionada = row;
         productoSeleccionadoEnCarrito = p;
         filaSeleccionada.setStyle("-fx-background-color: rgba(218, 165, 32, 0.15); -fx-background-radius: 10; -fx-border-color: #daa520; -fx-border-radius: 10;");
-    }
+    }*/
 
     @FXML
     void reducirProducto() {
@@ -173,11 +179,11 @@ public class VentasController {
             mostrarAlerta("Atención", "Seleccione un producto del carrito para eliminarlo.", Alert.AlertType.WARNING);
             return;
         }
-            facturaActual.eliminarProducto(productoSeleccionadoEnCarrito);
+        facturaActual.eliminarProducto(productoSeleccionadoEnCarrito);
         productoSeleccionadoEnCarrito = null;
         filaSeleccionada = null;
-            actualizarVistaCarrito();
-            mostrarProductosPorCategoria(categoriaActiva);
+        actualizarVistaCarrito();
+        mostrarProductosPorCategoria(categoriaActiva);
     }
     @FXML
     void finalizarVenta() {
@@ -191,15 +197,56 @@ public class VentasController {
 
         Map<Producto, Integer> carritoDB = new HashMap<>();
         NodoDE<DetalleFactura> actual = facturaActual.getDetalles().getCabeza();
+
+        //Armamos el JSON manualmente por si falla la conexion
+        StringBuilder jsonVenta = new StringBuilder();
+        jsonVenta.append("{\"cliente\": \"").append(nombreCli).append("\", ");
+        jsonVenta.append("\"total\": ").append(facturaActual.getTotal()).append(", ");
+        jsonVenta.append("\"detalles\": [");
+
+        boolean primero = true;
         while (actual != null){
             DetalleFactura det = actual.getDato();
             carritoDB.put(det.getProducto(), det.getCantidad());
+            if(primero) jsonVenta.append(", ");
+            jsonVenta.append("{\"id_producto\": ").append(det.getProducto().getId())
+                    .append(", \"cantidad\": ").append(det.getCantidad()).append("}");
+            primero = false;
             actual = actual.getSiguiente();
         }
-        int  numeroFactura = FacturaDAO.registrarVenta(nombreCli, facturaActual.getTotal(), carritoDB);
-        if(numeroFactura > 0) {
-            facturaActual.setNumeroFactura(numeroFactura);
+        jsonVenta.append("]}");
+        int numeroTicket = -1;
+        if(!App.modoOffline){
+            numeroTicket = FacturaDAO.registrarVenta(nombreCli, facturaActual.getTotal(), carritoDB);
+            if(numeroTicket > 0){
+                ConexionSQLite.actualizarSecuenciaLocal(numeroTicket);
+            }
+        }
+        if(numeroTicket <= 0){
+            numeroTicket = ConexionSQLite.obtenerSiguienteTicketOffline();
+            boolean guardadoOffline = ConexionSQLite.guardarVentaOffline(jsonVenta.toString());
+            if (!guardadoOffline) {
+                mostrarAlerta("Error Crítico", "No se pudo registrar la venta ni en internet ni localmente.", Alert.AlertType.ERROR);
+                return;
+            }
+            System.out.println("⚠️ Venta offline guardada. Ticket #" + numeroTicket);
+        }
+        if(numeroTicket > 0) {
+            facturaActual.setNumeroFactura(numeroTicket);
             facturaActual.setNombreCliente(nombreCli);
+
+            for(Map.Entry<Producto, Integer> entry : carritoDB.entrySet()){
+                Producto p = entry.getKey();
+                int cantVendida = entry.getValue();
+                if(p.tieneReceta() && p.getReceta() != null){
+                    for (Map.Entry<String, Double> recetaItem : p.getReceta().getIngredientes().entrySet()) {
+                        Insumo ins = inventarioFrescoBD.get(recetaItem.getKey());
+                        if(ins != null) ins.setStockActual(ins.getStockActual() - (recetaItem.getValue() * cantVendida));
+                    }
+                }else{
+                    p.reducirStock(cantVendida);
+                }
+            }
 
             try {
                 javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(getClass().getResource("/fxml/Ticket.fxml"));
@@ -216,8 +263,6 @@ public class VentasController {
                 mostrarAlerta("Error", "La venta se registró pero no se pudo mandar al ticket.", Alert.AlertType.ERROR);
             }
             iniciarNuevaVenta();
-        } else {
-            mostrarAlerta("Error Crítico", "No se pudo registrar la venta en la Base de Datos. Revise el stock de cocina o la conexión.", Alert.AlertType.ERROR);
         }
     }
 
@@ -374,8 +419,9 @@ public class VentasController {
                ac = ac.getSiguiente();
             }
             int maxPlatosPosibles = Integer.MAX_VALUE;
-            Inventario inv = App.attizos.getInventario();
-
+            if(p.getReceta() == null || p.getReceta().getIngredientes().isEmpty()){
+                return (int) p.getStock();
+            }
             for(Map.Entry<String, Double> entry : p.getReceta().getIngredientes().entrySet()){
                 String codInsumoBase = entry.getKey();
                 double cantNecesariaPorPlato = entry.getValue();

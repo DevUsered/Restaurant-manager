@@ -82,6 +82,12 @@ public class ConexionSQLite {
                 + "motivo TEXT, "
                 + "estado TEXT DEFAULT 'pendiente'"
                 + ");";
+        String sqlSecuencia = "CREATE TABLE IF NOT EXISTS secuencia_tickets ("
+                + "id INTEGER PRIMARY KEY CHECK (id = 1), "
+                + "fecha TEXT, "
+                + "ultimo_numero INTEGER"
+                + ");";
+
 
         try (Connection conn = getConexion();
              Statement stmt = conn.createStatement()) {
@@ -90,6 +96,7 @@ public class ConexionSQLite {
             stmt.execute(sqlInsumos);
             stmt.execute(sqlVentasPendientes);
             stmt.execute(sqlAuditoria);
+            stmt.execute("INSERT OR IGNORE INTO secuencia_tickets (id, fecha, ultimo_numero) VALUES (1, '2000-01-01', 0);");
 
             System.out.println("Caché SQLite inicializada correctamente. ");
         } catch (SQLException e) {
@@ -385,5 +392,59 @@ public class ConexionSQLite {
         } catch (SQLException e) {
             System.err.println("❌ Error al sincronizar auditoría: " + e.getMessage());
         }
+    }
+    public static boolean guardarVentaOffline(String jsonVenta) {
+        String sql = "INSERT INTO ventas_pendientes (json_venta, fecha_hora) VALUES (?, ?)";
+        try (Connection conn = getConexion();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, jsonVenta);
+            ps.setString(2, java.time.LocalDateTime.now().toString());
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.err.println("❌ Error al guardar venta offline: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public static void actualizarSecuenciaLocal(int numeroOnline) {
+        String fechaHoy = java.time.LocalDate.now().toString();
+        String sql = "UPDATE secuencia_tickets SET fecha = ?, ultimo_numero = ? WHERE id = 1";
+        try (Connection conn = getConexion();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, fechaHoy);
+            ps.setInt(2, numeroOnline);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            System.err.println("Error al actualizar secuencia: " + e.getMessage());
+        }
+    }
+
+    public static int obtenerSiguienteTicketOffline() {
+        String fechaHoy = java.time.LocalDate.now().toString();
+        int siguiente = 1;
+        try (Connection conn = getConexion()) {
+            String sqlLeer = "SELECT fecha, ultimo_numero FROM secuencia_tickets WHERE id = 1";
+            try (PreparedStatement ps = conn.prepareStatement(sqlLeer);
+                 ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    String fechaBD = rs.getString("fecha");
+                    int ultimo = rs.getInt("ultimo_numero");
+                    if (fechaHoy.equals(fechaBD)) {
+                        siguiente = ultimo + 1;
+                    }
+                }
+            }
+
+            String sqlAct = "UPDATE secuencia_tickets SET fecha = ?, ultimo_numero = ? WHERE id = 1";
+            try (PreparedStatement psAct = conn.prepareStatement(sqlAct)) {
+                psAct.setString(1, fechaHoy);
+                psAct.setInt(2, siguiente);
+                psAct.executeUpdate();
+            }
+        } catch (SQLException e) {
+            System.err.println("Error en secuencia offline: " + e.getMessage());
+        }
+        return siguiente;
     }
 }
