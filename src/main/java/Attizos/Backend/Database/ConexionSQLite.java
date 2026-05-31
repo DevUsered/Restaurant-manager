@@ -1,6 +1,7 @@
 package Attizos.Backend.Database;
 
 import Attizos.Backend.Attizos.*;
+import Attizos.Backend.Listas.*;
 
 import java.io.File;
 import java.sql.*;
@@ -84,9 +85,18 @@ public class ConexionSQLite {
         }
     }
 
+    // ==========================================================
+    // MÉTODOS DE SINCRONIZACIÓN (Postgres -> SQLite)
+    // ==========================================================
+    public static void actualizarCacheCompleta() {
+        System.out.println("Actualizando caché local completa...");
+        sincronizarEmpleados();
+        sincronizarInsumos();
+        sincronizarProductos();
+    }
+
     public static void sincronizarEmpleados() {
         System.out.println("Iniciando sincronización de empleados.");
-
         String sqlLeerPostgres = "SELECT id_empleado, nombre, cargo, sueldo, username, password_hash, estado FROM empleados";
         String sqlLimpiarSQLite = "DELETE FROM empleados";
         String sqlInsertarSQLite = "INSERT INTO empleados (id_empleado, nombre, cargo, sueldo, username, password_hash, estado) VALUES (?, ?, ?, ?, ?, ?, ?)";
@@ -95,7 +105,7 @@ public class ConexionSQLite {
              PreparedStatement stmtLeer = connPG.prepareStatement(sqlLeerPostgres);
              ResultSet rs = stmtLeer.executeQuery();
 
-             Connection connSQL = ConexionSQLite.getConexion();
+             Connection connSQL = getConexion();
              Statement stmtLimpiar = connSQL.createStatement();
              PreparedStatement stmtInsertar = connSQL.prepareStatement(sqlInsertarSQLite)) {
 
@@ -129,8 +139,7 @@ public class ConexionSQLite {
         try (Connection connPG = ConexionBD.getConexion();
              PreparedStatement stmtLeer = connPG.prepareStatement(sqlLeerPG);
              ResultSet rs = stmtLeer.executeQuery();
-
-             Connection connSQL = ConexionBD.getConexion();
+             Connection connSQL = getConexion();
              Statement stmtLimpiar = connSQL.createStatement();
              PreparedStatement stmtInsertar = connSQL.prepareStatement(sqlInsertarSQLite)) {
 
@@ -179,7 +188,8 @@ public class ConexionSQLite {
                 stmtInsertar.setString(4, rs.getString("categoria"));
                 stmtInsertar.setString(5, rs.getString("tipo_clase"));
                 stmtInsertar.setInt(6, rs.getInt("stock_directo"));
-                stmtInsertar.setInt(7, rs.getInt("tiene_receta"));
+                // CORREGIDO: Manejo seguro del boolean de Postgres a int de SQLite
+                stmtInsertar.setInt(7, rs.getBoolean("tiene_receta") ? 1 : 0);
                 stmtInsertar.setString(8, rs.getString("imagen_base64"));
                 stmtInsertar.setString(9, rs.getString("atributos_extra"));
                 stmtInsertar.setString(10, rs.getString("estado"));
@@ -192,51 +202,44 @@ public class ConexionSQLite {
             System.out.println("Error al sincronizar productos: " + e.getMessage());
         }
     }
-
-    public static void actualizarCacheCompleta() {
-        System.out.println("Actualizando caché local completa...");
-        sincronizarEmpleados();
-        sincronizarInsumos();
-        sincronizarProductos();
-    }
-    public static ArrayList<Empleado> obtenerEmpleadosLocal(){
+    public static ArrayList<Empleado> obtenerEmpleadosLocal() {
         ArrayList<Empleado> lista = new ArrayList<>();
         String sql = "SELECT id_empleado, nombre, cargo, sueldo, username, estado FROM empleados WHERE estado = 'Activo'";
 
-        try(Connection conn = getConexion();
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ResultSet rs = ps.executeQuery()
-        ){
-            while(rs.next()){
-                String userName = rs.getString("username");
-                Empleado emp;
-                if(userName != null && !userName.trim().isEmpty()){
-                    Usuario user = new Usuario();
-                    user.setUsername(userName);
-                    emp = user;
-                }else{
-                    emp = new Empleado();
-                }
-                emp.setId(rs.getString("id_empleado"));
+        try (Connection conn = getConexion();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                Empleado emp = new Empleado();
+                emp.setIdEmpleado(rs.getString("id_empleado")); // CORREGIDO: Nombre correcto del método
                 emp.setNombre(rs.getString("nombre"));
                 emp.setCargo(rs.getString("cargo"));
                 emp.setSueldo(rs.getDouble("sueldo"));
+                emp.setEstado(rs.getString("estado"));
+
+                String userName = rs.getString("username");
+                if (userName != null && !userName.trim().isEmpty()) {
+                    emp.setUsername(userName);
+                }
+
                 lista.add(emp);
             }
-        }catch(SQLException e){
-            System.out.println("Error al leer empleados locales: "+e.getMessage());
+        } catch (SQLException e) {
+            System.out.println("Error al leer empleados locales: " + e.getMessage());
         }
         return lista;
     }
-    public static HashMap<String, Insumo> obtenerInventarioLocal(){
+
+    public static HashMap<String, Insumo> obtenerInventarioLocal() {
         HashMap<String, Insumo> inventario = new HashMap<>();
         String sql = "SELECT codigo, nombre, categoria, unidad_medida, stock_minimo, stock_maximo, estado FROM insumos_catalogo WHERE estado = 'Activo'";
 
-        try(Connection conn = getConexion();
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ResultSet rs = ps.executeQuery();
-        ){
-            while(rs.next()){
+        try (Connection conn = getConexion();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
                 String codigo = rs.getString("codigo");
                 String nombre = rs.getString("nombre");
                 String categoria = rs.getString("categoria");
@@ -247,9 +250,83 @@ public class ConexionSQLite {
                 Insumo i = new Insumo(codigo, nombre, categoria, unidad, 0.0, min, max, LocalDate.now().plusYears(1));
                 inventario.put(codigo, i);
             }
-        }catch(SQLException e){
-            System.out.println("Error al leer invetario local: "+e.getMessage());
+        } catch (SQLException e) {
+            System.out.println("Error al leer inventario local: " + e.getMessage());
         }
         return inventario;
+    }
+
+    public static ListaDE<Producto> obtenerMenuLocal() {
+        ListaDE<Producto> menu = new ListaDE<>();
+        String sql = "SELECT id_producto, nombre, precio, categoria, stock_directo, tiene_receta, imagen_base64, atributos_extra, estado FROM productos WHERE estado = 'Activo' ORDER BY id_producto";
+
+        try (Connection conn = getConexion();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                int id = rs.getInt("id_producto");
+                String nombre = rs.getString("nombre");
+                double precio = rs.getDouble("precio");
+                String categoria = rs.getString("categoria");
+                int stockDirecto = rs.getInt("stock_directo");
+                boolean tieneReceta = rs.getInt("tiene_receta") == 1;
+                String imagenBase64 = rs.getString("imagen_base64");
+                String jsonStr = rs.getString("atributos_extra");
+
+                if (imagenBase64 == null || imagenBase64.trim().isEmpty()) {
+                    imagenBase64 = "\\src\\main\\resources\\images\\default.png";
+                }
+
+                Producto nuevoProducto = new Producto(id, nombre, precio, categoria, stockDirecto, imagenBase64, rs.getString("estado"));
+
+                if (jsonStr != null && jsonStr.length() > 2) {
+                    String contenido = jsonStr.substring(1, jsonStr.length() - 1);
+                    String[] pares = contenido.split(",");
+
+                    for (String par : pares) {
+                        String[] claveValor = par.split(":");
+                        if (claveValor.length == 2) {
+                            String clave = claveValor[0].replace("\"", "").trim();
+                            String valor = claveValor[1].replace("\"", "").trim();
+                            nuevoProducto.agregarAtributo(clave, valor);
+                        }
+                    }
+                }
+
+                menu.insertarAlFinal(nuevoProducto);
+            }
+        } catch (SQLException e) {
+            System.err.println("❌ Error al leer el menú local: " + e.getMessage());
+        }
+        return menu;
+    }
+
+    // MÉTODO NUEVO AGREGADO: Para autenticar el Login si se corta el Internet
+    public static Empleado autenticarUsuarioLocal(String username, String passwordHash) {
+        String sql = "SELECT id_empleado, nombre, cargo, sueldo, username, estado FROM empleados WHERE username = ? AND password_hash = ? AND estado = 'Activo'";
+
+        try (Connection conn = getConexion();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, username);
+            ps.setString(2, passwordHash);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    Empleado emp = new Empleado();
+                    emp.setIdEmpleado(rs.getString("id_empleado"));
+                    emp.setNombre(rs.getString("nombre"));
+                    emp.setCargo(rs.getString("cargo"));
+                    emp.setSueldo(rs.getDouble("sueldo"));
+                    emp.setEstado(rs.getString("estado"));
+                    emp.setUsername(rs.getString("username"));
+                    return emp;
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("❌ Error en autenticación local SQLite: " + e.getMessage());
+        }
+        return null;
     }
 }
