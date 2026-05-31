@@ -1,16 +1,13 @@
 package Attizos.Backend.Database;
-import Attizos.Backend.Attizos.Admin;
-import Attizos.Backend.Attizos.Cajero;
-import Attizos.Backend.Attizos.Cocinero;
-import Attizos.Backend.Attizos.Usuario;
+import Attizos.Backend.Attizos.*;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 public class LoginDAO {
-    public static Usuario autenticarUsuario(String username, String password){
-        String sql = "SELECT id_empleado, nombre, cargo, sueldo, username FROM empleados WHERE username = ?  AND password_hash = ?";
+    public static Empleado autenticarUsuario(String username, String password){
+        String sql = "SELECT id_empleado, nombre, cargo, sueldo, username FROM empleados WHERE username = ?  AND password_hash = ? AND estado = 'Activo'";
 
         try(Connection con = ConexionBD.getConexion()){
             PreparedStatement ps = con.prepareStatement(sql);
@@ -25,14 +22,9 @@ public class LoginDAO {
                    String cargo = rs.getString("cargo");
                    double sueldo = rs.getDouble("sueldo");
                    String user = rs.getString("username");
+                   String estado = rs.getString("estado");
 
-                   if(cargo.equalsIgnoreCase("Administrador")){
-                       return new Admin(id, nombre, user, password, sueldo);
-                   }else if(cargo.equalsIgnoreCase("Cajero")){
-                       return new Cajero(id, nombre, sueldo, user, password);
-                   }else if(cargo.equalsIgnoreCase("Cocinero")){
-                       return new Cocinero(id, nombre, sueldo, user, password);
-                   }
+                   return new Empleado(id, nombre,cargo, sueldo,estado, user, password);
                }
             }
         }catch (SQLException e){
