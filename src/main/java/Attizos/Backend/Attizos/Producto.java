@@ -2,23 +2,30 @@ package Attizos.Backend.Attizos;
 
 
 import java.util.Map;
+import java.util.HashMap;
 
 public  class Producto
 {
-    protected int id;
-    protected String nombre;
-    protected double precio;
-    protected String categoria;
-    protected double stock;
-    protected Receta receta;
+    private int id;
+    private String nombre;
+    private double precio;
+    private String categoria;
+    private double stock;
+    private Receta receta;
+    private String imagenURL;
+    private String estado;
+    private Map<String, String> atributosDinamicos;
 
-    protected String imagenURL;
-    public Producto(int id, String nombre, double precio, String categoria, double stock, String imagenURL){
+    public Producto(){
+        this.atributosDinamicos = new HashMap<>();
+    }
+    public Producto(int id, String nombre, double precio, String categoria, double stock, String imagenURL, String estado){
         this.id = id;
         this.nombre = nombre;
         this.precio = precio;
         this.categoria = categoria;
         this.stock = stock;
+        this.estado = estado;
         this.receta = null;
 
         if(imagenURL == null || imagenURL.isEmpty()){
@@ -27,37 +34,46 @@ public  class Producto
             this.imagenURL = imagenURL;
         }
     }
-    public int getId(){
-        return id;
+    public void agregarAtributo(String clave, String valor){
+        this.atributosDinamicos.put(clave, valor);
     }
-    public String getNombre(){
-    return nombre;
-}
-    public double getPrecio(){
-        return precio;
+    public String getAtributo(String clave){
+        return this.atributosDinamicos.getOrDefault(clave, "");
     }
-    public String getCategoria(){
-        return categoria;
-    }
-    public double getStock(){
-        return stock;
+    public  Map<String, String> getAtributosDinamicos() {
+        return atributosDinamicos;
     }
 
-    public void setPrecio(double precio){this.precio = precio;}
+    public int getId() { return id; }
+    public void setId(int id) { this.id = id; }
 
-    public void setStock(double stock){this.stock = stock;}
+    public String getNombre() { return nombre; }
+    public void setNombre(String nombre) { this.nombre = nombre; }
 
-    public Receta getReceta(){
-        return receta;
-    }
-    public void setReceta(Receta receta){
-        this.receta = receta;
-    }
-    public boolean tieneReceta(){
+    public double getPrecio() { return precio; }
+    public void setPrecio(double precio) { this.precio = precio; }
+
+    public String getCategoria() { return categoria; }
+    public void setCategoria(String categoria) { this.categoria = categoria; }
+
+    public double getStock() { return stock; }
+    public void setStock(double stock) { this.stock = stock; }
+
+    public String getImagenURL() { return imagenURL; }
+    public void setImagenURL(String imagenURL) { this.imagenURL = imagenURL; }
+
+    public String getEstado() { return estado; }
+    public void setEstado(String estado) { this.estado = estado; }
+
+    public Receta getReceta() { return receta; }
+    public void setReceta(Receta receta) { this.receta = receta; }
+
+    public boolean tieneReceta() {
         return this.receta != null && !this.receta.esVacia();
     }
-    public void setStock(Double stock) {
-        this.stock = stock;
+
+    public void aumentarStock(int cantidad){
+        this.stock += cantidad;
     }
     public boolean reducirStock(int cantidad){
         if(this.stock >= cantidad){
@@ -66,61 +82,33 @@ public  class Producto
         }
         return false;
     }
-
-    public void setId(int id) {
-        this.id = id;
-    }
-
-    public String getImagenURL() {
-        return imagenURL;
-    }
-
-    public void setImagenURL(String imagenURL) {
-        this.imagenURL = imagenURL;
-    }
-
-    public void setNombre(String nombre) {
-        this.nombre = nombre;
-    }
-
-    public void setCategoria(String categoria) {
-        this.categoria = categoria;
-    }
-
-    public void aumentarStock(int cantidad){
-        this.stock += cantidad;
-    }
-    @Override
-    public String toString() {
-        return String.format("ID: %-4d | %-15s | %-10s | Bs. %-8.2f | Stock: %-6.2f",
-                id, nombre, categoria, precio, stock);
-    }
-    public int calcularDisponibilidad(Inventario inventario){
-        if(!tieneReceta()){
+    public int calcularDisponibilidad(Inventario inventario) {
+        if (!tieneReceta()) {
             return (int) this.stock;
         }
         Receta r = this.getReceta();
         int maxPlatosPosibles = Integer.MAX_VALUE;
-        for(Map.Entry<String, Double> entry : r.getIngredientes().entrySet()){
+
+        for (Map.Entry<String, Double> entry : r.getIngredientes().entrySet()) {
             String codInsumoBase = entry.getKey();
             double cantNecesariaPorPlato = entry.getValue();
             double stockValido = 0;
-            for(Insumo i : inventario.getInventarioInsumos().values()){
-                if((i.getCodigo().equals(codInsumoBase) || i.getCodigo().startsWith(codInsumoBase + "-L")) && !i.isVencido()){
+
+            for (Insumo i : inventario.getInventarioInsumos().values()) {
+                if ((i.getCodigo().equals(codInsumoBase) || i.getCodigo().startsWith(codInsumoBase + "-L")) && !i.isVencido()) {
                     stockValido += i.getStockActual();
                 }
             }
             int porciones = (int) (stockValido / cantNecesariaPorPlato);
 
-            if(porciones < maxPlatosPosibles){
+            if (porciones < maxPlatosPosibles) {
                 maxPlatosPosibles = porciones;
             }
         }
         return maxPlatosPosibles == Integer.MAX_VALUE ? 0 : maxPlatosPosibles;
     }
-    public void mostrarDetalles(){
-        System.out.println("\n📦 DETALLES: " + getNombre());
-        System.out.println("   Categoría: " + getCategoria());
-        System.out.println("   Precio: Bs. " + getPrecio());
+    @Override
+    public String toString(){
+        return nombre + "- Bs. "+precio;
     }
 }
