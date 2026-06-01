@@ -71,8 +71,8 @@ public class EmpleadosController {
 
         colUsername.setCellValueFactory(cellData -> {
             Empleado emp = cellData.getValue();
-            if (emp instanceof Usuario) {
-                return new SimpleStringProperty(((Usuario) emp).getUsername());
+            if (emp.getUsername() != null && !emp.getUsername().trim().isEmpty()) {
+                return new SimpleStringProperty(emp.getUsername());
             } else {
                 return new SimpleStringProperty("N/A");
             }
@@ -91,7 +91,7 @@ public class EmpleadosController {
                 String lowerCaseFilter = newValue.toLowerCase();
 
                 if (emp.getNombre().toLowerCase().contains(lowerCaseFilter)) return true;
-                if (emp.getId().toLowerCase().contains(lowerCaseFilter)) return true;
+                if (emp.getIdEmpleado().toLowerCase().contains(lowerCaseFilter)) return true;
                 if (emp.getCargo().toLowerCase().contains(lowerCaseFilter)) return true;
 
                 return false;
@@ -140,36 +140,22 @@ public class EmpleadosController {
                 mostrarAlerta("ID Duplicado", "Ya existe un empleado registrado con el CI/ID: " + id);
                 return;
             }
-            Empleado nuevoEmpleado;
+            Empleado nuevoEmpleado = new Empleado();
+            nuevoEmpleado.setIdEmpleado(id);
+            nuevoEmpleado.setNombre(nombre);
+            nuevoEmpleado.setCargo(cargo);
+            nuevoEmpleado.setSueldo(sueldo);
+            nuevoEmpleado.setEstado("Activo");
 
-            if (cargo.equalsIgnoreCase("Administrador")) {
+            if(cargo.equalsIgnoreCase("Administrador") || cargo.equalsIgnoreCase("Cajero") || cargo.equalsIgnoreCase("Cocinero")){
                 String user = txtUsername.getText().trim();
                 String pass = txtPassword.getText().trim();
-                if (user.isEmpty() || pass.isEmpty()) {
-                    mostrarAlerta("Faltan Credenciales", "Un Administrador necesita Usuario y Contraseña.");
+                if(user.isEmpty() || pass.isEmpty()){
+                    mostrarAlerta("Faltan Credenciales", "Debe asignar un usuario y contraseña.");
                     return;
                 }
-                nuevoEmpleado = new Admin(id, nombre, user, pass, sueldo);
-
-            } else if (cargo.equalsIgnoreCase("Cajero")) {
-                String user = txtUsername.getText().trim();
-                String pass = txtPassword.getText().trim();
-                if (user.isEmpty() || pass.isEmpty()) {
-                    mostrarAlerta("Faltan Credenciales", "Un Cajero necesita Usuario y Contraseña.");
-                    return;
-                }
-                nuevoEmpleado = new Cajero(id, nombre, sueldo, user, pass);
-
-            } else if(cargo.equalsIgnoreCase("Cocinero")) {
-                String user = txtUsername.getText().trim();
-                String pass = txtPassword.getText().trim();
-                if (user.isEmpty() || pass.isEmpty()) {
-                    mostrarAlerta("Faltan Credenciales", "Un Cocinero necesita Usuario y Contraseña.");
-                    return;
-                }
-                nuevoEmpleado = new Cocinero(id, nombre, sueldo, user, pass);
-            }else{
-                nuevoEmpleado = new Empleado(id,nombre,cargo,sueldo);
+                nuevoEmpleado.setUsername(user);
+                nuevoEmpleado.setPasswordHash(pass);
             }
             boolean guardadoDB = EmpleadoDAO.insertarEmpleado(nuevoEmpleado);
             if(guardadoDB) {
@@ -196,11 +182,11 @@ public class EmpleadosController {
             DialogoPersonalizado.mostrarDialogo("Confirmar Despido", "Cuidado: Va a eliminar al empleado " + despedido.getNombre(), "Escriba 'SI' para confirmar el despido:", "")
                     .ifPresent(respuesta -> {
                         if (respuesta.trim().equalsIgnoreCase("SI")) {
-                            boolean eliminadoDB = EmpleadoDAO.eliminarEmpleado(despedido.getId());
+                            boolean eliminadoDB = EmpleadoDAO.eliminarEmpleado(despedido.getIdEmpleado());
                             if(eliminadoDB) {
                                 masterData.remove(index);
                                 if (App.attizos != null) {
-                                    App.attizos.eliminarEmpleado(despedido.getId());
+                                    App.attizos.eliminarEmpleado(despedido.getIdEmpleado());
                                     String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
                                     App.registrarAuditoria(operador, "Empleado", despedido.getNombre(), "Despido", 0, "Despedir un empleado");
                                 }
@@ -233,9 +219,8 @@ public class EmpleadosController {
 
     private void cargarEmpleados() {
         masterData.clear();
-        List<Empleado> listaDB = EmpleadoDAO.obtenerEmpleadosActivos();
-        if(listaDB != null){
-            masterData.addAll(listaDB);
+        if(App.attizos != null && App.attizos.getEmpleados() != null){
+            masterData.addAll(App.attizos.getEmpleados());
         }
         masterData.sort(Comparator.comparing(Empleado::getCargo));
     }
@@ -247,14 +232,14 @@ public class EmpleadosController {
             mostrarAlerta("Selección requerida", "Primero seleccione un empleado de la tabla para editar.");
             return;
         }
-        txtId.setText(String.valueOf(seleccionado.getId()));
+        txtId.setText(String.valueOf(seleccionado.getIdEmpleado()));
         txtNombre.setText(seleccionado.getNombre());
         txtSueldo.setText(String.valueOf(seleccionado.getSueldo()));
         cmbCargo.setValue(seleccionado.getCargo());
 
-        if (seleccionado instanceof Usuario) {
-            txtUsername.setText(((Usuario) seleccionado).getUsername());
-            txtPassword.setText(((Usuario) seleccionado).getPassword());
+        if (seleccionado.getUsername() != null && !seleccionado.getUsername().trim().isEmpty()) {
+            txtUsername.setText(seleccionado.getUsername());
+            txtPassword.setText(seleccionado.getPasswordHash());
             txtUsername.setDisable(false);
             txtPassword.setDisable(false);
         } else {
@@ -288,40 +273,27 @@ public class EmpleadosController {
                 return;
             }
 
-            Empleado empleadoActualizado;
+            Empleado empleadoActualizado = new Empleado();
+            empleadoActualizado.setIdEmpleado(id);
+            empleadoActualizado.setNombre(nombre);
+            empleadoActualizado.setCargo(cargo);
+            empleadoActualizado.setSueldo(sueldo);
+            empleadoActualizado.setEstado("Activo");
 
-            if (cargo.equalsIgnoreCase("Administrador")) {
+            if (cargo.equalsIgnoreCase("Administrador") || cargo.equalsIgnoreCase("Cajero") || cargo.equalsIgnoreCase("Cocinero")) {
                 String user = txtUsername.getText().trim();
                 String pass = txtPassword.getText().trim();
                 if (user.isEmpty() || pass.isEmpty()) {
-                    mostrarAlerta("Faltan Credenciales", "Debe asignar un usuario y contraseña.");
+                    mostrarAlerta("Faltan Credenciales", "Debe asignar un usuario y contraseña para ese cargo.");
                     return;
                 }
-                empleadoActualizado = new Admin(id, nombre, user, pass, sueldo);
-
-            } else if (cargo.equalsIgnoreCase("Cajero")) {
-                String user = txtUsername.getText().trim();
-                String pass = txtPassword.getText().trim();
-                if (user.isEmpty() || pass.isEmpty()) {
-                    mostrarAlerta("Faltan Credenciales", "Debe asignar un usuario y contraseña.");
-                    return;
-                }
-                empleadoActualizado = new Cajero(id, nombre, sueldo, user, pass);
-            }else if(cargo.equalsIgnoreCase("Cocinero")){
-                String user = txtUsername.getText().trim();
-                String pass = txtPassword.getText().trim();
-                if (user.isEmpty() || pass.isEmpty()) {
-                    mostrarAlerta("Faltan Credenciales", "Debe asignar un usuario y contraseña.");
-                    return;
-                }
-                empleadoActualizado = new Cocinero(id, nombre, sueldo, user, pass);
-            } else {
-                empleadoActualizado = new Empleado(id, nombre, cargo, sueldo);
+                empleadoActualizado.setUsername(user);
+                empleadoActualizado.setPasswordHash(pass);
             }
             boolean actualizadoDB = EmpleadoDAO.actualizarEmpleado(empleadoActualizado);
             if(actualizadoDB) {
                 for(int i = 0; i < masterData.size(); i++){
-                    if(masterData.get(i).getId().equals(id)){
+                    if(masterData.get(i).getIdEmpleado().equals(id)){
                         masterData.set(i, empleadoActualizado);
                         break;
                     }
