@@ -1,4 +1,5 @@
 package Attizos.Frontend;
+
 import Attizos.Backend.Attizos.*;
 import Attizos.Backend.Database.RecetaDAO;
 import javafx.collections.FXCollections;
@@ -11,9 +12,9 @@ import javafx.stage.Stage;
 
 import java.util.Map;
 import java.util.Optional;
+
 public class EditarRecetaController {
-    private double xOffset = 0;
-    private double yOffset = 0;
+
     @FXML private javafx.scene.layout.AnchorPane rootPane;
     @FXML private Label lblTituloProducto;
     @FXML private ComboBox<Insumo> cmbInsumos;
@@ -21,6 +22,10 @@ public class EditarRecetaController {
     @FXML private TableView<ProductosController.DetalleRecetaUI> tablaReceta;
     @FXML private TableColumn<ProductosController.DetalleRecetaUI, String> colInsumo;
     @FXML private TableColumn<ProductosController.DetalleRecetaUI, Double> colCantidad;
+    @FXML private Button btnCancelar;
+
+    private double xOffset = 0;
+    private double yOffset = 0;
 
     private Producto productoEdicion;
     private ObservableList<ProductosController.DetalleRecetaUI> listaReceta = FXCollections.observableArrayList();
@@ -31,13 +36,36 @@ public class EditarRecetaController {
         colCantidad.setCellValueFactory(new PropertyValueFactory<>("cantidad"));
         tablaReceta.setItems(listaReceta);
 
-        
         if (App.attizos.getInventario() != null) {
             cmbInsumos.setItems(FXCollections.observableArrayList(App.attizos.getInventario().getInventarioInsumos().values()));
         }
-        
+
+        cmbInsumos.setButtonCell(new ListCell<Insumo>() {
+            @Override
+            protected void updateItem(Insumo item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText("Seleccione insumo...");
+                } else {
+                    setText(item.getNombre());
+                }
+            }
+        });
+        cmbInsumos.setCellFactory(lv -> new ListCell<Insumo>() {
+            @Override
+            protected void updateItem(Insumo item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                } else {
+                    setText(item.getNombre());
+                }
+            }
+        });
+
         configurarMenuContextual();
         UtilidadesUI.saltarConEnter(txtCantidad, cmbInsumos);
+
         if (rootPane != null) {
             rootPane.setOnMousePressed(event -> {
                 xOffset = event.getSceneX();
@@ -50,11 +78,12 @@ public class EditarRecetaController {
             });
         }
     }
+
     public void inicializarDatos(Producto producto) {
         this.productoEdicion = producto;
         lblTituloProducto.setText("Receta de: " + producto.getNombre());
 
-        // Cargamos los ingredientes actuales
+        // Cargamos los ingredientes actuales desde la memoria RAM (Velocidad Extrema)
         if (producto.getReceta() != null) {
             for (Map.Entry<String, Double> entry : producto.getReceta().getIngredientes().entrySet()) {
                 Insumo ins = App.attizos.getInventario().buscarInsumo(entry.getKey());
@@ -64,6 +93,7 @@ public class EditarRecetaController {
             }
         }
     }
+
     @FXML
     void agregarIngrediente(ActionEvent event) {
         Insumo insumoSel = cmbInsumos.getValue();
@@ -87,6 +117,7 @@ public class EditarRecetaController {
             AlertaPersonalizada.mostrarAlerta("Error", "Cantidad inválida.", Alert.AlertType.ERROR);
         }
     }
+
     @FXML
     void guardarCambios(ActionEvent event) {
         if (listaReceta.isEmpty()) {
@@ -95,8 +126,8 @@ public class EditarRecetaController {
         }
 
         Optional<ButtonType> respuesta = DialogoPersonalizado.mostrarDialogoConfirmacion(
-                "Confirmar Cambios", 
-                "¿Está seguro de sobreescribir la receta de " + productoEdicion.getNombre() + "?", 
+                "Confirmar Cambios",
+                "¿Está seguro de sobreescribir la receta de " + productoEdicion.getNombre() + "?",
                 "Esta acción afectará los cálculos de stock para futuras ventas."
         );
 
@@ -107,12 +138,12 @@ public class EditarRecetaController {
             }
 
             boolean exito = RecetaDAO.guardarReceta(productoEdicion.getId(), nuevaReceta);
-            
+
             if (exito) {
                 productoEdicion.setReceta(nuevaReceta);
                 String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
                 App.registrarAuditoria(operador, "Receta", productoEdicion.getNombre(), "Actualización", 0, "Receta modificada vía Modal");
-                
+
                 AlertaPersonalizada.mostrarAlerta("Éxito", "Receta actualizada correctamente.", Alert.AlertType.INFORMATION);
                 cerrarVentana();
             } else {
@@ -120,6 +151,7 @@ public class EditarRecetaController {
             }
         }
     }
+
     @FXML
     void cancelar(ActionEvent event) {
         cerrarVentana();
@@ -129,7 +161,6 @@ public class EditarRecetaController {
         Stage stage = (Stage) btnCancelar.getScene().getWindow();
         stage.close();
     }
-    @FXML private Button btnCancelar;
 
     private void configurarMenuContextual() {
         ContextMenu contextMenu = new ContextMenu();
