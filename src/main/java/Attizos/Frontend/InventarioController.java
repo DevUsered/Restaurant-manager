@@ -110,7 +110,7 @@ public class InventarioController {
         categoriasUnicas.add("Todas las categorías");
 
         List<String> alertas = new ArrayList<>();
-        HashMap<String, Insumo> inventarioFresco = InsumoDAO.obtenerInventarioActivo();
+        HashMap<String, Insumo> inventarioFresco = App.attizos.getInventario().getInventarioInsumos();
 
         if (inventarioFresco != null && !inventarioFresco.isEmpty()){
             for (Insumo i : inventarioFresco.values()) {

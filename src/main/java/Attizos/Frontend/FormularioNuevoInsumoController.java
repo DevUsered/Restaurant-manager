@@ -51,7 +51,7 @@ public class FormularioNuevoInsumoController {
         });
         cmbUnidad.getItems().addAll("g", "kg", "ml", "lt", "und", "paquete", "lb", "oz");
         Set<String> categoriasUnicas = new HashSet<>();
-        HashMap<String, Insumo> invetarioDB = InsumoDAO.obtenerInventarioActivo();
+        HashMap<String, Insumo> invetarioDB = App.attizos.getInventario().getInventarioInsumos();
         if (invetarioDB != null) {
             for (Insumo i : invetarioDB.values()) {
                 categoriasUnicas.add(i.getCategoria());
@@ -88,7 +88,7 @@ public class FormularioNuevoInsumoController {
                 mostrarError("Por favor, llene al menos Código, Nombre y Unidad.");
                 return;
             }
-            HashMap<String, Insumo> inventarioActual = InsumoDAO.obtenerInventarioActivo();
+            HashMap<String, Insumo> inventarioActual = App.attizos.getInventario().getInventarioInsumos();
             if (inventarioActual.containsKey(cod)) {
                 mostrarError("El código '" + cod + "' ya está registrado en el inventario.");
                 return;
