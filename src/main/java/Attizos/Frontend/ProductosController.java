@@ -439,6 +439,7 @@ public class ProductosController {
                                         RecetaDAO.guardarReceta(nuevo.getId(), nuevo.getReceta());
                                     }
                                     ReportesDAO.registrarEgreso("Compra Inicial: "+ nuevo.getNombre(), costoTotal);
+                                    App.attizos.getMenu().insertarAlFinal(nuevo);
                                     String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
                                     App.registrarAuditoria(operador, "Producto", nuevo.getNombre(), "Creación", cant, "Nuevo producto con stock inicial");
                                     cargarMenu();

@@ -158,6 +158,7 @@ public class FormularioNuevoInsumoController {
                 if(costo > 0){
                     ReportesDAO.registrarEgreso("Stock Inicial Catálogo: "+nom, costo);
                 }
+                App.attizos.getInventario().getInventarioInsumos().put(nuevo.getCodigo(), nuevo);
                 String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
                 App.registrarAuditoria(
                         operador,

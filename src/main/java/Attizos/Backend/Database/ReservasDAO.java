@@ -16,7 +16,7 @@ public class ReservasDAO {
         String sqlLimpieza = "UPDATE reservas SET estado = 'Expirada' " +
                 "WHERE estado = 'Pendiente' AND fecha_hora < (CURRENT_TIMESTAMP - INTERVAL '15 minutes')";
         String sqlSelect = "SELECT id_reserva, nombre_cliente, telefono, cantidad_personas, fecha_hora, observaciones, estado "+
-                "FROM reservas WHERE estado = 'Pendiente' ORDER BY fecha_order ASC";
+                "FROM reservas WHERE estado = 'Pendiente' ORDER BY fecha_hora ASC";
         try(Connection con = ConexionBD.getConexion()){
             try(Statement st = con.createStatement()){
                 st.executeUpdate(sqlLimpieza);
