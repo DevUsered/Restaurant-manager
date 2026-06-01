@@ -66,11 +66,10 @@ public class ProductosController {
     // Campos dinámicos
     private ComboBox<String> cmbTamanoPizza = new ComboBox<>(FXCollections.observableArrayList("Personal", "Mediana", "Familiar", "Gigante"));
     private CheckBox chkExtraQueso = new CheckBox("¿Lleva Extra Queso?");
-    private ComboBox<TamanoBebida> cmbTamanoBebida = new ComboBox<>(FXCollections.observableArrayList(TamanoBebida.values()));
+    private ComboBox<String> cmbTamanoBebida = new ComboBox<>(FXCollections.observableArrayList("Personal", "Mediana", "Familiar", "Litro", "2 Litros", "3 Litros"));
     private TextField txtTipoBebida = new TextField();
     private TextField txtSalsaPasta = new TextField();
 
-    // NUEVO CHECKBOX PARA "OTRO"
     private CheckBox chkTieneRecetaOtro = new CheckBox("¿Se prepara en cocina (Tiene ingredientes)?");
 
     @FXML
@@ -242,7 +241,7 @@ public class ProductosController {
                 return new SimpleStringProperty(String.valueOf((int) p.getStock()));
             }
         });
-        colTipo.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().getClass().getSimpleName()));
+        colTipo.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().getCategoria()));
 
         filteredData = new FilteredList<>(masterData, p -> true);
         tablaMenu.setItems(filteredData);
@@ -376,8 +375,8 @@ public class ProductosController {
                 }
             }
 
-            String tipo = cmbTipoClase.getValue();
-            if (tipo == null) { mostrarAlerta("Error", "Debe seleccionar un tipo de producto."); return; }
+            String tipoVisual = cmbTipoClase.getValue();
+            if (tipoVisual == null) { mostrarAlerta("Error", "Debe seleccionar un tipo de producto."); return; }
 
             int stock = 0;
             if (vboxStock.isVisible() && !txtStock.getText().isEmpty()) {
@@ -386,7 +385,7 @@ public class ProductosController {
                     mostrarAlerta("Error", "El stock no puede ser negativo."); return;
                 }
             }
-            String cat = tipo.equals("Otro") && cmbCategoria.getValue() != null ? cmbCategoria.getValue() : tipo;
+            String cat = tipoVisual.equals("Otro") && cmbCategoria.getValue() != null ? cmbCategoria.getValue() : tipoVisual;
 
             String stringBase64 = "default.png";
             if (archivoImagenSeleccionada != null) {
@@ -401,14 +400,22 @@ public class ProductosController {
                 recetaTemporal.clear();
             }
 
-            Producto nuevo;
-            switch (tipo) {
-                case "Pizza" -> nuevo = new Pizza(0, nombre, precio, cat, stringBase64 , cmbTamanoPizza.getValue(), "", chkExtraQueso.isSelected());
-                case "Bebida" -> nuevo = new Bebida(0, nombre, precio, cat, stock, stringBase64, cmbTamanoBebida.getValue(), txtTipoBebida.getText());
-                case "Pasta" -> nuevo = new Pasta(0, nombre, precio, cat, stringBase64, "", txtSalsaPasta.getText());
-                case "Calzone" -> nuevo = new Calzone(0, nombre, precio, cat, stringBase64, "");
-                case "Postre" -> nuevo = new Postre(0, nombre, precio, cat, stringBase64, "Normal", "Dulce", "Postre");
-                default -> nuevo = new Producto(0, nombre, precio, cat, stock, stringBase64);
+            Producto nuevo = new Producto(0, nombre, precio, cat, stock, stringBase64,"Activo");
+            switch (tipoVisual) {
+                case "Pizza" -> {
+                    if (cmbTamanoPizza.getValue() != null) nuevo.agregarAtributo("tamano", cmbTamanoPizza.getValue());
+                    nuevo.agregarAtributo("extra_queso", String.valueOf(chkExtraQueso.isSelected()));
+                }
+                case "Bebida" -> {
+                    if (cmbTamanoBebida.getValue() != null) nuevo.agregarAtributo("tamano", cmbTamanoBebida.getValue());
+                    if (!txtTipoBebida.getText().isEmpty()) nuevo.agregarAtributo("tipo", txtTipoBebida.getText());
+                }
+                case "Pasta" -> {
+                    if (!txtSalsaPasta.getText().isEmpty()) nuevo.agregarAtributo("salsa", txtSalsaPasta.getText());
+                }
+                case "Postre" -> {
+                    nuevo.agregarAtributo("tipo", "Postre Dulce"); // Ejemplo
+                }
             }
 
             if (usaReceta) {
@@ -563,28 +570,23 @@ public class ProductosController {
                     }else {
                         boolean eliminadoDB = ProductoDAO.eliminarProducto(sel.getId());
                         if (eliminadoDB) {
-                        String nombreImagen = sel.getImagenURL();
-                        if (nombreImagen != null && !nombreImagen.equals("default.png")) {
-                            File archivoFisico = new File("src/main/resources/images/Productos" + nombreImagen);
-                            if (archivoFisico.exists()) {
-                                archivoFisico.delete();
-                            }
+                            String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
+                            App.registrarAuditoria(operador, "Producto", sel.getNombre(), "Eliminación Lógica", sel.getStock(), motivo);
+                            cargarMenu();
+                            mostrarExito("Eliminado", "Producto dado de baja. Ya no aparecerá en el menú.\nMotivo: " + motivo);
                         }
-                        String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
-                        App.registrarAuditoria(operador, "Producto", sel.getNombre(), "Eliminación", sel.getStock(), motivo);
-                        cargarMenu();
-                        mostrarExito("Eliminado", "Producto dado de baja permanentemente.\nMotivo: " + motivo);
-                    }
                     }
                 });
     }
     private void cargarMenu() {
         masterData.clear();
-        ListaDE<Producto> menuDB = ProductoDAO.obtenerMenuCompleto();
+        ListaDE<Producto> menuDB = App.attizos.getMenu();
         if(menuDB != null) {
             NodoDE<Producto> act = menuDB.getCabeza();
             while (act != null) {
-                masterData.add(act.getDato());
+                if(act.getDato().getEstado() != null && act.getDato().getEstado().equals("Activo")) {
+                    masterData.add(act.getDato());
+                }
                 act = act.getSiguiente();
             }
         }
@@ -592,7 +594,7 @@ public class ProductosController {
 
     private void cargarInsumos() {
         masterInsumos.clear();
-        HashMap<String, Insumo> inventarioDB = InsumoDAO.obtenerInventarioActivo();
+        HashMap<String, Insumo> inventarioDB = App.attizos.getInventario().getInventarioInsumos();
         if(inventarioDB != null){
             List<Insumo> insumos = inventarioDB.values().stream()
                     .sorted(Comparator.comparing(Insumo::getNombre, String.CASE_INSENSITIVE_ORDER))
