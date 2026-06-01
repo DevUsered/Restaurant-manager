@@ -13,24 +13,18 @@ public class Restaurante
     private ListaDE<Producto> menu;
     private Inventario inventario;
     private ArrayList<Empleado> empleados;
-    private ListaDE<Reserva> reservas = new ListaDE<>();
-    private ListaDE<Pedido> colaPedidos = new ListaDE<>();
-    private ListaDE<Factura> historialVentas;
-    private ListaDE<Egreso> expenseHistory;
-    private ListaDE<RegistroAuditoria> historialAuditoria;
+    private ListaDE<Reserva> reservas;
+    private ListaDE<Pedido> colaPedidos;
 
     private HashMap<Integer, HashMap<String, Double>> lotesConsumidosPorPedido;
 
     public Restaurante(String nombre){
         this.nombre = nombre;
-        inventario = new Inventario(nombre);
-        menu = new ListaDE<Producto>();
-        empleados = new ArrayList<Empleado>();
+        this.inventario = new Inventario(nombre);
+        this.menu = new ListaDE<Producto>();
+        this.empleados = new ArrayList<Empleado>();
         this.reservas = new ListaDE<>();
         this.colaPedidos = new ListaDE<>();
-        this.historialVentas = new ListaDE<>();
-        this.expenseHistory = new ListaDE<>();
-        this.historialAuditoria = new ListaDE<>();
         this.lotesConsumidosPorPedido = new HashMap<>();
     }
     public void agregarProducto(Producto nuevo) {
@@ -42,16 +36,6 @@ public class Restaurante
         NodoDE<Producto> aux = menu.getCabeza();
         while (aux != null) {
             if (aux.getDato().getId() == id) {
-                return aux.getDato();
-            }
-            aux = aux.getSiguiente();
-        }
-        return null;
-    }
-    public Producto buscarPorNombre(String nombre) {
-        NodoDE<Producto> aux = menu.getCabeza();
-        while (aux != null) {
-            if (aux.getDato().getNombre().equalsIgnoreCase(nombre)) {
                 return aux.getDato();
             }
             aux = aux.getSiguiente();
@@ -95,26 +79,15 @@ public class Restaurante
             empleados.add(nuevoEmpleado);
         }
     }
-    public Usuario autenticarEmpleado(String username, String password){
+    public Empleado autenticarEmpleado(String username, String password){
         for(Empleado emp : empleados){
-            if(emp instanceof Usuario){
-                Usuario user = (Usuario) emp;
-                if(user.login(username,password)){
-                    return user;
+            if(emp.getUsername() != null && emp.getUsername().equals(username)){
+                if(emp.getPasswordHash() != null && emp.getPasswordHash().equals(password)){
+                    return emp;
                 }
             }
         }
         return null;
-    }
-    public void mostrarPlanillaEmpleados(){
-        System.out.println("\n---PLANILLA DE EMPLEADOS---");
-        double totalSueldos = 0;
-        for(Empleado emp : empleados){
-            System.out.println(emp);
-            totalSueldos += emp.getSueldo();
-        }
-        System.out.println("----------------------------");
-        System.out.println("Total en sueldos: Bs." + totalSueldos);
     }
     public void agregarReserva(Reserva r) {
         reservas.insertarAlFinal(r);
@@ -137,7 +110,6 @@ public class Restaurante
             }
             aux = aux.getSiguiente();
         }
-        //3. Obtener el día del mes(ZZ)
         int diaMes = fechaReserva.getDayOfMonth();
         return String.format("%s%03d%02d",letraDia,correlativoMes,diaMes);
     }
@@ -206,33 +178,7 @@ public class Restaurante
         }
         return false;
     }
-    public void mostrarMenuCompleto() {
-        System.out.println("\n===============================================================");
-        System.out.println("                   MENÚ COMPLETO - " + nombre);
-        System.out.println("===============================================================");
-        System.out.printf("%-5s | %-20s | %-12s | %-8s | %-10s\n",
-                "ID", "PRODUCTO", "CATEGORÍA", "PRECIO", "STOCK/TIPO");
-        System.out.println("---------------------------------------------------------------");
-
-        NodoDE<Producto> aux = menu.getCabeza();
-        if (aux == null) {
-            System.out.println("                  (El menú está vacío)                         ");
-        } else {
-            while (aux != null) {
-                Producto p = aux.getDato();
-
-                // Verificamos si usa inventario o stock directo
-                String infoStock = p.tieneReceta() ? "Con Receta" : String.format("%.2f und", p.getStock());
-
-                System.out.printf("%-5d | %-20.20s | %-12.12s | Bs.%-5.2f | %-10s\n",
-                        p.getId(), p.getNombre(), p.getCategoria(), p.getPrecio(), infoStock);
-                aux = aux.getSiguiente();
-            }
-        }
-        System.out.println("===============================================================");
-    }
     public void registrarVentaFinalizada(Factura f){
-        historialVentas.insertarAlFinal(f);
         NodoDE<DetalleFactura> ac = f.getDetalles().getCabeza();
 
         HashMap<String, Double> consumoExactoDeEstaFactura = new HashMap<>();
@@ -240,7 +186,7 @@ public class Restaurante
             DetalleFactura df = ac.getDato();
             Producto p = df.getProducto();
             int cantVendida = df.getCantidad();
-            if(p.tieneReceta()){
+            if(p.tieneReceta() && p.getReceta() != null){
                 for(Map.Entry<String, Double> entry : p.getReceta().getIngredientes().entrySet()){
                     String codigoInsumo = entry.getKey();
                     double cantidadNecesaria = entry.getValue() * cantVendida;
@@ -250,10 +196,7 @@ public class Restaurante
                             stockAntes.put(i.getCodigo(), i.getStockActual());
                         }
                     }
-                    boolean exito = inventario.consumirInsumoFEFO(codigoInsumo, cantidadNecesaria);
-                    if(!exito){
-                        System.out.println("⚠️ ALERTA CRÍTICA: Faltó stock en almacén para el insumo " + codigoInsumo);
-                    }
+                    inventario.consumirInsumoFEFO(codigoInsumo, cantidadNecesaria);
                     for(String codLote : stockAntes.keySet()){
                         Insumo i = inventario.buscarInsumo(codLote);
                         double scockDespues = (i != null) ? i.getStockActual() : 0.0;
@@ -267,22 +210,9 @@ public class Restaurante
             }else{
                 p.reducirStock(cantVendida);
             }
-            String operador = App.usuarioLogueado.getUsername();
-            this.registrarAuditoria(operador, "Producto", p.getNombre(), "Venta", cantVendida, "Factura N° " + f.getNumeroFactura());
             ac = ac.getSiguiente();
         }
         lotesConsumidosPorPedido.put(f.getNumeroFactura(), consumoExactoDeEstaFactura);
-    }
-    public boolean anularFacturaFinanciera(int numeroFactura){
-        NodoDE<Factura> actual = historialVentas.getCabeza();
-        while(actual != null) {
-            if (actual.getDato().getNumeroFactura() == numeroFactura) {
-                historialVentas.eliminarPorValor(actual.getDato());
-                return true;
-            }
-            actual = actual.getSiguiente();
-        }
-        return false;
     }
     public Inventario getInventario() {
         return inventario;
@@ -293,16 +223,13 @@ public class Restaurante
     public String getNombre() {
         return nombre;
     }
-    public ListaDE<Factura> getHistorialVentas() {
-        return historialVentas;
-    }
     public ArrayList<Empleado> getEmpleados() {
         return empleados;
     }
 
     public Empleado buscarEmpleado(String id){
         for(Empleado emp : empleados){
-            if(emp.getId().equalsIgnoreCase(id)){
+            if(emp.getIdEmpleado().equalsIgnoreCase(id)){
                 return emp;
             }
         }
@@ -312,7 +239,7 @@ public class Restaurante
         Iterator<Empleado> iterador = empleados.iterator();
         while (iterador.hasNext()) {
             Empleado emp = iterador.next();
-            if (emp.getId().equalsIgnoreCase(id)) {
+            if (emp.getIdEmpleado().equalsIgnoreCase(id)) {
                 iterador.remove();
                 return true;
             }
@@ -329,18 +256,5 @@ public class Restaurante
             auxId = auxId.getSiguiente();
         }
         return idGenerado;
-    }
-    public void registerExpense(Egreso egreso){
-        expenseHistory.insertarAlFinal(egreso);
-    }
-    public ListaDE<Egreso> getExpenseHistory() {
-        return expenseHistory;
-    }
-    public void registrarAuditoria(String operador, String tipoArea, String nombreItem, String accion, double cantidad, String motivo){
-        RegistroAuditoria log = new RegistroAuditoria(operador, tipoArea, nombreItem, accion, cantidad, motivo);
-        historialAuditoria.insertarAlFinal(log);
-    }
-    public ListaDE<RegistroAuditoria> getHistorialAuditoria() {
-        return historialAuditoria;
     }
 }
