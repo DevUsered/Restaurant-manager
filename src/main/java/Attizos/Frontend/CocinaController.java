@@ -40,14 +40,16 @@ public class CocinaController {
 
     @FXML
     public void initialize() {
-        if((App.usuarioLogueado instanceof Cajero) || (App.usuarioLogueado instanceof Admin)){
-            btnCerrar.setVisible(false);
-            btnConfirmar.setVisible(false);
+        if(App.usuarioLogueado != null){
+            String cargo = App.usuarioLogueado.getCargo();
+            if(!cargo.equalsIgnoreCase("Cocinero") && !cargo.equalsIgnoreCase("Chef")){
+                btnCerrar.setVisible(false);
+                btnConfirmar.setVisible(false);
+            }
         }
         
         colIdPedido.setCellValueFactory(new PropertyValueFactory<>("numeroTicket")); // Usamos el número diario
         
-        // colDescripcion.setCellValueFactory(new PropertyValueFactory<>("descripcionBreve"));
         colEstado.setCellValueFactory(new PropertyValueFactory<>("estado"));
 
         tablaPedidos.setItems(listaColaPedidos);
@@ -62,9 +64,7 @@ public class CocinaController {
     private void iniciarRadarDePedidos() {
         cargarColaDesdeBackend(); // Primera carga inmediata
 
-        // Se ejecuta cada 4 segundos
         radarDePedidos = new Timeline(new KeyFrame(Duration.seconds(4), evento -> {
-            // Guardamos qué pedido estaba viendo el cocinero para no quitarle la selección
             int indiceSeleccionado = tablaPedidos.getSelectionModel().getSelectedIndex();
             
             cargarColaDesdeBackend();
@@ -79,7 +79,6 @@ public class CocinaController {
 
     private void cargarColaDesdeBackend() {
         listaColaPedidos.clear();
-        // Llamamos al nuevo DAO que se conecta con la tabla temporal
         listaColaPedidos.addAll(PedidoDAO.obtenerPedidosPendientes());
     }
 
