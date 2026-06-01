@@ -27,15 +27,13 @@ public  class Producto
         this.stock = stock;
         this.estado = estado;
         this.receta = null;
+        this.atributosDinamicos = new HashMap<>();
 
         if(imagenURL == null || imagenURL.isEmpty()){
             this.imagenURL = "/images/default.png";
         } else {
             this.imagenURL = imagenURL;
         }
-    }
-    public void agregarAtributo(String clave, String valor){
-        this.atributosDinamicos.put(clave, valor);
     }
     public String getAtributo(String clave){
         return this.atributosDinamicos.getOrDefault(clave, "");
@@ -106,6 +104,13 @@ public  class Producto
             }
         }
         return maxPlatosPosibles == Integer.MAX_VALUE ? 0 : maxPlatosPosibles;
+    }
+    public void agregarAtributo(String clave, String valor) {
+        if (this.atributosDinamicos == null) {
+            this.atributosDinamicos = new HashMap<>();
+        }
+        // Ahora sí guardamos el dato de forma segura
+        this.atributosDinamicos.put(clave, valor);
     }
     @Override
     public String toString(){

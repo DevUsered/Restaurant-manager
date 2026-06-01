@@ -2,6 +2,7 @@ package Attizos.Frontend;
 
 import Attizos.Backend.Attizos.*;
 import Attizos.Backend.Database.InsumoDAO;
+import Attizos.Backend.Database.ReportesDAO;
 import Attizos.Backend.Listas.NodoDE;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -210,7 +211,7 @@ public class InventarioController {
                                 if (exitoDB) {
                                     App.attizos.getInventario().getInventarioInsumos().clear();
                                     App.attizos.getInventario().getInventarioInsumos().putAll(InsumoDAO.obtenerInventarioActivo());
-                                    App.attizos.registerExpense(new Egreso("Compra Almacén: " + insumoBase.getNombre(), costo));
+                                    ReportesDAO.registrarEgreso("Registrar insumo",costo);
 
                                     String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
                                     App.registrarAuditoria(operador, "Insumo", insumoBase.getNombre(), "Ingreso Lote", cantidad, "Ingreso de nuevo lote. Costo: " + costo);
