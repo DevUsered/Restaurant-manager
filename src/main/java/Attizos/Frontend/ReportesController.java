@@ -116,7 +116,7 @@ public class ReportesController {
         });
         tablaEgresos.setItems(listaEgresos);
 
-        colEmpId.setCellValueFactory(new PropertyValueFactory<>("id"));
+        colEmpId.setCellValueFactory(new PropertyValueFactory<>("idEmpleado"));
         colEmpNombre.setCellValueFactory(new PropertyValueFactory<>("nombre"));
         colEmpCargo.setCellValueFactory(new PropertyValueFactory<>("cargo"));
         colEmpSueldo.setCellValueFactory(new PropertyValueFactory<>("sueldo"));
@@ -245,102 +245,134 @@ public class ReportesController {
     }
 
     private void generarReportes() {
-        double ingresosTotales = 0.0;
-        double egresosTotales = 0.0;
-        int contadorVentas = 0;
-
         LocalDate filtroInicio = dpInicio.getValue();
         LocalDate filtroFin = dpFin.getValue();
 
-        listaFacturas.clear();
-        listaEgresos.clear();
-        listaEmpleados.clear();
-        masterLogs.clear(); 
-        Map<String, Double> ventasPorDia = new TreeMap<>();
+        new Thread(() ->{
+            try{
+                List<Factura>  facturasDB = ReportesDAO.obtenerFacturas();
+                List<Egreso> egresosDB = ReportesDAO.obtenerEgresos();
+                List<Empleado> empleadosDB = ReportesDAO.obtenerEmpleados();
+                List<RegistroAuditoria> auditoriaDB = ReportesDAO.obtenerAuditoria();
 
-        List<Factura> facturasDB = ReportesDAO.obtenerFacturas();
-        for(Factura f : facturasDB){
-            boolean enRango = true;
-            if(f.getFecha() != null){
-                LocalDate fechaFac = f.getFecha().toLocalDate();
-                if (filtroInicio != null && fechaFac.isBefore(filtroInicio)) enRango = false;
-                if (filtroFin != null && fechaFac.isAfter(filtroFin)) enRango = false;
-            }
-            if(enRango){
-                listaFacturas.add(f);
-                ingresosTotales += f.getTotal();
-                contadorVentas++;
-                if(f.getFecha() != null){
-                    String dia = f.getFecha().format(DateTimeFormatter.ofPattern("dd/MM"));
-                    ventasPorDia.put(dia, ventasPorDia.getOrDefault(dia, 0.0) + f.getTotal());
+                double ingresosTemp = 0.0;
+                double egresosTemp = 0.0;
+                int contadorVentasTemp = 0;
+                double sumaSueldosTemp = 0.0;
+                Map<String, Double> ventasPorDiaTemp = new TreeMap<>();
+
+                for(Factura f : facturasDB){
+                    boolean enRango = true;
+                    if(f.getFecha() != null){
+                        LocalDate fechaFac = f.getFecha().toLocalDate();
+                        if (filtroInicio != null && fechaFac.isBefore(filtroInicio)) enRango = false;
+                        if (filtroFin != null && fechaFac.isAfter(filtroFin)) enRango = false;
+                    }
+                    if(enRango){
+                        ingresosTemp += f.getTotal();
+                        contadorVentasTemp++;
+                        if(f.getFecha() != null){
+                            String dia = f.getFecha().format(DateTimeFormatter.ofPattern("dd/MM"));
+                            ventasPorDiaTemp.put(dia, ventasPorDiaTemp.getOrDefault(dia, 0.0) + f.getTotal());
+                        }
+                    }
                 }
-            }
-        }
 
-        List<Egreso> egresosDB = ReportesDAO.obtenerEgresos();
-        for (Egreso e : egresosDB) {
-            boolean enRango = true;
-            if (e.getDate() != null) {
-                LocalDate fechaEgr = e.getDate();
-                if (filtroInicio != null && fechaEgr.isBefore(filtroInicio)) enRango = false;
-                if (filtroFin != null && fechaEgr.isAfter(filtroFin)) enRango = false;
-            }
-            if(enRango) {
-                listaEgresos.add(e);
-                egresosTotales += e.getTotalAmount();
-            }
-        }
-
-        List<Empleado> empleadosDB = ReportesDAO.obtenerEmpleados();
-        double sumaSueldos = 0.0;
-        for (Empleado emp : empleadosDB) {
-            listaEmpleados.add(emp);
-            sumaSueldos += emp.getSueldo();
-        }
-        List<RegistroAuditoria> auditoriaDB = ReportesDAO.obtenerAuditoria();
-        masterLogs.addAll(auditoriaDB);
-
-
-        double balance = ingresosTotales - egresosTotales;
-        double ticketPromedio = (contadorVentas > 0) ? (ingresosTotales / contadorVentas) : 0.0;
-
-        lblIngresos.setText("Bs. " + String.format("%.2f", ingresosTotales));
-        lblEgresos.setText("Bs. " + String.format("%.2f", egresosTotales));
-        lblBalance.setText("Bs. " + String.format("%.2f", balance));
-        lblTicketProm.setText("Bs. " + String.format("%.2f", ticketPromedio));
-        lblTotalSueldos.setText("Bs. " + String.format("%.2f", sumaSueldos));
-
-        if (balance >= 0) {
-            lblBalance.setStyle("-fx-text-fill: #218c4e;");
-        } else {
-            lblBalance.setStyle("-fx-text-fill: #ff4c4c;");
-        }
-
-        chartVentas.getData().clear();
-        XYChart.Series<String, Number> serieVentas = new XYChart.Series<>();
-        serieVentas.setName("Ingresos por Día");
-        for (Map.Entry<String, Double> entry : ventasPorDia.entrySet()) {
-            serieVentas.getData().add(new XYChart.Data<>(entry.getKey(), entry.getValue()));
-        }
-        chartVentas.getData().add(serieVentas);
-        Platform.runLater(() ->{
-            if(serieVentas.getNode() != null){
-                serieVentas.getNode().setStyle("-fx-stroke: #2c3e50; -fx-stroke-width: 3px;");
-            }
-            for(XYChart.Data<String, Number> data : serieVentas.getData()){
-                if(data.getNode() != null){
-                    data.getNode().setStyle("-fx-background-color: #2c3e50, white; -fx-background-radius: 5px; -fx-padding: 5px;");
+                for (Egreso e : egresosDB) {
+                    boolean enRango = true;
+                    if (e.getDate() != null) {
+                        LocalDate fechaEgr = e.getDate();
+                        if (filtroInicio != null && fechaEgr.isBefore(filtroInicio)) enRango = false;
+                        if (filtroFin != null && fechaEgr.isAfter(filtroFin)) enRango = false;
+                    }
+                    if(enRango) egresosTemp += e.getTotalAmount();
                 }
-            }
-            chartVentas.lookupAll(".axis").forEach(axis ->
-                    axis.setStyle("-fx-tick-label-fill: #111111; -fx-font-weight: bold; -fx-font-size: 13px;")
-            );
-            chartVentas.lookupAll(".chart-legend-item").forEach(legend ->
-                    legend.setStyle("-fx-text-fill: #111111; -fx-font-weight: bold;")
-            );
-        });
 
-        actualizarFiltrosDinamicos(); // Llenamos los ComboBox con los datos reales encontrados
+                for (Empleado emp : empleadosDB) {
+                    sumaSueldosTemp += emp.getSueldo();
+                }
+
+                double finalIngresos = ingresosTemp;
+                double finalEgresos = egresosTemp;
+                int finalContador = contadorVentasTemp;
+                double finalSueldos = sumaSueldosTemp;
+
+                Platform.runLater(() -> {
+                    listaFacturas.clear();
+                    for(Factura f : facturasDB) {
+                        boolean enRango = true;
+                        if(f.getFecha() != null){
+                            LocalDate fechaFac = f.getFecha().toLocalDate();
+                            if (filtroInicio != null && fechaFac.isBefore(filtroInicio)) enRango = false;
+                            if (filtroFin != null && fechaFac.isAfter(filtroFin)) enRango = false;
+                        }
+                        if(enRango) listaFacturas.add(f);
+                    }
+
+                    listaEgresos.clear();
+                    for(Egreso e : egresosDB){
+                        boolean enRango = true;
+                        if (e.getDate() != null) {
+                            LocalDate fechaEgr = e.getDate();
+                            if (filtroInicio != null && fechaEgr.isBefore(filtroInicio)) enRango = false;
+                            if (filtroFin != null && fechaEgr.isAfter(filtroFin)) enRango = false;
+                        }
+                        if(enRango) listaEgresos.add(e);
+                    }
+
+                    listaEmpleados.clear();
+                    listaEmpleados.addAll(empleadosDB);
+
+                    masterLogs.clear();
+                    masterLogs.addAll(auditoriaDB);
+
+                    double balance = finalIngresos - finalEgresos;
+                    double ticketPromedio = (finalContador > 0) ? (finalIngresos / finalContador) : 0.0;
+
+                    lblIngresos.setText("Bs. " + String.format("%.2f", finalIngresos));
+                    lblEgresos.setText("Bs. " + String.format("%.2f", finalEgresos));
+                    lblBalance.setText("Bs. " + String.format("%.2f", balance));
+                    lblTicketProm.setText("Bs. " + String.format("%.2f", ticketPromedio));
+                    lblTotalSueldos.setText("Bs. " + String.format("%.2f", finalSueldos));
+
+                    if (balance >= 0) {
+                        lblBalance.setStyle("-fx-text-fill: #218c4e;");
+                    } else {
+                        lblBalance.setStyle("-fx-text-fill: #ff4c4c;");
+                    }
+
+                    chartVentas.getData().clear();
+                    XYChart.Series<String, Number> serieVentas = new XYChart.Series<>();
+                    serieVentas.setName("Ingresos por Día");
+                    for (Map.Entry<String, Double> entry : ventasPorDiaTemp.entrySet()) {
+                        serieVentas.getData().add(new XYChart.Data<>(entry.getKey(), entry.getValue()));
+                    }
+                    chartVentas.getData().add(serieVentas);
+
+                    if(serieVentas.getNode() != null){
+                        serieVentas.getNode().setStyle("-fx-stroke: #2c3e50; -fx-stroke-width: 3px;");
+                    }
+                    for(XYChart.Data<String, Number> data : serieVentas.getData()){
+                        if(data.getNode() != null){
+                            data.getNode().setStyle("-fx-background-color: #2c3e50, white; -fx-background-radius: 5px; -fx-padding: 5px;");
+                        }
+                    }
+                    chartVentas.lookupAll(".axis").forEach(axis ->
+                            axis.setStyle("-fx-tick-label-fill: #111111; -fx-font-weight: bold; -fx-font-size: 13px;")
+                    );
+                    chartVentas.lookupAll(".chart-legend-item").forEach(legend ->
+                            legend.setStyle("-fx-text-fill: #111111; -fx-font-weight: bold;")
+                    );
+
+                    actualizarFiltrosDinamicos();
+                });
+            }catch (Exception e){
+                Platform.runLater(() -> {
+                    AlertaPersonalizada.mostrarAlerta("Sin Conexión", "No se pudieron cargar los reportes históricos desde el servidor principal.", Alert.AlertType.WARNING);
+                });
+            }
+        }).start();
+
     }
 
     @FXML
@@ -438,14 +470,14 @@ public class ReportesController {
             return;
         }
 
-        String detalle = "IDENTIFICACIÓN (CI): " + seleccionado.getId() + "\n"
+        String detalle = "IDENTIFICACIÓN (CI): " + seleccionado.getIdEmpleado() + "\n"
                 + "NOMBRE COMPLETO: " + seleccionado.getNombre() + "\n"
                 + "CARGO ASIGNADO: " + seleccionado.getCargo() + "\n"
                 + "SUELDO BASE: Bs. " + String.format("%.2f", seleccionado.getSueldo()) + "\n\n";
 
-        if (seleccionado instanceof Usuario) {
+        if (seleccionado.getUsername() != null && !seleccionado.getUsername().trim().isEmpty()) {
             detalle += "--- DATOS DEL SISTEMA ---\n"
-                    + "Usuario: " + ((Usuario) seleccionado).getUsername() + "\n"
+                    + "Usuario: " + seleccionado.getUsername() + "\n"
                     + "Rol: Acceso Permitido\n";
         } else {
             detalle += "--- DATOS DEL SISTEMA ---\n"
