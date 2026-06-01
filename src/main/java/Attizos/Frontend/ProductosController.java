@@ -247,10 +247,12 @@ public class ProductosController {
         tablaMenu.setItems(filteredData);
     }
 
-    private boolean esDeCocina(String str){
-        return !str.equalsIgnoreCase("Bebida") && !str.equalsIgnoreCase("Otro");
+    private boolean esDeCocina(String tipoClase) {
+        if (tipoClase.equalsIgnoreCase("Otro")) {
+            return chkTieneRecetaOtro.isSelected();
+        }
+        return !tipoClase.equalsIgnoreCase("Bebida");
     }
-
     private void mostrarOcultarCamposRecetaStock(boolean esCocina) {
         vboxStock.setVisible(!esCocina);
         vboxStock.setManaged(!esCocina);
@@ -273,11 +275,7 @@ public class ProductosController {
         vboxCategoria.setVisible(esOtro);
         vboxCategoria.setManaged(esOtro);
 
-        if (esOtro) {
-            mostrarOcultarCamposRecetaStock(chkTieneRecetaOtro.isSelected());
-        } else {
-            mostrarOcultarCamposRecetaStock(esDeCocina(tipo));
-        }
+        mostrarOcultarCamposRecetaStock(esDeCocina(tipo));
 
         Label lbl = new Label("Configuración de " + tipo + ":");
         lbl.setStyle("-fx-text-fill: #111111; -fx-font-weight: bold;");
