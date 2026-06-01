@@ -71,9 +71,15 @@ public class ReservasController {
     }
 
     private void cargarReservas() {
-        listaVisible.clear();
-        listaVisible.addAll(ReservasDAO.obtenerReservasPendientesYLimpiar());
-        tablaReservas.refresh();
+        new Thread(() ->{
+            var reservasDB = ReservasDAO.obtenerReservasPendientesYLimpiar();
+
+            javafx.application.Platform.runLater(() ->{
+                listaVisible.clear();
+                listaVisible.addAll(reservasDB);
+                tablaReservas.refresh();
+            });
+        }).start();
     }
 
     @FXML
