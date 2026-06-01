@@ -169,8 +169,6 @@ public class Restaurante
                     }
                     detAc = detAc.getSiguiente();
                 }
-                String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Cocina/Admin";
-                this.registrarAuditoria(operador, "Pedido", "Pedido #" + idPedido, "Cancelación", 1, "Orden cancelada y stock devuelto");
                 colaPedidos.eliminarPorValor(pedidoCancelado);
                 return  true;
             }
