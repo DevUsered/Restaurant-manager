@@ -33,6 +33,12 @@ public class App {
                     ConexionSQLite.subirAuditoriaPendiente();
 
                     ConexionSQLite.actualizarCacheCompleta();
+                    HashMap<String, Insumo> stockRealNube = InsumoDAO.obtenerInventarioActivo();
+                    if (stockRealNube != null) {
+                        attizos.getInventario().getInventarioInsumos().clear();
+                        attizos.getInventario().getInventarioInsumos().putAll(stockRealNube);
+                        System.out.println("✅ RAM actualizada con el stock real de la nube.");
+                    }
                     RecetaDAO.cargarRecetas();
                 }
             }catch (SQLException e){

@@ -96,6 +96,7 @@ public class ConexionSQLite {
             stmt.execute(sqlInsumos);
             stmt.execute(sqlVentasPendientes);
             stmt.execute(sqlAuditoria);
+            stmt.execute(sqlSecuencia);
             stmt.execute("INSERT OR IGNORE INTO secuencia_tickets (id, fecha, ultimo_numero) VALUES (1, '2000-01-01', 0);");
 
             System.out.println("Caché SQLite inicializada correctamente. ");

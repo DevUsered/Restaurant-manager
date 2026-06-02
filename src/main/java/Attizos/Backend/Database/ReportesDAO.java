@@ -109,12 +109,13 @@ public class ReportesDAO{
         return lista;
     }
     public static boolean registrarEgreso(String concepto, double monto) {
-        String sql = "INSERT INTO egresos (concepto, monto) VALUES (?, ?)";
+        String sql = "INSERT INTO egresos (fecha ,concepto, monto) VALUES (?, ?, ?)";
         try (Connection con = ConexionBD.getConexion();
              PreparedStatement ps = con.prepareStatement(sql)) {
              
-            ps.setString(1, concepto);
-            ps.setDouble(2, monto);
+            ps.setDate(1, Date.valueOf(LocalDate.now()));
+            ps.setString(2, concepto);
+            ps.setDouble(3, monto);
             return ps.executeUpdate() > 0;
             
         } catch (SQLException e) {

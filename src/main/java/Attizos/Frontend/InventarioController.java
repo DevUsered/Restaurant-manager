@@ -83,6 +83,15 @@ public class InventarioController {
 
         filteredData = new FilteredList<>(masterData, p -> true);
         tablaInventario.setItems(filteredData);
+        tablaInventario.setOnMouseClicked(event ->{
+            if(event.getClickCount() == 2){
+                Insumo seleccionado = tablaInventario.getSelectionModel().getSelectedItem();
+                if(seleccionado != null){
+                    txtCodigoInsumo.setText(seleccionado.getCodigo());
+                    txtCantidad.requestFocus();
+                }
+            }
+        });
 
         txtBuscador.textProperty().addListener((obs, old, newVal) -> aplicarFiltros());
         cmbFiltroCategoria.valueProperty().addListener((obs, old, newVal) -> aplicarFiltros());

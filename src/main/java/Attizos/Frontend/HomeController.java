@@ -135,15 +135,7 @@ public class HomeController {
         lblInfo.setWrapText(true);
 
         StringBuilder infoTexto = new StringBuilder();
-        if(p.getAtributosDinamicos() != null && !p.getAtributosDinamicos().isEmpty()){
-            infoTexto.append("✨ Detalles:\n\n");
-            for(Map.Entry<String, String> entry : p.getAtributosDinamicos().entrySet()){
-                String clave = entry.getKey().replace("_","");
-                clave = clave.substring(0,1).toUpperCase() + clave.substring(1);
-                infoTexto.append(" * ").append(clave).append(": ").append(entry.getValue()).append("\n");
-            }
-            infoTexto.append("\n");
-        }
+
         if (p.tieneReceta() && p.getReceta() != null && App.attizos.getInventario() != null) {
             infoTexto.append("✨ Preparado con:\n\n");
             for (String codInsumo : p.getReceta().getIngredientes().keySet()) {

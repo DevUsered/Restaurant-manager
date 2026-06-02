@@ -8,6 +8,7 @@ import java.util.Locale;
 import java.util.Optional;
 
 import Attizos.Backend.Attizos.*;
+import Attizos.Backend.Database.ConexionSQLite;
 import Attizos.Backend.Database.EmpleadoDAO;
 import Attizos.Backend.Database.ReportesDAO;
 import javafx.beans.property.SimpleStringProperty;
@@ -64,7 +65,7 @@ public class EmpleadosController {
     @FXML
     public void initialize() {
         // 1. Configurar las columnas básicas
-        colId.setCellValueFactory(new PropertyValueFactory<>("id"));
+        colId.setCellValueFactory(new PropertyValueFactory<>("idEmpleado"));
         colNombre.setCellValueFactory(new PropertyValueFactory<>("nombre"));
         colCargo.setCellValueFactory(new PropertyValueFactory<>("cargo"));
         colSueldo.setCellValueFactory(new PropertyValueFactory<>("sueldo"));
@@ -163,6 +164,7 @@ public class EmpleadosController {
                 if (App.attizos != null) {
                     App.attizos.agregarEmpleado(nuevoEmpleado);
                 }
+                ConexionSQLite.sincronizarEmpleados();
                 limpiarFormulario(null);
                 mostrarExito("Contratado", "El empleado " + nombre + " fue registrado con éxito.");
             }else{
@@ -190,6 +192,7 @@ public class EmpleadosController {
                                     String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
                                     App.registrarAuditoria(operador, "Empleado", despedido.getNombre(), "Despido", 0, "Despedir un empleado");
                                 }
+                                ConexionSQLite.sincronizarEmpleados();
                                 mostrarExito("Despedido", "El empleado ha sido removido de la planilla.");
                             }else{
                                 mostrarAlerta("Error de persistencia", "No se pudo eliminar el empleado.");
@@ -303,7 +306,7 @@ public class EmpleadosController {
                     App.attizos.eliminarEmpleado(id);
                     App.attizos.agregarEmpleado(empleadoActualizado);
                 }
-
+                ConexionSQLite.sincronizarEmpleados();
                 limpiarFormulario(null);
                 mostrarExito("Actualizado", "Los datos de " + nombre + " fueron actualizados correctamente.");
             }else{

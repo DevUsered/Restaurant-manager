@@ -5,6 +5,7 @@ import Attizos.Frontend.AlertaPersonalizada;
 import javafx.scene.control.Alert;
 
 import java.sql.*;
+import java.time.LocalDate;
 import java.util.Map;
 
 public class FacturaDAO {
@@ -29,12 +30,14 @@ public class FacturaDAO {
             int numeroFactura = -1;
             int numeroTicketDiario = 1;
             
-            String sqlDiario = "SELECT COALESCE(MAX(numero_ticket), 0) + 1 FROM facturas WHERE DATE(fecha_hora) = CURRENT_DATE";
-            try (PreparedStatement psDiario = con.prepareStatement(sqlDiario);
-                 ResultSet rsDiario = psDiario.executeQuery()) {
-                if (rsDiario.next()) {
-                    numeroTicketDiario = rsDiario.getInt(1);
-                }
+            String sqlDiario = "SELECT COALESCE(MAX(numero_ticket), 0) + 1 FROM facturas WHERE CAST(fecha_hora AS DATE) = ?";
+            try (PreparedStatement psDiario = con.prepareStatement(sqlDiario)){
+                psDiario.setDate(1, Date.valueOf(LocalDate.now()));
+                 try(ResultSet rsDiario = psDiario.executeQuery()) {
+                     if (rsDiario.next()) {
+                         numeroTicketDiario = rsDiario.getInt(1);
+                     }
+                 }
             }
 
             try(PreparedStatement psFac = con.prepareStatement(sqlFactura, Statement.RETURN_GENERATED_KEYS)){

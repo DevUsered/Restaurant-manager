@@ -73,6 +73,7 @@ public class FormularioNuevoInsumoController {
                 guardarNuevoInsumo(new ActionEvent(dpVencimiento, dpVencimiento));
             }
         });
+        txtCodigo.setText(generarCodigoAutomatico());
 
     }
 
@@ -201,5 +202,25 @@ public class FormularioNuevoInsumoController {
                     break;
             }
         });
+    }
+
+    private String generarCodigoAutomatico() {
+        HashMap<String, Insumo> inv = App.attizos.getInventario().getInventarioInsumos();
+        int maxNumero = 0;
+
+        if (inv != null) {
+            for (String codigo : inv.keySet()) {
+                if (codigo.toUpperCase().startsWith("INS-")) {
+                    try {
+                        int numero = Integer.parseInt(codigo.substring(4));
+                        if (numero > maxNumero) {
+                            maxNumero = numero;
+                        }
+                    } catch (NumberFormatException e) {
+                    }
+                }
+            }
+        }
+        return String.format("INS-%03d", maxNumero + 1);
     }
 }
