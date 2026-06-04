@@ -228,19 +228,25 @@
                                         </AnchorPane>
                                     </content>
                                 </Tab>
-
                                 <Tab style="-fx-font-weight: bold; -fx-text-fill: #111111;" text="📊 Gráficos Estadísticos">
                                     <content>
-                                        <AnchorPane minHeight="0.0" minWidth="0.0">
+                                        <AnchorPane minHeight="0.0" minWidth="0.0" style="-fx-background-color: #F8F9FA;">
                                             <children>
-                                                <VBox spacing="10.0" AnchorPane.bottomAnchor="15.0" AnchorPane.leftAnchor="15.0" AnchorPane.rightAnchor="15.0" AnchorPane.topAnchor="15.0">
+                                                <VBox alignment="CENTER" spacing="5.0" style="-fx-background-color: #FFFFFF; -fx-background-radius: 15; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 15, 0, 0, 5);" AnchorPane.bottomAnchor="25.0" AnchorPane.leftAnchor="25.0" AnchorPane.rightAnchor="25.0" AnchorPane.topAnchor="25.0">
                                                     <children>
-                                                        <LineChart fx:id="chartVentas" style="-fx-background-color: transparent; -fx-font-size: 14px;" title="Tendencia de Rendimiento Diario">
+                                                        <HBox alignment="CENTER_LEFT" style="-fx-padding: 15 25 0 25;">
+                                                            <children>
+                                                                <Label text="📈 Tendencia de Ingresos Diarios" textFill="#2C3E50">
+                                                                    <font><Font name="System Bold" size="18.0" /></font>
+                                                                </Label>
+                                                            </children>
+                                                        </HBox>
+                                                        <LineChart fx:id="chartVentas" legendVisible="false" styleClass="modern-chart" VBox.vgrow="ALWAYS">
                                                             <xAxis>
-                                                                <CategoryAxis side="BOTTOM" />
+                                                                <CategoryAxis side="BOTTOM" tickLabelFill="#7F8C8D" tickMarkVisible="false" />
                                                             </xAxis>
                                                             <yAxis>
-                                                                <NumberAxis side="LEFT" />
+                                                                <NumberAxis minorTickVisible="false" side="LEFT" tickLabelFill="#7F8C8D" tickMarkVisible="false" />
                                                             </yAxis>
                                                         </LineChart>
                                                     </children>

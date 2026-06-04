@@ -11,7 +11,7 @@ public class ReportesDAO{
     public static List<Factura> obtenerFacturas(){
         List<Factura> lista = new ArrayList<>();
 
-        String sql = "SELECT numero_factura, fecha_hora, nombre_cliente, total, estado " +
+        String sql = "SELECT numero_factura, fecha_hora, nombre_cliente, total, estado, numero_ticket " +
                     "FROM facturas WHERE estado = 'Completada' ORDER BY fecha_hora DESC";
 
         try(Connection con = ConexionBD.getConexion();
@@ -20,6 +20,7 @@ public class ReportesDAO{
 
         while(rs.next()){
             Factura f = new Factura(rs.getInt("numero_factura"), rs.getString("nombre_cliente"));
+            f.setNumeroTicket(rs.getInt("numero_ticket"));
             f.setTotal(rs.getDouble("total"));
             f.setEstado(rs.getString("estado"));
                     
@@ -143,7 +144,7 @@ public class ReportesDAO{
     }
     public static Factura obtenerFacturaConDetalles(int numeroFactura) {
         Factura factura = null;
-        String sqlFac = "SELECT nombre_cliente, total, fecha_hora, estado FROM facturas WHERE numero_factura = ?";
+        String sqlFac = "SELECT nombre_cliente, total, fecha_hora, estado, numero_ticket FROM facturas WHERE numero_factura = ?";
         // INNER JOIN para traer los nombres y precios desde la tabla de productos
         String sqlDet = "SELECT fd.cantidad, fd.subtotal, p.id_producto, p.nombre, p.precio " +
                         "FROM facturas_detalle fd " +
@@ -158,6 +159,7 @@ public class ReportesDAO{
                 try (ResultSet rsFac = psFac.executeQuery()) {
                     if (rsFac.next()) {
                         factura = new Factura(numeroFactura, rsFac.getString("nombre_cliente"));
+                        factura.setNumeroTicket(rsFac.getInt("numero_ticket"));
                         factura.setTotal(rsFac.getDouble("total"));
                         factura.setEstado(rsFac.getString("estado"));
                         Timestamp ts = rsFac.getTimestamp("fecha_hora");

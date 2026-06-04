@@ -198,7 +198,6 @@ public class VentasController {
         Map<Producto, Integer> carritoDB = new HashMap<>();
         NodoDE<DetalleFactura> actual = facturaActual.getDetalles().getCabeza();
 
-        //Armamos el JSON manualmente por si falla la conexion
         StringBuilder jsonVenta = new StringBuilder();
         jsonVenta.append("{\"cliente\": \"").append(nombreCli).append("\", ");
         jsonVenta.append("\"total\": ").append(facturaActual.getTotal()).append(", ");
@@ -215,24 +214,29 @@ public class VentasController {
             actual = actual.getSiguiente();
         }
         jsonVenta.append("]}");
-        int numeroTicket = -1;
+
+        int numeroTicketDiario = -1;
+        int numeroFacturaGlobal = -1;
+
         if(!App.modoOffline){
-            numeroTicket = FacturaDAO.registrarVenta(nombreCli, facturaActual.getTotal(), carritoDB);
-            if(numeroTicket > 0){
-                ConexionSQLite.actualizarSecuenciaLocal(numeroTicket);
+            int[] resultados = FacturaDAO.registrarVenta(nombreCli, facturaActual.getTotal(), carritoDB);
+            if(resultados != null){
+                numeroFacturaGlobal = resultados[0];
+                numeroTicketDiario = resultados[1];
+                ConexionSQLite.actualizarSecuenciaLocal(numeroTicketDiario);
             }
         }
-        if(numeroTicket <= 0){
-            numeroTicket = ConexionSQLite.obtenerSiguienteTicketOffline();
+        if(numeroTicketDiario <= 0){
+            numeroTicketDiario = ConexionSQLite.obtenerSiguienteTicketOffline();
+            numeroFacturaGlobal = 0;
             boolean guardadoOffline = ConexionSQLite.guardarVentaOffline(jsonVenta.toString());
             if (!guardadoOffline) {
-                mostrarAlerta("Error Crítico", "No se pudo registrar la venta ni en internet ni localmente.", Alert.AlertType.ERROR);
+                mostrarAlerta("Error Crítico", "No se pudo registrar la venta localmente.", Alert.AlertType.ERROR);
                 return;
             }
-            System.out.println("⚠️ Venta offline guardada. Ticket #" + numeroTicket);
         }
-        if(numeroTicket > 0) {
-            facturaActual.setNumeroFactura(numeroTicket);
+        if(numeroTicketDiario > 0) {
+            facturaActual.setNumeroFactura(numeroFacturaGlobal);
             facturaActual.setNombreCliente(nombreCli);
 
             for(Map.Entry<Producto, Integer> entry : carritoDB.entrySet()){
@@ -255,7 +259,7 @@ public class VentasController {
                 TicketController controller = loader.getController();
                 String nombreCajero = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Caja Principal";
 
-                controller.inicializarTicket(facturaActual, nombreCajero, facturaActual.getNumeroFactura());
+                controller.inicializarTicket(facturaActual, nombreCajero, numeroTicketDiario);
                 imprimirEnImpresoraTermica(nodoTicket);
 
             } catch (Exception e) {

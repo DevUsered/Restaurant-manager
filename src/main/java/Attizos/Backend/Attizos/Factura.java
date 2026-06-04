@@ -6,6 +6,7 @@ import java.time.format.DateTimeFormatter;
 
 public class Factura {
     private int numeroFactura;
+    private int numeroTicket;
     private LocalDateTime fecha;
     private String nombreCliente;
     private ListaDE<DetalleFactura> detalles;
@@ -115,7 +116,8 @@ public class Factura {
     public void setTotal(double total) {
         this.total = total;
     }
-
+    public int getNumeroTicket() { return numeroTicket; }
+    public void setNumeroTicket(int numeroTicket) { this.numeroTicket = numeroTicket; }
     public void setDetalles(ListaDE<DetalleFactura> detalles) {
         this.detalles = detalles;
     }
@@ -127,5 +129,6 @@ public class Factura {
     public double getTotal() { return total; }
 
     public void setEstado(String estado) {
+        this.estado = estado;
     }
 }

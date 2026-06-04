@@ -1,16 +1,18 @@
 package Attizos.Backend.Database;
 
+import Attizos.Backend.Attizos.Factura;
 import Attizos.Backend.Attizos.Producto;
 import Attizos.Frontend.AlertaPersonalizada;
 import javafx.scene.control.Alert;
 
 import java.sql.*;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Map;
 
 public class FacturaDAO {
-    public static int registrarVenta(String nombreCliente, double total, Map<Producto, Integer> carrito ){
-        String sqlFactura = "INSERT INTO facturas (nombre_cliente, total, estado, numero_ticket) VALUES (?, ?, 'Completada', ?)";
+    public static int[] registrarVenta(String nombreCliente, double total, Map<Producto, Integer> carrito ){
+        String sqlFactura = "INSERT INTO facturas (nombre_cliente, total, estado, numero_ticket, fecha_hora) VALUES (?, ?, 'Completada', ?, ?)";
         String sqlDetalle = "INSERT INTO facturas_detalle (numero_factura, id_producto, cantidad, subtotal) VALUES (?, ?, ?, ?)";
         String sqlRestarVitrina = "UPDATE productos SET stock_directo = stock_directo - ? WHERE id_producto = ?";
 
@@ -44,6 +46,7 @@ public class FacturaDAO {
                 psFac.setString(1, nombreCliente);
                 psFac.setDouble(2, total);
                 psFac.setInt(3, numeroTicketDiario);
+                psFac.setTimestamp(4, Timestamp.valueOf(LocalDateTime.now()));
                 psFac.executeUpdate();
 
                 try(ResultSet rs = psFac.getGeneratedKeys()){
@@ -138,7 +141,7 @@ public class FacturaDAO {
                 }
             }
             con.commit();
-            return numeroTicketDiario;
+            return new int[]{numeroFactura, numeroTicketDiario};
         }catch (SQLException e){
             System.out.println("❌ Error al registrar la venta: " + e.getMessage());
             if(con != null){
@@ -151,7 +154,7 @@ public class FacturaDAO {
             javafx.application.Platform.runLater(() -> {
                 AlertaPersonalizada.mostrarAlerta("Error", "No se pudo realizar la venta. Verifica el stock.", Alert.AlertType.WARNING);
             });
-            return -1;
+            return null;
         } finally {
             if(con != null){
                 try{

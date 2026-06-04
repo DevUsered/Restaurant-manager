@@ -26,11 +26,13 @@ public class TicketController {
     @FXML private Label lblTotalCliente;
 
     public void inicializarTicket(Factura factura, String nombreCajero, int turno){
+        System.out.println("-ID Global Factura: "+factura.getNumeroFactura());
+        System.out.println("- Turno diario: "+turno);
         DateTimeFormatter formato = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
         LocalDateTime fechaSegura = factura.getFecha() != null ? factura.getFecha() : LocalDateTime.now();
         String fechaStr = fechaSegura.format(formato);
 
-        String numFac = String.format("%03d", factura.getNumeroFactura());
+        String numFac = String.format("%03d", turno);
 
 
         lblNumFacturaCaja.setText("Ticket Nro: " + numFac);

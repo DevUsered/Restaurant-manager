@@ -562,3 +562,49 @@
 .combo-box:editable:focused {
     -fx-border-color: #DAA520;
 }
+/* ESTILOS PARA EL GRÁFICO
+
+/* Quitar el fondo gris por defecto */
+.modern-chart .chart-plot-background {
+    -fx-background-color: transparent;
+}
+
+/* Ocultar las líneas verticales de la cuadrícula (da un aspecto más limpio) */
+.modern-chart .chart-vertical-grid-lines {
+    -fx-stroke: transparent;
+}
+
+/* Hacer las líneas horizontales punteadas y muy suaves */
+.modern-chart .chart-horizontal-grid-lines {
+    -fx-stroke: #E0E0E0;
+    -fx-stroke-dash-array: 5 5;
+}
+
+/* Ocultar la línea negra de los ejes X y Y */
+.modern-chart .axis:bottom {
+    -fx-border-color: transparent;
+}
+.modern-chart .axis:left {
+    -fx-border-color: transparent;
+}
+
+/* Estilo de la línea principal de ventas (Dorada gruesa) */
+.modern-chart .chart-series-line {
+    -fx-stroke: #DAA520;
+    -fx-stroke-width: 4px;
+}
+
+/* Estilo de los "puntos" en cada día (Círculos blancos con borde dorado) */
+.modern-chart .chart-line-symbol {
+    -fx-background-color: #FFFFFF, #DAA520;
+    -fx-background-insets: 0, 2;
+    -fx-background-radius: 6px;
+    -fx-padding: 6px;
+}
+
+/* Efecto al pasar el mouse sobre un punto del gráfico (Hover) */
+.modern-chart .chart-line-symbol:hover {
+    -fx-background-color: #DAA520, #FFFFFF;
+    -fx-scale-x: 1.3;
+    -fx-scale-y: 1.3;
+}

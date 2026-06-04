@@ -430,7 +430,7 @@ public class ReportesController {
             Parent root = loader.load();
 
             TicketController controller = loader.getController();
-            controller.inicializarTicket(seleccionada, "Copia - Sistema", seleccionada.getNumeroFactura());
+            controller.inicializarTicket(seleccionada, "Copia - Sistema", facDetalles.getNumeroTicket());
 
             Stage dialogStage = new Stage();
             dialogStage.initStyle(StageStyle.TRANSPARENT);
