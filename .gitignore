@@ -37,3 +37,4 @@ config.properties
 Thumbs.db
 .idea/
 workspace.xml
+config.properties

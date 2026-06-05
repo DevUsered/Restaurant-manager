@@ -150,4 +150,17 @@ public class ProductoDAO {
         }
         return valorPorDefecto;
     }
+    public static boolean actualizarImagenProducto(int idProducto, String nuevaURL){
+        String sql = "UPDATE productos SET imagen_base64 = ? WHERE id_producto = ?";
+        try(Connection con = ConexionBD.getConexion();
+            PreparedStatement ps = con.prepareStatement(sql)){
+            ps.setString(1, nuevaURL);
+            ps.setInt(2, idProducto);
+
+            return ps.executeUpdate() > 0;
+        }catch (SQLException e){
+            System.out.println("Error al actualizar la imagen. "+ e.getMessage());
+            return false;
+        }
+    }
 }

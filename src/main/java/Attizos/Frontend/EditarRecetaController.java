@@ -29,6 +29,8 @@ public class EditarRecetaController {
 
     private Producto productoEdicion;
     private ObservableList<ProductosController.DetalleRecetaUI> listaReceta = FXCollections.observableArrayList();
+    private ObservableList<Insumo> masterInsumos = FXCollections.observableArrayList();
+    private javafx.collections.transformation.FilteredList<Insumo> filteredInsumos;
 
     @FXML
     public void initialize() {
@@ -37,53 +39,67 @@ public class EditarRecetaController {
         tablaReceta.setItems(listaReceta);
 
         if (App.attizos.getInventario() != null) {
-            cmbInsumos.setItems(FXCollections.observableArrayList(App.attizos.getInventario().getInventarioInsumos().values()));
+            masterInsumos.addAll(App.attizos.getInventario().getInventarioInsumos().values());
         }
-
-        cmbInsumos.setButtonCell(new ListCell<Insumo>() {
+        filteredInsumos = new javafx.collections.transformation.FilteredList<>(masterInsumos, p -> true);
+        cmbInsumos.setItems(filteredInsumos);
+        cmbInsumos.getEditor().setStyle("-fx-text-fill: #444444; -fx-font-weight: bold;");
+        cmbInsumos.setConverter(new javafx.util.StringConverter<Insumo>() {
             @Override
-            protected void updateItem(Insumo item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText("Seleccione insumo...");
-                } else {
-                    setText(item.getNombre());
-                }
+            public String toString(Insumo insumo) {
+                return insumo == null ? "" : insumo.getNombre();
+            }
+
+            @Override
+            public Insumo fromString(String string) {
+                return cmbInsumos.getItems().stream()
+                        .filter(i -> i.getNombre().equals(string))
+                        .findFirst().orElse(null);
             }
         });
-        cmbInsumos.setCellFactory(lv -> new ListCell<Insumo>() {
-            @Override
-            protected void updateItem(Insumo item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(null);
-                } else {
-                    setText(item.getNombre());
-                }
+        cmbInsumos.getEditor().textProperty().addListener((obs, oldValue, newValue) -> {
+            Insumo seleccionado = cmbInsumos.getSelectionModel().getSelectedItem();
+            // Evitar conflictos cuando el sistema autocompleta el nombre
+            if (seleccionado != null && seleccionado.getNombre().equals(newValue)) return;
+
+            filteredInsumos.setPredicate(insumo -> {
+                if (newValue == null || newValue.isEmpty()) return true;
+                return insumo.getNombre().toLowerCase().contains(newValue.toLowerCase());
+            });
+
+            if (newValue != null && !newValue.isEmpty() && !cmbInsumos.isShowing()) {
+                cmbInsumos.show();
+            }
+        });
+        cmbInsumos.getEditor().setOnKeyPressed(event -> {
+            if (event.getCode() == javafx.scene.input.KeyCode.ENTER) {
+                txtCantidad.requestFocus();
+                event.consume();
+            }
+        });
+        txtCantidad.setOnKeyPressed(event -> {
+            if (event.getCode() == javafx.scene.input.KeyCode.ENTER) {
+                agregarIngrediente(new ActionEvent());
+                event.consume();
             }
         });
 
         configurarMenuContextual();
-        UtilidadesUI.saltarConEnter(txtCantidad, cmbInsumos);
-
         if (rootPane != null) {
-            rootPane.setOnMousePressed(event -> {
-                xOffset = event.getSceneX();
-                yOffset = event.getSceneY();
-            });
+            rootPane.setOnMousePressed(event -> { xOffset = event.getSceneX(); yOffset = event.getSceneY(); });
             rootPane.setOnMouseDragged(event -> {
                 Stage stage = (Stage) rootPane.getScene().getWindow();
                 stage.setX(event.getScreenX() - xOffset);
                 stage.setY(event.getScreenY() - yOffset);
             });
         }
+        javafx.application.Platform.runLater(() -> cmbInsumos.requestFocus());
     }
 
     public void inicializarDatos(Producto producto) {
         this.productoEdicion = producto;
         lblTituloProducto.setText("Receta de: " + producto.getNombre());
 
-        // Cargamos los ingredientes actuales desde la memoria RAM (Velocidad Extrema)
         if (producto.getReceta() != null) {
             for (Map.Entry<String, Double> entry : producto.getReceta().getIngredientes().entrySet()) {
                 Insumo ins = App.attizos.getInventario().buscarInsumo(entry.getKey());
@@ -97,7 +113,14 @@ public class EditarRecetaController {
     @FXML
     void agregarIngrediente(ActionEvent event) {
         Insumo insumoSel = cmbInsumos.getValue();
-        if (insumoSel == null || txtCantidad.getText().isEmpty()) return;
+        if (insumoSel == null ){
+            String texto = cmbInsumos.getEditor().getText();
+            insumoSel = cmbInsumos.getConverter().fromString(texto);
+        }
+        if (insumoSel == null || txtCantidad.getText().isEmpty()) {
+            AlertaPersonalizada.mostrarAlerta("Incompleto", "Seleccione un insumo de la lista y coloque su cantidad.", Alert.AlertType.WARNING);
+            return;
+        }
 
         for (ProductosController.DetalleRecetaUI det : listaReceta) {
             if (det.getInsumo().getCodigo().equals(insumoSel.getCodigo())) {
@@ -112,6 +135,7 @@ public class EditarRecetaController {
                 listaReceta.add(new ProductosController.DetalleRecetaUI(insumoSel, cant));
                 cmbInsumos.getSelectionModel().clearSelection();
                 txtCantidad.clear();
+                javafx.application.Platform.runLater(() -> cmbInsumos.requestFocus());
             }
         } catch (NumberFormatException e) {
             AlertaPersonalizada.mostrarAlerta("Error", "Cantidad inválida.", Alert.AlertType.ERROR);

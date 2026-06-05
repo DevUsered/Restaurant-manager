@@ -60,7 +60,7 @@ public class FormularioNuevoInsumoController {
         cmbCategoria.setStyle("-fx-background-color: #FDF6E3; -fx-border-color: #DAA520; -fx-border-radius: 5; -fx-background-radius: 5;");
         cmbCategoria.getEditor().setStyle("-fx-text-fill: #111111; -fx-font-weight: bold; -fx-background-color: transparent;");
         cmbCategoria.getItems().addAll(categoriasUnicas);
-        saltoConEnter(txtCodigo, txtNombre);
+
         saltoConEnter(txtNombre, cmbCategoria);
         saltoConEnter(cmbCategoria, cmbUnidad);
         saltoConEnter(cmbUnidad, txtStockInicial);
@@ -74,6 +74,7 @@ public class FormularioNuevoInsumoController {
             }
         });
         txtCodigo.setText(generarCodigoAutomatico());
+        javafx.application.Platform.runLater(() -> txtNombre.requestFocus());
 
     }
 

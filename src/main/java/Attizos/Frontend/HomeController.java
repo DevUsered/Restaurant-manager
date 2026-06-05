@@ -105,22 +105,8 @@ public class HomeController {
 
         ImageView imagen = new ImageView();
         String datoImagen = p.getImagenURL();
-        if(datoImagen != null && !datoImagen.trim().isEmpty() && !datoImagen.equals("default.png")){
-            try{
-                Image imgReal = UtilidadesImagen.convertirBase64AImagen(datoImagen);
-                if(imgReal != null){
-                    imagen.setImage(imgReal);
-                }
-                else{
-                    imagen.setImage(new Image(getClass().getResourceAsStream("/images/default.png")));
-                }
-            }catch (Exception e){
-                System.out.println("Error al cargar imagen desde Base64 para: " + p.getNombre() + " - " + e.getMessage());
-                imagen.setImage(new Image(getClass().getResourceAsStream("/images/default.png")));
-            }
-        } else{
-            imagen.setImage(new Image(getClass().getResourceAsStream("/images/default.png")));
-        }
+        Image imgOptimizada = UtilidadesImagen.obtenerImagenOptimizada(datoImagen);
+        imagen.setImage(imgOptimizada);
         imagen.setFitHeight(120);
         imagen.setPreserveRatio(true);
         content.getChildren().addAll(name, imagen, price);

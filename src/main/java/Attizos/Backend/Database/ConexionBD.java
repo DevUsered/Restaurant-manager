@@ -43,8 +43,12 @@ public class  ConexionBD {
             propiedades.setProperty("db.user",user);
             propiedades.setProperty("db.password",password);
 
+            propiedades.setProperty("CLOUDINARY_CLOUD_NAME", "PON_TU_CLOUD_NAME_AQUI");
+            propiedades.setProperty("CLOUDINARY_API_KEY", "PON_TU_API_KEY_AQUI");
+            propiedades.setProperty("CLOUDINARY_API_SECRET", "PON_TU_API_SECRET_AQUI");
+
             try(FileOutputStream fos = new FileOutputStream(archivoConfig)){
-                propiedades.store(fos, "Configuración de Base de datos");
+                propiedades.store(fos, "Configuración de Base de datos y Servicios en la Nube");
                 System.out.println("Archivo creado exitosamente en: " + archivoConfig.getAbsolutePath());
             }catch (IOException e){
                 System.err.println("Error al crear archivo config.properties: " + e.getMessage());

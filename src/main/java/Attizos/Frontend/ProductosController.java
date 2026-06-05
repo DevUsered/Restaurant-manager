@@ -1,10 +1,7 @@
 package Attizos.Frontend;
 
 import Attizos.Backend.Attizos.*;
-import Attizos.Backend.Database.InsumoDAO;
-import Attizos.Backend.Database.ProductoDAO;
-import Attizos.Backend.Database.RecetaDAO;
-import Attizos.Backend.Database.ReportesDAO;
+import Attizos.Backend.Database.*;
 import Attizos.Backend.Listas.ListaDE;
 import Attizos.Backend.Listas.NodoDE;
 import javafx.beans.property.SimpleStringProperty;
@@ -117,13 +114,24 @@ public class ProductosController {
                 }
             });
         }
+        cmbInsumos.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) ->{
+            if(newVal != null){
+                txtCantidadReceta.requestFocus();
+            }
+        });
+        cmbInsumos.setOnKeyPressed(event ->{
+            if(event.getCode() == KeyCode.ENTER){
+                if(cmbInsumos.getSelectionModel().getSelectedItem() != null){
+                    agregarIngredienteVisual(new ActionEvent());
+                }
+                event.consume();
+            }
+        });
         UtilidadesUI.saltarConEnter(txtNombre, txtPrecio);
-        UtilidadesUI.saltarConEnter(txtPrecio, cmbInsumos);
+        UtilidadesUI.saltarConEnter(txtPrecio, txtStock);
         txtCantidadReceta.setOnKeyPressed(event ->{
             if(event.getCode() == KeyCode.ENTER){
                 agregarIngredienteVisual(new ActionEvent());
-
-                cmbInsumos.requestFocus();
                 event.consume();
             }
         });
@@ -345,6 +353,10 @@ public class ProductosController {
             recetaTemporal.add(new DetalleRecetaUI(insumoSeleccionado, cantidad));
             cmbInsumos.getSelectionModel().clearSelection();
             txtCantidadReceta.clear();
+            if(txtBuscarInsumo != null){
+                txtBuscarInsumo.clear();
+                javafx.application.Platform.runLater(() -> txtBuscarInsumo.requestFocus());
+            }
         } catch (NumberFormatException e) {
             mostrarAlerta("Error", "Cantidad inválida. Ingrese un número válido (Ej: 1.5).");
         }
@@ -384,13 +396,9 @@ public class ProductosController {
                 }
             }
             String cat = tipoVisual.equals("Otro") && cmbCategoria.getValue() != null ? cmbCategoria.getValue() : tipoVisual;
-
-            String stringBase64 = "default.png";
+            String nombreArchivoImagen = "default.png";
             if (archivoImagenSeleccionada != null) {
-                String textoImagen = UtilidadesImagen.convertirImagenABase64(archivoImagenSeleccionada);
-                if(textoImagen != null){
-                    stringBase64 = textoImagen;
-                }
+                nombreArchivoImagen = UtilidadesImagen.guardarImagenLocal(archivoImagenSeleccionada, txtNombre.getText());
             }
 
             boolean usaReceta = vboxReceta.isVisible();
@@ -398,7 +406,7 @@ public class ProductosController {
                 recetaTemporal.clear();
             }
 
-            Producto nuevo = new Producto(0, nombre, precio, cat, stock, stringBase64,"Activo");
+            Producto nuevo = new Producto(0, nombre, precio, cat, stock, nombreArchivoImagen,"Activo");
             switch (tipoVisual) {
                 case "Pizza" -> {
                     if (cmbTamanoPizza.getValue() != null) nuevo.agregarAtributo("tamano", cmbTamanoPizza.getValue());
@@ -464,6 +472,11 @@ public class ProductosController {
                     cargarMenu();
                     mostrarExito("Éxito", "Producto guardado correctamente.");
                     limpiarFormulario();
+                    if (!App.modoOffline) {
+                        new Thread(() -> {
+                            ServicioNube.sincronizarImagenesPendientes();
+                        }).start();
+                    }
                 }else{
                     mostrarAlerta("Error", "No se pudo guardar el producto. ");
                 }
@@ -605,7 +618,10 @@ public class ProductosController {
     private void limpiarFormulario() {
         txtNombre.clear(); txtPrecio.clear(); txtStock.clear();
         txtCantidadReceta.clear();
+        txtTipoBebida.clear(); txtSalsaPasta.clear();
+        if (txtBuscador != null) txtBuscador.clear();
         if(txtBuscarInsumo != null) txtBuscarInsumo.clear();
+
         imgPreview.setImage(null);
         archivoImagenSeleccionada = null;
         recetaTemporal.clear();
@@ -618,11 +634,13 @@ public class ProductosController {
 
         cmbTipoClase.getSelectionModel().clearSelection();
         cmbInsumos.getSelectionModel().clearSelection();
+        cmbTamanoPizza.getSelectionModel().clearSelection();
+        cmbTamanoBebida.getSelectionModel().clearSelection();
+
         if(cmbCategoria != null){
             cmbCategoria.getSelectionModel().clearSelection();
         }
         tablaRecetaFila.setPrefHeight(120);
-
     }
 
     private void mostrarAlerta(String t, String m) {
@@ -735,7 +753,7 @@ public class ProductosController {
     }
     private void abrirVentanaEdicionReceta(Producto producto){
         try{
-            javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(getClass().getResource("/fxml/ModalEditarReceta.fxml"));
+            javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(getClass().getResource("/fxml/EditarReceta.fxml"));
             javafx.scene.Parent root = loader.load();
             
             EditarRecetaController controller = loader.getController();

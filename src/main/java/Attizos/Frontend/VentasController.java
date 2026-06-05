@@ -298,16 +298,8 @@ public class VentasController {
         imgView.setPreserveRatio(true);
         imgView.getStyleClass().add("product-image-view");
         String datoImagen = p.getImagenURL();
-        if (datoImagen != null && !datoImagen.equals("default.png")) {
-            Image imgReal = UtilidadesImagen.convertirBase64AImagen(datoImagen);
-            if (imgReal != null) {
-                imgView.setImage(imgReal);
-            } else {
-                imgView.setImage(new Image(getClass().getResourceAsStream("/images/default.png")));
-            }
-        } else {
-            imgView.setImage(new Image(getClass().getResourceAsStream("/images/default.png")));
-        }
+        Image imgOptimizada = UtilidadesImagen.obtenerImagenOptimizada(datoImagen);
+        imgView.setImage(imgOptimizada);
         Label name = new Label(p.getNombre());
         name.getStyleClass().add("product-name");
         name.setWrapText(true);
@@ -344,16 +336,8 @@ public class VentasController {
 
             ImageView imgView = new ImageView();
             String datoImagen = p.getImagenURL();
-            if (datoImagen != null && !datoImagen.equals("default.png")) {
-                Image imgReal = UtilidadesImagen.convertirBase64AImagen(datoImagen);
-                if (imgReal != null) {
-                    imgView.setImage(imgReal);
-                } else {
-                    imgView.setImage(new Image(getClass().getResourceAsStream("/images/default.png")));
-                }
-            } else {
-                imgView.setImage(new Image(getClass().getResourceAsStream("/images/default.png")));
-            }
+            Image imgOptimizada = UtilidadesImagen.obtenerImagenOptimizada(datoImagen);
+            imgView.setImage(imgOptimizada);
             imgView.setFitHeight(imgSize);
             imgView.setFitWidth(imgSize);
             imgView.setPreserveRatio(false);

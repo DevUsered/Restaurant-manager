@@ -255,4 +255,10 @@ public class Restaurante
         }
         return idGenerado;
     }
+
+    public void setMenu(ListaDE<Producto> menuActualizado) {
+        if(menuActualizado != null){
+            this.menu = menuActualizado;
+        }
+    }
 }

@@ -18,12 +18,13 @@
             <Label fx:id="lblTituloProducto" text="Receta de: [Producto]" textFill="#111111">
                <font><Font name="System Bold" size="20.0" /></font>
             </Label>
-            
+
             <HBox alignment="CENTER_LEFT" spacing="10.0" style="-fx-background-color: #FDF6E3; -fx-padding: 10; -fx-background-radius: 8; -fx-border-color: #DDDDDD; -fx-border-radius: 8;">
                <children>
-                  <ComboBox fx:id="cmbInsumos" prefWidth="250.0" promptText="Seleccione Insumo..." style="-fx-background-color: #FFFFFF; -fx-border-color: #DDDDDD; -fx-border-radius: 5;" />
-                  <TextField fx:id="txtCantidad" prefWidth="90.0" promptText="Cantidad" style="-fx-background-color: #FFFFFF; -fx-border-color: #DDDDDD; -fx-border-radius: 5;" />
-                  <Button mnemonicParsing="false" onAction="#agregarIngrediente" style="-fx-background-color: #218c4e; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 5;" text="Añadir" />
+
+                  <ComboBox fx:id="cmbInsumos" editable="true" prefWidth="200.0" promptText="🔍 Buscar o seleccione insumo..." style="-fx-background-color: #FFFFFF; -fx-border-color: #DDDDDD; -fx-border-radius: 5; -fx-font-size: 15px;" />
+                  <TextField fx:id="txtCantidad" prefWidth="90.0" promptText="Cantidad" style="-fx-background-color: #FFFFFF; -fx-border-color: #DDDDDD; -fx-border-radius: 5; -fx-font-size: 15px; -fx-text-fill: #444444 -fx-font-weight: bold" />
+                  <Button mnemonicParsing="false" onAction="#agregarIngrediente" style="-fx-background-color: #218c4e; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 5; -fx-font-size: 14px " text="Añadir" />
                </children>
             </HBox>
             
