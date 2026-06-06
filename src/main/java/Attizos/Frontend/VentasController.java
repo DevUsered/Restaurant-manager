@@ -3,21 +3,25 @@ package Attizos.Frontend;
 import Attizos.Backend.Attizos.*;
 import Attizos.Backend.Database.ConexionSQLite;
 import Attizos.Backend.Database.FacturaDAO;
-import Attizos.Backend.Database.InsumoDAO;
-import Attizos.Backend.Database.ProductoDAO;
 import Attizos.Backend.Listas.ListaDE;
 import Attizos.Backend.Listas.NodoDE;
+import Attizos.Frontend.Cobros.CobroQRController;
+import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
 import javafx.geometry.Pos;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
-import javafx.scene.text.Font;
 import javafx.scene.text.TextAlignment;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 
-import java.io.InputStream;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -429,6 +433,40 @@ public class VentasController {
                 }
             }
             return maxPlatosPosibles == Integer.MAX_VALUE ? 0 : maxPlatosPosibles;
+        }
+    }
+    @FXML
+    void cobrarConQR(ActionEvent event){
+        if(facturaActual.getTotal() <= 0){
+            mostrarAlerta("Carrito Vacío","⚠ Agregue productos antes de cobrar.",Alert.AlertType.WARNING);
+            return;
+        }
+        try{
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/ModalCobroQR.fxml"));
+            Parent root = loader.load();
+
+            CobroQRController controller = loader.getController();
+            controller.inicializarCobro(facturaActual.getTotal());
+
+            Stage stage = new Stage();
+            stage.initModality(Modality.APPLICATION_MODAL);
+            stage.initStyle(StageStyle.TRANSPARENT);
+
+            Scene scene = new Scene(root);
+            scene.setFill(Color.TRANSPARENT);
+            stage.setScene(scene);
+
+            stage.showAndWait();
+
+            if(controller.isPagoCompletado()){
+                finalizarVenta();
+                mostrarAlerta("¡Pago Exitoso!", "El pago Qr se realizó con éxito.", Alert.AlertType.INFORMATION);
+            }else{
+                mostrarAlerta("Operación Cancelada", "El cobro qr fue cancelado. ", Alert.AlertType.WARNING);
+            }
+        }catch (Exception e){
+            e.printStackTrace();
+            mostrarAlerta("Error","No se pudo mostrar el QR por el momento.", Alert.AlertType.ERROR);
         }
     }
 }

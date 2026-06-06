@@ -1,4 +1,4 @@
-package Attizos.Frontend;
+package Attizos.Frontend.Cobros;
 
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -22,6 +22,8 @@ public class CobroQRController {
     private double yOffset = 0;
 
     private boolean pagoCompletado = false;
+    private volatile boolean esperandoPago = true;
+    private final PasarelaQrService servicioPagos = FabricarPasarelasPago.obtenerPasarelaActiva();
 
     @FXML
     public void initialize(){
@@ -40,37 +42,74 @@ public class CobroQRController {
     public void inicializarCobro(double montoTotal) {
         lblMonto.setText(String.format("Bs. %.2f", montoTotal));
         lblEstado.setText("Generando código QR seguro...");
-        lblEstado.setStyle("-fx-text-fill: #555555;");// Gris
+        lblEstado.setStyle("-fx-text-fill: #555555;");
         progressIndicador.setVisible(true);
         pagoCompletado = false;
+        esperandoPago = true;
 
         int idTransaccion = (int) (Math.random() * 10000);
-        String urlQR = ServicioPagosQR.generarLinkQr(montoTotal, idTransaccion);
-        Image imagenQR = new Image(urlQR, true);
-        imagenQR.progressProperty().addListener((obs, oldProgress, newProgress) -> {
-            if (newProgress.doubleValue() == 1.0) {
-                if (!imagenQR.isError()) {
-                    imgQR.setImage(imagenQR);
-                    lblEstado.setText("QR Listo. Esperando pago desde la App del banco...");
-                } else {
-                    lblEstado.setText("Error al generar el QR. Verifique su internet.");
-                    lblEstado.setStyle("-fx-text-fill: #ff4c4c;"); // Rojo error
+
+        new Thread(() -> {
+            try {
+                String urlQR = servicioPagos.solicitarQrDinamico(montoTotal, String.valueOf(idTransaccion));
+                javafx.scene.image.Image imagenQR = new javafx.scene.image.Image(urlQR, true);
+
+                imagenQR.progressProperty().addListener((obs, oldProgress, newProgress) -> {
+                    if (newProgress.doubleValue() == 1.0 && !imagenQR.isError()) {
+                        javafx.application.Platform.runLater(() -> {
+                            imgQR.setImage(imagenQR);
+                            lblEstado.setText("QR Listo. Esperando pago desde la App del banco...");
+                            iniciarSondeoDePago(String.valueOf(idTransaccion));
+                        });
+                    }
+                });
+            } catch (Exception e) {
+                javafx.application.Platform.runLater(() -> {
+                    lblEstado.setText("Error al conectar con la pasarela.");
+                    lblEstado.setStyle("-fx-text-fill: #ff4c4c;");
                     progressIndicador.setVisible(false);
-                }
+                });
             }
-        });
+        }).start();
+    }
+    private void iniciarSondeoDePago(String idTransaccion) {
+        new Thread(() -> {
+            try {
+                while (esperandoPago) {
+                    Thread.sleep(4000);
+                    if (!esperandoPago) break;
+
+                    boolean pagado = servicioPagos.verificarPago(idTransaccion);
+
+                    if (pagado) {
+                        esperandoPago = false;
+                        javafx.application.Platform.runLater(() -> {
+                            progressIndicador.setVisible(false);
+                            lblEstado.setText("¡Pago Verificado en el Banco!");
+                            lblEstado.setStyle("-fx-text-fill: #218c4e; -fx-font-size: 16px;");
+
+                            new Thread(() -> {
+                                try { Thread.sleep(1500); } catch (Exception e) {}
+                                javafx.application.Platform.runLater(() -> {
+                                    pagoCompletado = true;
+                                    cerrarVentana();
+                                });
+                            }).start();
+                        });
+                    }
+                }
+            } catch (Exception e) {
+                System.out.println("⚠️ Sondeo interrumpido.");
+            }
+        }).start();
     }
     @FXML
     void simularPagoExitoso(ActionEvent event) {
-        // Simulamos que el "Hilo de Sondeo" detectó el pago en el banco
+        esperandoPago = false;
         pagoCompletado = true;
-
-        // Cambiamos la interfaz a verde
         progressIndicador.setVisible(false);
         lblEstado.setText("¡Pago Confirmado!");
         lblEstado.setStyle("-fx-text-fill: #218c4e; -fx-font-size: 16px;"); // Verde éxito
-
-        // Cerramos la ventana automáticamente después de 1 segundo para que el usuario vea el éxito
         javafx.application.Platform.runLater(() -> {
             try {
                 Thread.sleep(1000);

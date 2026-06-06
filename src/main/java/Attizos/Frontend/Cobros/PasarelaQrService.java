@@ -1,4 +1,4 @@
-package Attizos.Frontend;
+package Attizos.Frontend.Cobros;
 
 public interface PasarelaQrService {
 
