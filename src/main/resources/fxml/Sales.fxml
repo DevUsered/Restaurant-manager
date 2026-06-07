@@ -11,27 +11,42 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<AnchorPane style="-fx-background-color: transparent;" stylesheets="@../css/style.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="Attizos.Frontend.VentasController">
+<AnchorPane style="-fx-background-color: transparent;" stylesheets="@../css/style.css" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="Attizos.Frontend.VentasController">
     <children>
-        <Label text="Punto de Venta" textFill="#111111" AnchorPane.leftAnchor="20.0" AnchorPane.topAnchor="20.0">
+        <Label text="Venta" textFill="#111111" AnchorPane.leftAnchor="20.0" AnchorPane.topAnchor="20.0">
             <font>
                 <Font name="System Bold" size="28.0" />
             </font>
         </Label>
 
-        <TextField fx:id="tfBuscar" prefHeight="35.0" prefWidth="237.0" promptText="🔍 Buscar producto..." style="-fx-background-color: #F5F5F5; -fx-text-fill: #111111; -fx-prompt-text-fill: #999999; -fx-background-radius: 10; -fx-padding: 8 15; -fx-border-color: #DDDDDD; -fx-border-radius: 10;" AnchorPane.leftAnchor="268.0" AnchorPane.topAnchor="22.0" />
+        <TextField fx:id="tfBuscar" prefHeight="35.0" prefWidth="150.0" promptText="🔍 Buscar..." style="-fx-background-color: #F5F5F5; -fx-text-fill: #111111; -fx-prompt-text-fill: #999999; -fx-background-radius: 10; -fx-padding: 8 15; -fx-border-color: #DDDDDD; -fx-border-radius: 10;" AnchorPane.leftAnchor="20.0" AnchorPane.topAnchor="65.0" />
 
-        <Label styleClass="section-title" text="Categorías" AnchorPane.leftAnchor="20.0" AnchorPane.topAnchor="80.0" />
+        <ScrollPane fx:id="sPPromociones" fitToHeight="true" fitToWidth="false" hbarPolicy="AS_NEEDED" layoutY="-24.0" prefHeight="158.0" prefWidth="232.0" style="-fx-background: transparent; -fx-background-color: transparent;" vbarPolicy="NEVER" AnchorPane.leftAnchor="190.0" AnchorPane.rightAnchor="370.0" AnchorPane.topAnchor="15.0">
+            <content>
+                <HBox fx:id="panelPromociones" alignment="CENTER_LEFT" prefHeight="140.0" spacing="15.0" style="-fx-background-color: linear-gradient(to right, #ff9966, #ff5e62); -fx-background-radius: 10; -fx-padding: 10 15; -fx-effect: dropshadow(gaussian, rgba(255, 94, 98, 0.3), 5, 0, 0, 3);">
+                    <children>
+                        <Label minWidth="-Infinity" text="🔥 Ofertas Especiales" textFill="#FFFFFF">
+                            <font>
+                                <Font name="System Bold" size="15.0" />
+                            </font>
+                        </Label>
+                        <HBox fx:id="hBPromociones" alignment="CENTER_LEFT" spacing="15.0" />
+                    </children>
+                </HBox>
+            </content>
+        </ScrollPane>
 
-        <ScrollPane fx:id="sPCategoria" fitToHeight="true" fitToWidth="true" hbarPolicy="NEVER" prefHeight="60.0" style="-fx-background: transparent; -fx-background-color: transparent;" vbarPolicy="NEVER" AnchorPane.leftAnchor="20.0" AnchorPane.rightAnchor="370.0" AnchorPane.topAnchor="110.0">
+        <Label styleClass="section-title" text="Categorías" AnchorPane.leftAnchor="20.0" AnchorPane.topAnchor="185.0" />
+
+        <ScrollPane fx:id="sPCategoria" fitToHeight="true" fitToWidth="true" hbarPolicy="NEVER" prefHeight="55.0" style="-fx-background: transparent; -fx-background-color: transparent;" vbarPolicy="NEVER" AnchorPane.leftAnchor="20.0" AnchorPane.rightAnchor="370.0" AnchorPane.topAnchor="215.0">
             <content>
                 <HBox fx:id="hBCategoria" alignment="CENTER_LEFT" spacing="10.0" style="-fx-background-color: transparent;" />
             </content>
         </ScrollPane>
 
-        <Label layoutX="14.0" layoutY="153.0" styleClass="section-title" text="Menú de Productos" AnchorPane.leftAnchor="14.0" AnchorPane.topAnchor="153.0" />
+        <Label styleClass="section-title" text="Menú de Productos" AnchorPane.leftAnchor="20.0" AnchorPane.topAnchor="280.0" />
 
-        <ScrollPane fx:id="sPProductos" fitToWidth="true" hbarPolicy="NEVER" style="-fx-background: transparent; -fx-background-color: transparent;" AnchorPane.bottomAnchor="20.0" AnchorPane.leftAnchor="20.0" AnchorPane.rightAnchor="370.0" AnchorPane.topAnchor="215.0">
+        <ScrollPane fx:id="sPProductos" fitToWidth="true" hbarPolicy="NEVER" style="-fx-background: transparent; -fx-background-color: transparent;" AnchorPane.bottomAnchor="20.0" AnchorPane.leftAnchor="20.0" AnchorPane.rightAnchor="370.0" AnchorPane.topAnchor="315.0">
             <content>
                 <FlowPane fx:id="flPProductos" hgap="15.0" style="-fx-background-color: transparent;" vgap="15.0" />
             </content>

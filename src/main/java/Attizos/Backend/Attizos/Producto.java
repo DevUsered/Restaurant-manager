@@ -112,6 +112,9 @@ public  class Producto
         // Ahora sí guardamos el dato de forma segura
         this.atributosDinamicos.put(clave, valor);
     }
+    public boolean isPromocion(){
+        return false;
+    }
     @Override
     public String toString(){
         return nombre + "- Bs. "+precio;

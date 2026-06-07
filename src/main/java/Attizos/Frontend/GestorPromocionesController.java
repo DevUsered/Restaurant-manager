@@ -1,4 +1,4 @@
-package Attizos.Frontend.Cobros;
+package Attizos.Frontend;
 
 import Attizos.Backend.Attizos.App;
 import Attizos.Backend.Attizos.DetalleCombo;
@@ -8,9 +8,6 @@ import Attizos.Backend.Database.ConexionBD;
 import Attizos.Backend.Database.ProductoDAO;
 import Attizos.Backend.Database.PromocionDAO;
 import Attizos.Backend.Listas.NodoDE;
-import Attizos.Frontend.AlertaPersonalizada;
-import Attizos.Frontend.DialogoPersonalizado;
-import Attizos.Frontend.UtilidadesImagen;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -25,6 +22,7 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.layout.AnchorPane;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import javafx.util.StringConverter;
 
 import java.io.File;
 import java.sql.Connection;
@@ -32,16 +30,16 @@ import java.sql.PreparedStatement;
 import java.time.LocalDate;
 
 public class GestorPromocionesController {
+
     @FXML private AnchorPane rootPane;
 
     @FXML private TableView<Promocion> tablaPromos;
-    @FXML
-    private TableColumn<Promocion, Integer> colId;
+    @FXML private TableColumn<Promocion, Integer> colId;
     @FXML private TableColumn<Promocion, String> colNombrePromo, colInicio, colFin, colEstado;
     @FXML private TableColumn<Promocion, Double> colPrecio;
 
     @FXML private Label lblTituloFormulario;
-    @FXML private TextField txtNombre, txtPrecio, txtBuscarProducto, txtCantidad;
+    @FXML private TextField txtNombre, txtPrecio, txtCantidad;
     @FXML private DatePicker dpInicio, dpFin;
     @FXML private ComboBox<Producto> cmbProductosMenu;
     @FXML private ImageView imgPreview;
@@ -62,13 +60,77 @@ public class GestorPromocionesController {
     private double xOffset = 0, yOffset = 0;
 
     @FXML
-    public void initialize(){
+    public void initialize() {
         configurarArrastreVentana();
+        estilizarControles();
         configurarTablas();
         cargarDatos();
-        configurarBuscadorYTeclado();
+        configurarBuscadorInteligente();
         configurarMenuContextualContenido();
     }
+
+    private void estilizarControles() {
+        String estiloTextoOscuro = "-fx-text-fill: #111111; -fx-font-weight: bold;";
+
+        txtCantidad.setStyle("-fx-background-color: #FFFFFF; -fx-border-color: #DDDDDD; -fx-border-radius: 5; -fx-padding: 8; -fx-prompt-text-fill: #999999; " + estiloTextoOscuro);
+        dpInicio.getEditor().setStyle(estiloTextoOscuro + " -fx-background-color: #FFFFFF;");
+        dpFin.getEditor().setStyle(estiloTextoOscuro + " -fx-background-color: #FFFFFF;");
+
+        // Estilizar el campo de texto interno del ComboBox Editable para máxima visibilidad
+        cmbProductosMenu.getEditor().setStyle(estiloTextoOscuro + " -fx-background-color: transparent; -fx-prompt-text-fill: #999999;");
+    }
+
+    private void configurarBuscadorInteligente() {
+        // Permitir que el ComboBox convierta el texto escrito al Objeto Producto real
+        cmbProductosMenu.setConverter(new StringConverter<Producto>() {
+            @Override
+            public String toString(Producto p) {
+                return p == null ? "" : p.getNombre();
+            }
+            @Override
+            public Producto fromString(String string) {
+                return masterMenu.stream().filter(p -> p.getNombre().equals(string)).findFirst().orElse(null);
+            }
+        });
+
+        // Lógica de filtrado en tiempo real mientras se escribe
+        cmbProductosMenu.getEditor().textProperty().addListener((obs, oldVal, newVal) -> {
+            Producto seleccionado = cmbProductosMenu.getSelectionModel().getSelectedItem();
+            // Evitar que se filtre si el texto cambió solo porque seleccionamos algo de la lista
+            if (seleccionado != null && seleccionado.getNombre().equals(newVal)) return;
+
+            filteredMenu.setPredicate(producto -> {
+                if (newVal == null || newVal.isEmpty()) return true;
+                return producto.getNombre().toLowerCase().contains(newVal.toLowerCase());
+            });
+
+            if (newVal != null && !newVal.isEmpty() && !cmbProductosMenu.isShowing()) {
+                cmbProductosMenu.show();
+            }
+        });
+
+        // Control de teclado avanzado en el ComboBox
+        cmbProductosMenu.getEditor().setOnKeyPressed(e -> {
+            if (e.getCode() == KeyCode.ENTER) {
+                if (cmbProductosMenu.getValue() != null) {
+                    txtCantidad.requestFocus();
+                }
+            } else if (e.getCode() == KeyCode.DOWN || e.getCode() == KeyCode.UP) {
+                if (!cmbProductosMenu.isShowing()) cmbProductosMenu.show();
+            }
+        });
+
+        // Saltos rápidos en el resto del formulario
+        txtNombre.setOnKeyPressed(e -> { if (e.getCode() == KeyCode.ENTER) txtPrecio.requestFocus(); });
+        txtPrecio.setOnKeyPressed(e -> { if (e.getCode() == KeyCode.ENTER) cmbProductosMenu.requestFocus(); });
+
+        txtCantidad.setOnKeyPressed(e -> {
+            if (e.getCode() == KeyCode.ENTER) {
+                btnAgregarAlCombo.fire();
+            }
+        });
+    }
+
     private void configurarArrastreVentana() {
         rootPane.setOnMousePressed(event -> {
             xOffset = event.getSceneX();
@@ -80,6 +142,7 @@ public class GestorPromocionesController {
             stage.setY(event.getScreenY() - yOffset);
         });
     }
+
     private void configurarTablas() {
         colId.setCellValueFactory(new PropertyValueFactory<>("id"));
         colNombrePromo.setCellValueFactory(new PropertyValueFactory<>("nombre"));
@@ -95,53 +158,23 @@ public class GestorPromocionesController {
 
         filteredMenu = new FilteredList<>(masterMenu, p -> true);
         cmbProductosMenu.setItems(filteredMenu);
+
+        // Estilizar los elementos dentro de la lista desplegable para que se lean perfecto
         cmbProductosMenu.setCellFactory(lv -> new ListCell<Producto>() {
             @Override
             protected void updateItem(Producto item, boolean empty) {
                 super.updateItem(item, empty);
-                setText(empty ? null : item.getNombre() + " (Bs." + item.getPrecio() + ")");
-            }
-        });
-        cmbProductosMenu.setButtonCell(new ListCell<Producto>() {
-            @Override
-            protected void updateItem(Producto item, boolean empty) {
-                super.updateItem(item, empty);
-                setText(empty ? null : item.getNombre());
-            }
-        });
-    }
-    private void configurarBuscadorYTeclado() {
-        // Filtrado en tiempo real
-        txtBuscarProducto.textProperty().addListener((observable, oldValue, newValue) -> {
-            filteredMenu.setPredicate(producto -> {
-                if (newValue == null || newValue.isEmpty()) return true;
-                return producto.getNombre().toLowerCase().contains(newValue.toLowerCase());
-            });
-            if (newValue != null && !newValue.isEmpty()) cmbProductosMenu.show();
-        });
-
-        txtNombre.setOnKeyPressed(e -> { if (e.getCode() == KeyCode.ENTER) txtPrecio.requestFocus(); });
-        txtPrecio.setOnKeyPressed(e -> { if (e.getCode() == KeyCode.ENTER) txtBuscarProducto.requestFocus(); });
-
-        txtBuscarProducto.setOnKeyPressed(e -> {
-            if (e.getCode() == KeyCode.DOWN || e.getCode() == KeyCode.ENTER) {
-                cmbProductosMenu.requestFocus();
-                cmbProductosMenu.show();
-            }
-        });
-
-        cmbProductosMenu.setOnKeyPressed(e -> {
-            if (e.getCode() == KeyCode.ENTER) {
-                if (cmbProductosMenu.getValue() != null) txtCantidad.requestFocus();
-            }
-        });
-
-        txtCantidad.setOnKeyPressed(e -> {
-            if (e.getCode() == KeyCode.ENTER) {
-                btnAgregarAlCombo.fire();
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("-fx-background-color: transparent;");
+                } else {
+                    setText(item.getNombre() + " (Bs." + item.getPrecio() + ")");
+                    setStyle("-fx-text-fill: #111111; -fx-font-weight: bold;");
+                }
             }
         });
     }
+
     private void configurarMenuContextualContenido() {
         ContextMenu contextMenu = new ContextMenu();
         MenuItem itemEliminar = new MenuItem("🗑 Quitar del Combo");
@@ -152,6 +185,7 @@ public class GestorPromocionesController {
         contextMenu.getItems().add(itemEliminar);
         tablaContenido.setContextMenu(contextMenu);
     }
+
     private void cargarDatos() {
         listaPromosVisibles.clear();
         masterMenu.clear();
@@ -171,6 +205,7 @@ public class GestorPromocionesController {
             acProd = acProd.getSiguiente();
         }
     }
+
     @FXML
     void seleccionarImagen(ActionEvent event) {
         FileChooser fc = new FileChooser();
@@ -180,6 +215,7 @@ public class GestorPromocionesController {
             imgPreview.setImage(new Image(archivoImagenSeleccionada.toURI().toString()));
         }
     }
+
     @FXML
     void agregarAlCombo(ActionEvent event) {
         Producto seleccionado = cmbProductosMenu.getValue();
@@ -206,16 +242,16 @@ public class GestorPromocionesController {
 
             tablaContenido.refresh();
 
-            // Volver el cursor al buscador para seguir agregando rápido
-            txtBuscarProducto.clear();
             cmbProductosMenu.getSelectionModel().clearSelection();
+            cmbProductosMenu.getEditor().clear();
             txtCantidad.clear();
-            txtBuscarProducto.requestFocus();
+            cmbProductosMenu.requestFocus();
 
         } catch (NumberFormatException e) {
             AlertaPersonalizada.mostrarAlerta("Error", "La cantidad debe ser un número entero válido.", Alert.AlertType.ERROR);
         }
     }
+
     @FXML
     void guardarPromocion(ActionEvent event) {
         try {
@@ -230,15 +266,23 @@ public class GestorPromocionesController {
                 return;
             }
 
-            LocalDate inicio = dpInicio.getValue();
-            LocalDate fin = dpFin.getValue();
-
             String nombreImg = "default.png";
             if (archivoImagenSeleccionada != null) {
                 nombreImg = UtilidadesImagen.guardarImagenLocal(archivoImagenSeleccionada, nombre);
             } else if (promoEnEdicion != null) {
                 nombreImg = promoEnEdicion.getImagenURL();
+            } else {
+                java.util.Optional<String> resultado = DialogoPersonalizado.mostrarDialogo(
+                        "Confirmar Imagen",
+                        "No se ha seleccionado ninguna portada para el combo.",
+                        "¿Está seguro de que desea guardar el combo con la imagen por defecto?",
+                        "Sí, usar por defecto"
+                );
+                if (resultado.isEmpty()) return;
             }
+
+            LocalDate inicio = dpInicio.getValue();
+            LocalDate fin = dpFin.getValue();
 
             Promocion promoAGuardar = new Promocion(promoEnEdicion == null ? 0 : promoEnEdicion.getId(), nombre, precio, nombreImg, inicio, fin);
             for (DetalleCombo dc : detallesTemporales) {
@@ -248,16 +292,13 @@ public class GestorPromocionesController {
             String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
 
             if (promoEnEdicion == null) {
-                // MODO: CREAR
                 if (PromocionDAO.guardarNuevaPromocion(promoAGuardar)) {
                     App.attizos.getPromocionesActivas().insertarAlFinal(promoAGuardar);
-                    App.registrarAuditoria(operador, "Promociones", nombre, "Creación", 0, "Nueva promoción registrada a Bs." + precio);
+                    App.registrarAuditoria(operador, "Promociones", nombre, "Creación", 0, "Nueva promoción a Bs." + precio);
                     AlertaPersonalizada.mostrarAlerta("Éxito", "Promoción creada correctamente.", Alert.AlertType.INFORMATION);
                 }
             } else {
-                // MODO: EDITAR
                 if (actualizarPromocionEnBaseDeDatos(promoAGuardar)) {
-                    // Actualizar en RAM
                     promoEnEdicion.setNombre(nombre);
                     promoEnEdicion.setPrecio(precio);
                     promoEnEdicion.setFechaInicio(inicio);
@@ -278,6 +319,7 @@ public class GestorPromocionesController {
             AlertaPersonalizada.mostrarAlerta("Error", "El precio debe ser numérico.", Alert.AlertType.ERROR);
         }
     }
+
     private boolean actualizarPromocionEnBaseDeDatos(Promocion promo) {
         if (!ProductoDAO.actualizarProducto(promo)) return false;
 
@@ -309,6 +351,7 @@ public class GestorPromocionesController {
             return false;
         }
     }
+
     @FXML
     void cargarParaEditar(ActionEvent event) {
         Promocion sel = tablaPromos.getSelectionModel().getSelectedItem();
@@ -330,6 +373,7 @@ public class GestorPromocionesController {
             if (file.exists()) imgPreview.setImage(new Image(file.toURI().toString()));
         }
     }
+
     @FXML
     void terminarPromocion(ActionEvent event) {
         Promocion sel = tablaPromos.getSelectionModel().getSelectedItem();
@@ -345,6 +389,7 @@ public class GestorPromocionesController {
             tablaPromos.refresh();
         }
     }
+
     @FXML
     void eliminarPromocion(ActionEvent event) {
         Promocion sel = tablaPromos.getSelectionModel().getSelectedItem();
@@ -365,6 +410,7 @@ public class GestorPromocionesController {
                     }
                 });
     }
+
     @FXML
     void limpiarFormularioAction(ActionEvent event) {
         limpiarFormulario();
@@ -375,15 +421,16 @@ public class GestorPromocionesController {
         lblTituloFormulario.setText("Crear Nuevo Combo");
         txtNombre.clear();
         txtPrecio.clear();
-        txtBuscarProducto.clear();
+        cmbProductosMenu.getSelectionModel().clearSelection();
+        cmbProductosMenu.getEditor().clear();
         txtCantidad.clear();
         dpInicio.setValue(null);
         dpFin.setValue(null);
-        cmbProductosMenu.getSelectionModel().clearSelection();
         imgPreview.setImage(null);
         archivoImagenSeleccionada = null;
         detallesTemporales.clear();
     }
+
     @FXML
     void cerrarVentana(ActionEvent event) {
         Stage stage = (Stage) rootPane.getScene().getWindow();

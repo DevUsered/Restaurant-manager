@@ -115,6 +115,9 @@ public class App {
             }
             System.out.println("✅ Menú cargado en RAM con " + menuDB.getLongitud() + " productos.");
             RecetaDAO.cargarRecetas();
+            ListaDE<Promocion> promocionDB = ConexionSQLite.obtenerPromocionesLocal(menuDB);
+            attizos.setPromocionesActivas(promocionDB);
+            System.out.println("Promociones cargados. ");
         } else {
             System.out.println("⚠️ La tabla de productos está vacía en la BD");
         }

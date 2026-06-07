@@ -773,4 +773,28 @@ public class ProductosController {
             mostrarAlerta("Error", "No se pudo abrir la ventana de edición de recetas.");
         }
     }
+    @FXML
+    void abrirVentanaPromocion(ActionEvent event) {
+        try {
+            javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(getClass().getResource("/fxml/GestorPromociones.fxml"));
+            javafx.scene.Parent root = loader.load();
+
+            javafx.stage.Stage stage = new javafx.stage.Stage();
+            stage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
+            stage.initStyle(javafx.stage.StageStyle.TRANSPARENT);
+
+            javafx.scene.Scene scene = new javafx.scene.Scene(root);
+            scene.setFill(javafx.scene.paint.Color.TRANSPARENT);
+
+            stage.setScene(scene);
+            stage.showAndWait();
+
+            cargarMenu();
+            tablaMenu.refresh();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            mostrarAlerta("Error", "No se pudo abrir el creador de promociones. Faltan archivos FXML.");
+        }
+    }
 }

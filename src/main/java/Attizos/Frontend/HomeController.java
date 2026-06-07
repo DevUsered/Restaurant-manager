@@ -28,7 +28,7 @@ import java.util.Set;
 
 public class HomeController {
     @FXML private FlowPane containerProducts;
-    @FXML private FlowPane flowCategorias; // Reemplaza al ComboBox
+    @FXML private FlowPane flowCategorias;
 
     private String categoriaActiva = "Todo";
 
@@ -41,7 +41,7 @@ public class HomeController {
     private void updateCategories(){
         flowCategorias.getChildren().clear();
 
-        // 1. Botón "Todo" por defecto
+
         Button btnAll = crearBotonCategoria("Todo");
         flowCategorias.getChildren().add(btnAll);
 
@@ -49,11 +49,11 @@ public class HomeController {
         Set<String> categorias = new HashSet<>();
         NodoDE<Producto> actual = App.attizos.getMenu().getCabeza();
         while(actual != null){
-            categorias.add(actual.getDato().getCategoria());
-            actual = actual.getSiguiente();
+            if(actual.getDato().getEstado() != null && actual.getDato().getEstado().equals("Activo") && !actual.getDato().isPromocion() && !actual.getDato().getCategoria().equalsIgnoreCase("Promocion")) {
+                categorias.add(actual.getDato().getCategoria());
+                actual = actual.getSiguiente();
+            }
         }
-
-
         for (String cat : categorias) {
             flowCategorias.getChildren().add(crearBotonCategoria(cat));
         }
@@ -79,7 +79,7 @@ public class HomeController {
         NodoDE<Producto> actual = App.attizos.getMenu().getCabeza();
         while(actual != null){
             Producto p = actual.getDato();
-            if(p.getEstado() != null && p.getEstado().equals("Activo")) {
+            if(p.getEstado() != null && p.getEstado().equals("Activo") && !p.isPromocion() && !p.getCategoria().equalsIgnoreCase("Promocion")) {
                 if (categorie.equals("Todo") || p.getCategoria().equalsIgnoreCase(categorie)) {
                     StackPane newCard = createCard(p);
                     containerProducts.getChildren().add(newCard);

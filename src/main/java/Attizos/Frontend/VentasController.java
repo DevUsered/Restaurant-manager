@@ -28,12 +28,25 @@ import java.util.Map;
 import java.util.Set;
 
 public class VentasController {
-    @FXML private TextField tfBuscar;
-    @FXML private TextField tfNombreCli;
-    @FXML private HBox hBCategoria;
-    @FXML private FlowPane flPProductos;
-    @FXML private VBox vBoxCarrito;
-    @FXML private Label lblTotal;
+    @FXML
+    private TextField tfBuscar;
+    @FXML
+    private TextField tfNombreCli;
+    @FXML
+    private HBox hBCategoria;
+    @FXML
+    private FlowPane flPProductos;
+    @FXML
+    private VBox vBoxCarrito;
+    @FXML
+    private Label lblTotal;
+
+    @FXML
+    private HBox hBPromociones;
+    @FXML
+    private ScrollPane sPPromociones;
+    @FXML
+    private HBox panelPromociones;
 
     private Factura facturaActual;
     private String categoriaActiva = "Todos";
@@ -41,16 +54,14 @@ public class VentasController {
     private Producto productoSeleccionadoEnCarrito;
     private HBox filaSeleccionada;
 
-
     private ListaDE<Producto> menuRAM;
-    //Cache
     private HashMap<String, Insumo> inventarioFrescoBD;
 
     @FXML
     public void initialize() {
         iniciarNuevaVenta();
-        if(tfBuscar != null){
-            tfBuscar.textProperty().addListener((observable, oldValue, newValue) ->{
+        if (tfBuscar != null) {
+            tfBuscar.textProperty().addListener((observable, oldValue, newValue) -> {
                 mostrarProductosPorCategoria(categoriaActiva);
             });
         }
@@ -58,7 +69,7 @@ public class VentasController {
 
     private void iniciarNuevaVenta() {
         tfNombreCli.clear();
-        if(tfBuscar != null) tfBuscar.clear();
+        if (tfBuscar != null) tfBuscar.clear();
         facturaActual = new Factura(0, "");
         productoSeleccionadoEnCarrito = null;
         filaSeleccionada = null;
@@ -67,8 +78,10 @@ public class VentasController {
         menuRAM = App.attizos.getMenu();
         cargarCategorias();
         mostrarProductosPorCategoria("Todos");
+        cargarPromocionesActivas();
         actualizarVistaCarrito();
     }
+
     private void cargarCategorias() {
         hBCategoria.getChildren().clear();
 
@@ -76,11 +89,12 @@ public class VentasController {
         hBCategoria.getChildren().add(btnAll);
 
         Set<String> cats = new HashSet<>();
-        if(menuRAM != null){
+        if (menuRAM != null) {
             NodoDE<Producto> actual = menuRAM.getCabeza();
             while (actual != null) {
-                if(actual.getDato().getEstado() != null && actual.getDato().getEstado().equals("Activo")){
-                    cats.add(actual.getDato().getCategoria());
+                Producto p = actual.getDato();
+                if (p.getEstado() != null && p.getEstado().equals("Activo") && !p.isPromocion() && !p.getCategoria().equalsIgnoreCase("Promocion")) {
+                    cats.add(p.getCategoria());
                 }
                 actual = actual.getSiguiente();
             }
@@ -100,15 +114,16 @@ public class VentasController {
         });
         return btn;
     }
+
     private void mostrarProductosPorCategoria(String categoria) {
         flPProductos.getChildren().clear();
         String busqueda = (tfBuscar != null && tfBuscar.getText() != null) ? tfBuscar.getText().toLowerCase() : "";
-        if(menuRAM != null) {
+        if (menuRAM != null) {
             NodoDE<Producto> actual = App.attizos.getMenu().getCabeza();
             while (actual != null) {
                 Producto p = actual.getDato();
 
-                if(p.getEstado() != null && p.getEstado().equals("Activo")) {
+                if (p.getEstado() != null && p.getEstado().equals("Activo") && !p.isPromocion() && !p.getCategoria().equalsIgnoreCase("Promocion")) {
                     boolean coincideCategoria = categoria.equals("Todos") || p.getCategoria().equalsIgnoreCase(categoria);
                     boolean coincideBusqueda = p.getNombre().toLowerCase().contains(busqueda);
                     if (coincideCategoria && coincideBusqueda) {
@@ -119,16 +134,17 @@ public class VentasController {
             }
         }
     }
+
     private void agregarAlCarrito(Producto p) {
         int disponible = calcularDisponibilidadEnVivo(p);
-        if(disponible <= 0){
-            mostrarAlerta("Sin Stock", p.getNombre() + "esta agotado o falta insumos. ",Alert.AlertType.WARNING);
+        if (disponible <= 0) {
+            mostrarAlerta("Sin Stock", p.getNombre() + " está agotado o faltan insumos.", Alert.AlertType.WARNING);
             return;
         }
         NodoDE<DetalleFactura> ac = facturaActual.getDetalles().getCabeza();
         boolean existe = false;
         while (ac != null) {
-            if(ac.getDato().getProducto().getId() == p.getId()){
+            if (ac.getDato().getProducto().getId() == p.getId()) {
                 int nuevaCant = ac.getDato().getCantidad() + 1;
                 facturaActual.modificarCantidad(p, nuevaCant);
                 existe = true;
@@ -137,20 +153,11 @@ public class VentasController {
             ac = ac.getSiguiente();
         }
         if (!existe) {
-            boolean agregado = facturaActual.agregarProducto(p, 1);;
+            facturaActual.agregarProducto(p, 1);
         }
         actualizarVistaCarrito();
         mostrarProductosPorCategoria(categoriaActiva);
     }
-    /*private void seleccionarItemCarrito(HBox row, Producto p) {
-        if (filaSeleccionada != null) {
-            filaSeleccionada.setStyle("-fx-border-color: transparent");
-        }
-
-        filaSeleccionada = row;
-        productoSeleccionadoEnCarrito = p;
-        filaSeleccionada.setStyle("-fx-background-color: rgba(218, 165, 32, 0.15); -fx-background-radius: 10; -fx-border-color: #daa520; -fx-border-radius: 10;");
-    }*/
 
     @FXML
     void reducirProducto() {
@@ -158,23 +165,23 @@ public class VentasController {
             mostrarAlerta("Atención", "Seleccione un producto del carrito para reducir su cantidad.", Alert.AlertType.WARNING);
             return;
         }
-            NodoDE<DetalleFactura> actual = facturaActual.getDetalles().getCabeza();
-            while (actual != null) {
-                if (actual.getDato().getProducto().getId() == productoSeleccionadoEnCarrito.getId()) {
-                    int nuevaCant = actual.getDato().getCantidad() - 1;
-                    if (nuevaCant > 0) {
-                        facturaActual.modificarCantidad(productoSeleccionadoEnCarrito, nuevaCant);
-                    } else {
-                        facturaActual.eliminarProducto(productoSeleccionadoEnCarrito);
-                        productoSeleccionadoEnCarrito = null;
-                        filaSeleccionada = null;
-                    }
-                    break;
+        NodoDE<DetalleFactura> actual = facturaActual.getDetalles().getCabeza();
+        while (actual != null) {
+            if (actual.getDato().getProducto().getId() == productoSeleccionadoEnCarrito.getId()) {
+                int nuevaCant = actual.getDato().getCantidad() - 1;
+                if (nuevaCant > 0) {
+                    facturaActual.modificarCantidad(productoSeleccionadoEnCarrito, nuevaCant);
+                } else {
+                    facturaActual.eliminarProducto(productoSeleccionadoEnCarrito);
+                    productoSeleccionadoEnCarrito = null;
+                    filaSeleccionada = null;
                 }
-                actual = actual.getSiguiente();
+                break;
             }
-            actualizarVistaCarrito();
-            mostrarProductosPorCategoria(categoriaActiva);
+            actual = actual.getSiguiente();
+        }
+        actualizarVistaCarrito();
+        mostrarProductosPorCategoria(categoriaActiva);
     }
 
     @FXML
@@ -189,12 +196,13 @@ public class VentasController {
         actualizarVistaCarrito();
         mostrarProductosPorCategoria(categoriaActiva);
     }
+
     @FXML
     void finalizarVenta() {
         String nombreCli = tfNombreCli.getText().trim();
         if (nombreCli.isEmpty()) nombreCli = "Sin Nombre";
 
-        if(facturaActual.getTotal() <= 0){
+        if (facturaActual.getTotal() <= 0) {
             mostrarAlerta("Carrito Vacío", "⚠ Agregue productos antes de cobrar.", Alert.AlertType.WARNING);
             return;
         }
@@ -208,10 +216,10 @@ public class VentasController {
         jsonVenta.append("\"detalles\": [");
 
         boolean primero = true;
-        while (actual != null){
+        while (actual != null) {
             DetalleFactura det = actual.getDato();
             carritoDB.put(det.getProducto(), det.getCantidad());
-            if(primero) jsonVenta.append(", ");
+            if (primero) jsonVenta.append(", ");
             jsonVenta.append("{\"id_producto\": ").append(det.getProducto().getId())
                     .append(", \"cantidad\": ").append(det.getCantidad()).append("}");
             primero = false;
@@ -222,15 +230,15 @@ public class VentasController {
         int numeroTicketDiario = -1;
         int numeroFacturaGlobal = -1;
 
-        if(!App.modoOffline){
+        if (!App.modoOffline) {
             int[] resultados = FacturaDAO.registrarVenta(nombreCli, facturaActual.getTotal(), carritoDB);
-            if(resultados != null){
+            if (resultados != null) {
                 numeroFacturaGlobal = resultados[0];
                 numeroTicketDiario = resultados[1];
                 ConexionSQLite.actualizarSecuenciaLocal(numeroTicketDiario);
             }
         }
-        if(numeroTicketDiario <= 0){
+        if (numeroTicketDiario <= 0) {
             numeroTicketDiario = ConexionSQLite.obtenerSiguienteTicketOffline();
             numeroFacturaGlobal = 0;
             boolean guardadoOffline = ConexionSQLite.guardarVentaOffline(jsonVenta.toString());
@@ -239,26 +247,28 @@ public class VentasController {
                 return;
             }
         }
-        if(numeroTicketDiario > 0) {
+        if (numeroTicketDiario > 0) {
             facturaActual.setNumeroFactura(numeroFacturaGlobal);
             facturaActual.setNombreCliente(nombreCli);
 
-            for(Map.Entry<Producto, Integer> entry : carritoDB.entrySet()){
+            for (Map.Entry<Producto, Integer> entry : carritoDB.entrySet()) {
                 Producto p = entry.getKey();
                 int cantVendida = entry.getValue();
-                if(p.tieneReceta() && p.getReceta() != null){
-                    for (Map.Entry<String, Double> recetaItem : p.getReceta().getIngredientes().entrySet()) {
-                        Insumo ins = inventarioFrescoBD.get(recetaItem.getKey());
-                        if(ins != null) ins.setStockActual(ins.getStockActual() - (recetaItem.getValue() * cantVendida));
+                if (p.isPromocion()) {
+                    Promocion promo = (Promocion) p;
+                    for (DetalleCombo itemCombo : promo.getProductosCombo()) {
+                        Producto productoInterno = itemCombo.getProducto();
+                        int cantidadADescontar = itemCombo.getCantidad() * cantVendida;
+                        descontarStockProductoFisico(productoInterno, cantidadADescontar);
                     }
-                }else{
-                    p.reducirStock(cantVendida);
+                } else {
+                    descontarStockProductoFisico(p, cantVendida);
                 }
             }
 
             try {
-                javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(getClass().getResource("/fxml/Ticket.fxml"));
-                javafx.scene.Parent nodoTicket = loader.load();
+                FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Ticket.fxml"));
+                Parent nodoTicket = loader.load();
 
                 TicketController controller = loader.getController();
                 String nombreCajero = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Caja Principal";
@@ -274,24 +284,26 @@ public class VentasController {
         }
     }
 
-    private void imprimirEnImpresoraTermica(javafx.scene.Node nodoTicket){
+    private void imprimirEnImpresoraTermica(javafx.scene.Node nodoTicket) {
         javafx.print.PrinterJob printerJob = javafx.print.PrinterJob.createPrinterJob();
-        if (printerJob != null){
-            try{
-               boolean impreso = printerJob.printPage(nodoTicket);
+        if (printerJob != null) {
+            try {
+                boolean impreso = printerJob.printPage(nodoTicket);
                 if (impreso) {
                     printerJob.endJob();
                 }
-            } catch(Exception e) {
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         } else {
             mostrarAlerta("Error de Impresora", "No se detectó ninguna impresora instalada en el sistema.", Alert.AlertType.ERROR);
         }
     }
+
     private void mostrarAlerta(String titulo, String mensaje, Alert.AlertType tipo) {
-        AlertaPersonalizada.mostrarAlerta(titulo,mensaje,tipo);
+        AlertaPersonalizada.mostrarAlerta(titulo, mensaje, tipo);
     }
+
     private void crearTarjetaProducto(Producto p) {
         VBox card = new VBox(8);
         card.getStyleClass().add("sale-product-card");
@@ -321,11 +333,11 @@ public class VentasController {
         card.setOnMouseClicked(e -> agregarAlCarrito(p));
         flPProductos.getChildren().add(card);
     }
+
     private void actualizarVistaCarrito() {
         vBoxCarrito.getChildren().clear();
 
         double imgSize = 45.0;
-
         NodoDE<DetalleFactura> actual = facturaActual.getDetalles().getCabeza();
 
         while (actual != null) {
@@ -363,7 +375,6 @@ public class VentasController {
 
             textos.getChildren().addAll(name, qty);
 
-
             Region spacer = new Region();
             HBox.setHgrow(spacer, Priority.ALWAYS);
 
@@ -371,7 +382,6 @@ public class VentasController {
             price.getStyleClass().add("cart-product-price");
 
             itemRow.getChildren().addAll(imgView, textos, spacer, price);
-
 
             itemRow.setOnMouseClicked(e -> {
                 productoSeleccionadoEnCarrito = p;
@@ -383,58 +393,72 @@ public class VentasController {
         }
         lblTotal.setText(String.format("%.2f", facturaActual.getTotal()));
     }
-    private int calcularDisponibilidadEnVivo(Producto p){
-        if(!p.tieneReceta()){
-            int enCarrito = 0;
-            NodoDE<DetalleFactura> ac = facturaActual.getDetalles().getCabeza();
-            while(ac != null){
-                if(ac.getDato().getProducto().getId() == p.getId()){
-                    enCarrito += ac.getDato().getCantidad();
-                }
-                ac = ac.getSiguiente();
-            }
-            return (int) p.getStock() - enCarrito;
-        }else{
-            Map<String, Double> insumoAtrapados = new HashMap<>();
-            NodoDE<DetalleFactura> ac = facturaActual.getDetalles().getCabeza();
-            while(ac != null){
-                Producto prodCarrito = ac.getDato().getProducto();
-                int cantEnCarrito = ac.getDato().getCantidad();
-               if(prodCarrito.tieneReceta()){
-                   for(Map.Entry<String, Double> entry : prodCarrito.getReceta().getIngredientes().entrySet()){
-                       String codInsumo = entry.getKey();
-                       double cantTotalUsada = entry.getValue() * cantEnCarrito;
-                       insumoAtrapados.put(codInsumo, insumoAtrapados.getOrDefault(codInsumo,0.0) + cantTotalUsada);
 
-                   }
-               }
-               ac = ac.getSiguiente();
-            }
-            int maxPlatosPosibles = Integer.MAX_VALUE;
-            if(p.getReceta() == null || p.getReceta().getIngredientes().isEmpty()){
-                return (int) p.getStock();
-            }
-            for(Map.Entry<String, Double> entry : p.getReceta().getIngredientes().entrySet()){
-                String codInsumoBase = entry.getKey();
-                double cantNecesariaPorPlato = entry.getValue();
+    private int calcularDisponibilidadEnVivo(Producto p) {
+        Map<Integer, Integer> prodDirectosAtrapados = new HashMap<>();
+        Map<String, Double> insumosAtrapados = new HashMap<>();
 
-                double stockValidoReal = 0;
-
-                Insumo insumoFisico = (inventarioFrescoBD != null) ? inventarioFrescoBD.get(codInsumoBase) : null;
-                if(insumoFisico != null && !insumoFisico.isVencido()){
-                    stockValidoReal = insumoFisico.getStockActual();
-                }
-                double stockReservado = insumoAtrapados.getOrDefault(codInsumoBase, 0.0);
-                double stockLibre = stockValidoReal - stockReservado;
-                if(stockLibre < 0) stockLibre = 0;
-                int porciones = (int) (stockLibre / cantNecesariaPorPlato);
-                if(porciones < maxPlatosPosibles){
-                    maxPlatosPosibles = porciones;
-                }
+        NodoDE<DetalleFactura> ac = facturaActual.getDetalles().getCabeza();
+        while (ac != null) {
+            Producto prodCart = ac.getDato().getProducto();
+            int cant = ac.getDato().getCantidad();
+            registrarConsumoSimulado(prodCart, cant, prodDirectosAtrapados, insumosAtrapados);
+            ac = ac.getSiguiente();
+        }
+        return calcularMaximoPosible(p, prodDirectosAtrapados, insumosAtrapados);
+    }
+    private void registrarConsumoSimulado(Producto p, int cantidad, Map<Integer, Integer> prodDirectos, Map<String, Double> insumos) {
+        if (p.isPromocion()) {
+            Promocion promo = (Promocion) p;
+            for (DetalleCombo dc : promo.getProductosCombo()) {
+                registrarConsumoSimulado(dc.getProducto(), cantidad * dc.getCantidad(), prodDirectos, insumos);
             }
-            return maxPlatosPosibles == Integer.MAX_VALUE ? 0 : maxPlatosPosibles;
+        } else if (p.tieneReceta() && p.getReceta() != null) {
+            for (Map.Entry<String, Double> entry : p.getReceta().getIngredientes().entrySet()) {
+                insumos.put(entry.getKey(), insumos.getOrDefault(entry.getKey(), 0.0) + (entry.getValue() * cantidad));
+            }
+        } else {
+            prodDirectos.put(p.getId(), prodDirectos.getOrDefault(p.getId(), 0) + cantidad);
         }
     }
+    private int calcularMaximoPosible(Producto p, Map<Integer, Integer> prodDirectos, Map<String, Double> insumos) {
+        if (p.isPromocion()) {
+            Promocion promo = (Promocion) p;
+            int maxCombos = Integer.MAX_VALUE;
+            for (DetalleCombo dc : promo.getProductosCombo()) {
+                int disp = calcularMaximoPosible(dc.getProducto(), prodDirectos, insumos);
+                int posibles = disp / dc.getCantidad();
+                if (posibles < maxCombos) maxCombos = posibles;
+            }
+            return maxCombos == Integer.MAX_VALUE ? 0 : maxCombos;
+
+        } else if (p.tieneReceta() && p.getReceta() != null) {
+            int maxPlatos = Integer.MAX_VALUE;
+            if (p.getReceta().getIngredientes().isEmpty()) return (int) p.getStock();
+
+            for (Map.Entry<String, Double> entry : p.getReceta().getIngredientes().entrySet()) {
+                String cod = entry.getKey();
+                double cantNec = entry.getValue();
+
+                double stockReal = 0;
+                Insumo ins = inventarioFrescoBD.get(cod);
+                if (ins != null && !ins.isVencido()) stockReal = ins.getStockActual();
+
+                double reservado = insumos.getOrDefault(cod, 0.0);
+                double libre = stockReal - reservado;
+                if (libre < 0) libre = 0;
+
+                int porciones = (int) (libre / cantNec);
+                if (porciones < maxPlatos) maxPlatos = porciones;
+            }
+            return maxPlatos == Integer.MAX_VALUE ? 0 : maxPlatos;
+        } else {
+            int reservado = prodDirectos.getOrDefault(p.getId(), 0);
+            int libre = (int) p.getStock() - reservado;
+            return Math.max(libre, 0);
+        }
+    }
+
     @FXML
     void cobrarConQR(ActionEvent event){
         if(facturaActual.getTotal() <= 0){
@@ -467,6 +491,84 @@ public class VentasController {
         }catch (Exception e){
             e.printStackTrace();
             mostrarAlerta("Error","No se pudo mostrar el QR por el momento.", Alert.AlertType.ERROR);
+        }
+    }
+
+    private void cargarPromocionesActivas(){
+        ListaDE<Promocion> listaPromos = App.attizos.getPromocionesActivas();
+
+        if(listaPromos == null || listaPromos.esVacia()){
+            if(sPPromociones != null){
+                sPPromociones.setVisible(false);
+                sPPromociones.setManaged(false);
+            }
+            return;
+        }
+
+        if(sPPromociones != null){
+            sPPromociones.setVisible(true);
+            sPPromociones.setManaged(true);
+        }
+
+        hBPromociones.getChildren().clear();
+        NodoDE<Promocion> ac = listaPromos.getCabeza();
+
+        while (ac != null){
+            Promocion promo = ac.getDato();
+
+            VBox tarjetaPromo = new VBox(6);
+            tarjetaPromo.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+            tarjetaPromo.setMinWidth(110);
+            tarjetaPromo.setStyle("-fx-background-color: rgba(255,255,255,0.25); -fx-background-radius: 10; -fx-padding: 8 12; -fx-cursor: hand;");
+
+            ImageView imgView = new ImageView();
+            String datoImagen = promo.getImagenURL();
+            Image imgOptimizada = UtilidadesImagen.obtenerImagenOptimizada(datoImagen);
+            imgView.setImage(imgOptimizada);
+            imgView.setFitHeight(65);
+            imgView.setFitWidth(65);
+            imgView.setPreserveRatio(false);
+
+            javafx.scene.shape.Rectangle clip = new javafx.scene.shape.Rectangle(75, 75);
+            clip.setArcWidth(10);
+            clip.setArcHeight(10);
+            imgView.setClip(clip);
+
+            VBox textosPromo = new VBox(4);
+            textosPromo.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+
+            Label lblNombre = new Label(promo.getNombre());
+            lblNombre.setStyle("-fx-text-fill: #FFFFFF; -fx-font-weight: bold; -fx-font-size: 16px;");
+
+            Label lblPrecio = new Label("Bs. " + String.format("%.2f", promo.getPrecio()));
+            lblPrecio.setStyle("-fx-text-fill: #FFEB3B; -fx-font-weight: bold; -fx-font-size: 15px;");
+            int stock = calcularDisponibilidadEnVivo(promo);
+            Label lblStock = new Label("Stock: " + stock);
+            lblStock.setStyle("-fx-text-fill: " + (stock > 0 ? "#FFFFFF;" : "#ff4c4c;"));
+
+            textosPromo.getChildren().addAll(lblNombre, lblPrecio);
+
+            tarjetaPromo.getChildren().addAll(imgView, textosPromo);
+
+            tarjetaPromo.setOnMouseClicked(e -> agregarAlCarrito(promo));
+
+            tarjetaPromo.setOnMouseEntered(e -> tarjetaPromo.setStyle("-fx-background-color: rgba(255,255,255,0.4); -fx-background-radius: 8; -fx-padding: 8 12; -fx-cursor: hand;"));
+            tarjetaPromo.setOnMouseExited(e -> tarjetaPromo.setStyle("-fx-background-color: rgba(255,255,255,0.25); -fx-background-radius: 8; -fx-padding: 8 12; -fx-cursor: hand;"));
+
+            hBPromociones.getChildren().add(tarjetaPromo);
+
+            ac = ac.getSiguiente();
+        }
+    }
+
+    private void descontarStockProductoFisico(Producto p, int cant){
+        if(p.tieneReceta() && p.getReceta() != null) {
+            for (Map.Entry<String, Double> entry : p.getReceta().getIngredientes().entrySet()) {
+                Insumo ins = inventarioFrescoBD.get(entry.getKey());
+                if (ins != null) ins.setStockActual(ins.getStockActual() - (entry.getValue() * cant));
+            }
+        }else{
+            p.reducirStock(cant);
         }
     }
 }

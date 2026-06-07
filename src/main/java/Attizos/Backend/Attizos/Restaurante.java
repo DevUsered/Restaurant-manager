@@ -15,6 +15,7 @@ public class Restaurante
     private ArrayList<Empleado> empleados;
     private ListaDE<Reserva> reservas;
     private ListaDE<Pedido> colaPedidos;
+    private ListaDE<Promocion> promocionesActivas;
 
     private HashMap<Integer, HashMap<String, Double>> lotesConsumidosPorPedido;
 
@@ -26,6 +27,7 @@ public class Restaurante
         this.reservas = new ListaDE<>();
         this.colaPedidos = new ListaDE<>();
         this.lotesConsumidosPorPedido = new HashMap<>();
+        this.promocionesActivas = new ListaDE<>();
     }
     public void agregarProducto(Producto nuevo) {
         if (nuevo != null) {
@@ -260,5 +262,12 @@ public class Restaurante
         if(menuActualizado != null){
             this.menu = menuActualizado;
         }
+    }
+    public ListaDE<Promocion> getPromocionesActivas(){
+        return promocionesActivas;
+    }
+
+    public void setPromocionesActivas(ListaDE<Promocion> promocionesActivas) {
+        this.promocionesActivas = promocionesActivas;
     }
 }

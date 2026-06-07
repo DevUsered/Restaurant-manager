@@ -64,7 +64,14 @@ public class ConexionSQLite {
                 + "tiene_receta INTEGER DEFAULT 0, "
                 + "imagen_base64 TEXT, "
                 + "atributos_extra TEXT, "
+                + "fecha_inicio TEXT, "
+                + "fecha_fin TEXT, "
                 + "estado TEXT DEFAULT 'Activo'"
+                + ");";
+        String sqlDetalleCombo = "CREATE TABLE IF NOT EXISTS detalle_combo ("
+                + "id_promocion INTEGER NOT NULL, "
+                + "id_producto INTEGER NOT NULL, "
+                + "cantidad INTEGER NOT NULL"
                 + ");";
         String sqlVentasPendientes = "CREATE TABLE IF NOT EXISTS ventas_pendientes ("
                 + "id_local INTEGER PRIMARY KEY AUTOINCREMENT, "
@@ -93,6 +100,7 @@ public class ConexionSQLite {
              Statement stmt = conn.createStatement()) {
             stmt.execute(sqlEmpleados);
             stmt.execute(sqlProductos);
+            stmt.execute(sqlDetalleCombo);
             stmt.execute(sqlInsumos);
             stmt.execute(sqlVentasPendientes);
             stmt.execute(sqlAuditoria);
@@ -109,6 +117,7 @@ public class ConexionSQLite {
         sincronizarEmpleados();
         sincronizarInsumos();
         sincronizarProductos();
+        sincronizarDetallesCombo();
     }
 
     public static void sincronizarEmpleados() {
@@ -182,9 +191,9 @@ public class ConexionSQLite {
 
     public static void sincronizarProductos() {
         System.out.println("Sincronizando productos...");
-        String sqlLeerPG = "SELECT id_producto, nombre, precio, categoria, tipo_clase, stock_directo, tiene_receta, imagen_base64, atributos_extra, estado FROM productos";
+        String sqlLeerPG = "SELECT id_producto, nombre, precio, categoria, tipo_clase, stock_directo, tiene_receta, imagen_base64, atributos_extra, fecha_inicio, fecha_fin, estado FROM productos";
         String sqlLimpiarSQLite = "DELETE FROM productos";
-        String sqlInsertarSQLite = "INSERT INTO productos (id_producto, nombre, precio, categoria, tipo_clase, stock_directo, tiene_receta, imagen_base64, atributos_extra, estado) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sqlInsertarSQLite = "INSERT INTO productos (id_producto, nombre, precio, categoria, tipo_clase, stock_directo, tiene_receta, imagen_base64, atributos_extra, fecha_inicio, fecha_fin, estado) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection connPG = ConexionBD.getConexion();
              PreparedStatement stmtLeer = connPG.prepareStatement(sqlLeerPG);
@@ -208,14 +217,46 @@ public class ConexionSQLite {
                 stmtInsertar.setInt(7, rs.getBoolean("tiene_receta") ? 1 : 0);
                 stmtInsertar.setString(8, rs.getString("imagen_base64"));
                 stmtInsertar.setString(9, rs.getString("atributos_extra"));
-                stmtInsertar.setString(10, rs.getString("estado"));
+                stmtInsertar.setString(10, rs.getDate("fecha_inicio") != null ? rs.getDate("fecha_inicio").toString() : null);
+                stmtInsertar.setString(11, rs.getDate("fecha_fin") != null ? rs.getDate("fecha_fin").toString() : null);
 
+                stmtInsertar.setString(12, rs.getString("estado"));
                 stmtInsertar.executeUpdate();
                 contador++;
             }
             System.out.println("Productos sincronizados: " + contador);
         } catch (SQLException e) {
             System.out.println("Error al sincronizar productos: " + e.getMessage());
+        }
+    }
+    public static void sincronizarDetallesCombo() {
+        System.out.println("Sincronizando detalles de combos...");
+        String sqlLeerPG = "SELECT id_promocion, id_producto, cantidad FROM detalle_combo";
+        String sqlLimpiarSQLite = "DELETE FROM detalle_combo";
+        String sqlInsertarSQLite = "INSERT INTO detalle_combo (id_promocion, id_producto, cantidad) VALUES (?, ?, ?)";
+
+        try (Connection connPG = ConexionBD.getConexion();
+             PreparedStatement stmtLeer = connPG.prepareStatement(sqlLeerPG);
+             ResultSet rs = stmtLeer.executeQuery();
+
+             Connection connSQL = getConexion();
+             Statement stmtLimpiar = connSQL.createStatement();
+             PreparedStatement stmtInsertar = connSQL.prepareStatement(sqlInsertarSQLite)) {
+
+            stmtLimpiar.executeUpdate(sqlLimpiarSQLite);
+            int contador = 0;
+
+            while (rs.next()) {
+                stmtInsertar.setInt(1, rs.getInt("id_promocion"));
+                stmtInsertar.setInt(2, rs.getInt("id_producto"));
+                stmtInsertar.setInt(3, rs.getInt("cantidad"));
+
+                stmtInsertar.executeUpdate();
+                contador++;
+            }
+            System.out.println("Detalles de combos sincronizados: " + contador);
+        } catch (SQLException e) {
+            System.out.println("Error al sincronizar detalles de combos: " + e.getMessage());
         }
     }
     public static ArrayList<Empleado> obtenerEmpleadosLocal() {
@@ -448,4 +489,62 @@ public class ConexionSQLite {
         }
         return siguiente;
     }
+    public static ListaDE<Promocion> obtenerPromocionesLocal(ListaDE<Producto> menu) {
+        ListaDE<Promocion> listaPromo = new ListaDE<>();
+        String sqlPromo = "SELECT id_producto, nombre, precio, imagen_base64, fecha_inicio, fecha_fin FROM productos WHERE categoria = 'Promocion' AND estado = 'Activo'";
+        // Usamos id_producto tal como lo definiste al crear tu tabla detalle_combo en SQLite
+        String sqlDetalle = "SELECT id_producto, cantidad FROM detalle_combo WHERE id_promocion = ?";
+
+        try (Connection conn = getConexion();
+             PreparedStatement psPromo = conn.prepareStatement(sqlPromo);
+             ResultSet rsPromo = psPromo.executeQuery()) {
+
+            while (rsPromo.next()) {
+                int id = rsPromo.getInt("id_producto");
+                String nombre = rsPromo.getString("nombre");
+                double precio = rsPromo.getDouble("precio");
+                String img = rsPromo.getString("imagen_base64");
+
+                String fInicioStr = rsPromo.getString("fecha_inicio");
+                String fFinStr = rsPromo.getString("fecha_fin");
+
+                // Verificación segura por si la base de datos devuelve "null" en texto
+                LocalDate fInicio = (fInicioStr != null && !fInicioStr.trim().isEmpty() && !fInicioStr.equals("null")) ? LocalDate.parse(fInicioStr) : null;
+                LocalDate fFin = (fFinStr != null && !fFinStr.trim().isEmpty() && !fFinStr.equals("null")) ? LocalDate.parse(fFinStr) : null;
+
+                Promocion promo = new Promocion(id, nombre, precio, img, fInicio, fFin);
+
+                // Buscar qué lleva por dentro este combo
+                try (PreparedStatement psDetalle = conn.prepareStatement(sqlDetalle)) {
+                    psDetalle.setInt(1, id);
+                    try (ResultSet rsDetalle = psDetalle.executeQuery()) {
+                        while (rsDetalle.next()) {
+                            int idProductoReal = rsDetalle.getInt("id_producto");
+                            int cantidad = rsDetalle.getInt("cantidad");
+
+                            // Buscar producto físico dentro del menú que ya cargamos en RAM
+                            Producto productoFisico = null;
+                            NodoDE<Producto> actual = menu.getCabeza();
+                            while (actual != null) {
+                                if (actual.getDato().getId() == idProductoReal) {
+                                    productoFisico = actual.getDato();
+                                    break;
+                                }
+                                actual = actual.getSiguiente();
+                            }
+
+                            if (productoFisico != null) {
+                                promo.agregarProducto(productoFisico, cantidad);
+                            }
+                        }
+                    }
+                }
+                listaPromo.insertarAlFinal(promo);
+            }
+        } catch (SQLException e) {
+            System.err.println("❌ Error al leer promociones locales: " + e.getMessage());
+        }
+        return listaPromo;
+    }
+
 }
