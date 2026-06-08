@@ -33,13 +33,12 @@ public class App {
                         Attizos.Frontend.ServicioNube.sincronizarImagenesPendientes();
 
                         ConexionSQLite.actualizarCacheCompleta();
-
-                        attizos.getInventario().getInventarioInsumos().clear();
-                        attizos.getInventario().getInventarioInsumos().putAll(InsumoDAO.obtenerInventarioActivo());
-
-                        ListaDE<Producto> menuActualizado = ConexionSQLite.obtenerMenuLocal();
-                        attizos.setMenu(menuActualizado);
-
+                        ListaDE<Producto> menuAct = ConexionSQLite.obtenerMenuLocal();
+                        attizos.setMenu(menuAct);
+                        RecetaDAO.cargarRecetas();
+                        PromocionDAO.verificarYDesactivarPromociones();
+                        ListaDE<Promocion> promocionDB = ConexionSQLite.obtenerPromocionesLocal(menuAct);
+                        attizos.setPromocionesActivas(promocionDB);
                         System.out.println("✅ [Auto-Sync] Sistema actualizado con éxito.");
                     }
                 }
@@ -60,7 +59,6 @@ public class App {
         cargarProductos();
         System.out.println("✅ Datos locales cargados.");
 
-        //Sincronización Invisible segundo plano
         new Thread(() ->{
             try(Connection con = ConexionBD.getConexion()){
                 if(con != null && !con.isClosed()){
@@ -75,7 +73,11 @@ public class App {
                         attizos.getInventario().getInventarioInsumos().putAll(stockRealNube);
                         System.out.println("✅ RAM actualizada con el stock real de la nube.");
                     }
+                    ListaDE<Producto> menuActualizado = ConexionSQLite.obtenerMenuLocal();
+                    attizos.setMenu(menuActualizado);
                     RecetaDAO.cargarRecetas();
+                    ListaDE<Promocion> promocionDB = ConexionSQLite.obtenerPromocionesLocal(menuActualizado);
+                    attizos.setPromocionesActivas(promocionDB);
                 }
             }catch (SQLException e){
                 System.err.println("[Segundo Plano] Sin internet. Attizos sigue funcionando al 100% en modo local.");

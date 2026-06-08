@@ -49,17 +49,17 @@ public class HomeController {
         Set<String> categorias = new HashSet<>();
         NodoDE<Producto> actual = App.attizos.getMenu().getCabeza();
         while(actual != null){
-            if(actual.getDato().getEstado() != null && actual.getDato().getEstado().equals("Activo") && !actual.getDato().isPromocion() && !actual.getDato().getCategoria().equalsIgnoreCase("Promocion")) {
-                categorias.add(actual.getDato().getCategoria());
-                actual = actual.getSiguiente();
+            Producto p = actual.getDato();
+            if(p.getEstado() != null && p.getEstado().equals("Activo") && !p.isPromocion() && !p.getCategoria().equalsIgnoreCase("Promocion")) {
+                categorias.add(p.getCategoria());
             }
+            actual = actual.getSiguiente();
         }
         for (String cat : categorias) {
             flowCategorias.getChildren().add(crearBotonCategoria(cat));
         }
     }
 
-    // Método auxiliar para no repetir código creando botones
     private Button crearBotonCategoria(String nombreCat) {
         Button btn = new Button(nombreCat);
         // Aplica el color dorado si es la categoría actual
@@ -79,7 +79,7 @@ public class HomeController {
         NodoDE<Producto> actual = App.attizos.getMenu().getCabeza();
         while(actual != null){
             Producto p = actual.getDato();
-            if(p.getEstado() != null && p.getEstado().equals("Activo") && !p.isPromocion() && !p.getCategoria().equalsIgnoreCase("Promocion")) {
+            if(p.getEstado() != null && p.getEstado().equals("Activo") && !p.getCategoria().equalsIgnoreCase("Promocion")) {
                 if (categorie.equals("Todo") || p.getCategoria().equalsIgnoreCase(categorie)) {
                     StackPane newCard = createCard(p);
                     containerProducts.getChildren().add(newCard);
@@ -120,46 +120,44 @@ public class HomeController {
         lblInfo.getStyleClass().add("overlay-text");
         lblInfo.setWrapText(true);
 
-        StringBuilder infoTexto = new StringBuilder();
-
-        if (p.tieneReceta() && p.getReceta() != null && App.attizos.getInventario() != null) {
-            infoTexto.append("✨ Preparado con:\n\n");
-            for (String codInsumo : p.getReceta().getIngredientes().keySet()) {
-                Insumo ins = App.attizos.getInventario().buscarInsumo(codInsumo);
-                if (ins != null) {
-                    infoTexto.append(" * ").append(ins.getNombre()).append("\n");
-                }
-            }
-        }
-        if(infoTexto.length() == 0){
-            infoTexto.append("✨ Especialidad de la casa\n¡Listo para disfrutar!");
-        }
-        lblInfo.setText(infoTexto.toString());
+        String infoTexto = generarTextoIngredientes(p);
+        lblInfo.setText(infoTexto);
         overlay.getChildren().add(lblInfo);
 
-        // --- ANIMACIONES ---
+        //ANIMACIONES
         FadeTransition fadeIn = new FadeTransition(Duration.millis(300), overlay);
         fadeIn.setToValue(1.0);
 
         FadeTransition fadeOut = new FadeTransition(Duration.millis(300), overlay);
         fadeOut.setToValue(0.0);
-
-        // Eventos del mouse
         card.setOnMouseEntered(e -> {
             fadeOut.stop();
             fadeIn.play();
-            card.setStyle("-fx-scale-x: 1.05; -fx-scale-y: 1.05;"); // Efecto zoom a la tarjeta
+            card.setStyle("-fx-scale-x: 1.05; -fx-scale-y: 1.05;");
         });
 
         card.setOnMouseExited(e -> {
             fadeIn.stop();
             fadeOut.play();
-            card.setStyle("-fx-scale-x: 1.0; -fx-scale-y: 1.0;"); // Volver a la normalidad
+            card.setStyle("-fx-scale-x: 1.0; -fx-scale-y: 1.0;");
         });
 
         card.getChildren().addAll(content, overlay);
 
         return card;
+    }
+    private String generarTextoIngredientes(Producto p) {
+        if (p.tieneReceta() && p.getReceta() != null && App.attizos.getInventario() != null) {
+            StringBuilder sb = new StringBuilder("✨ Preparado con:\n\n");
+            for (String codInsumo : p.getReceta().getIngredientes().keySet()) {
+                Insumo ins = App.attizos.getInventario().buscarInsumo(codInsumo);
+                if (ins != null) {
+                    sb.append(" * ").append(ins.getNombre()).append("\n");
+                }
+            }
+            return sb.toString();
+        }
+        return "✨ Especialidad de la casa\n¡Listo para disfrutar!";
     }
 
     @FXML

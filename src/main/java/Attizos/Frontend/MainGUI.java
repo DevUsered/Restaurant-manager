@@ -17,7 +17,7 @@ public class MainGUI extends Application {
         try {
             Attizos.Backend.Attizos.App.iniciarSistema();
             Application.setUserAgentStylesheet(new atlantafx.base.theme.PrimerDark().getUserAgentStylesheet());
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Home.fxml"));
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Principal.fxml"));
             Parent root = loader.load();
             ventanaPrincipal.initStyle(StageStyle.TRANSPARENT);
             Scene scene = new Scene(root);

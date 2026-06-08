@@ -596,7 +596,8 @@ public class ProductosController {
         if(menuDB != null) {
             NodoDE<Producto> act = menuDB.getCabeza();
             while (act != null) {
-                if(act.getDato().getEstado() != null && act.getDato().getEstado().equals("Activo")) {
+                Producto p = act.getDato();
+                if(p.getEstado() != null && p.getEstado().equals("Activo") && !p.isPromocion() && !p.getCategoria().equalsIgnoreCase("Promocion")) {
                     masterData.add(act.getDato());
                 }
                 act = act.getSiguiente();

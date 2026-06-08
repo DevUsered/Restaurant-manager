@@ -67,6 +67,7 @@ public class GestorPromocionesController {
         cargarDatos();
         configurarBuscadorInteligente();
         configurarMenuContextualContenido();
+
     }
 
     private void estilizarControles() {
@@ -93,10 +94,8 @@ public class GestorPromocionesController {
             }
         });
 
-        // Lógica de filtrado en tiempo real mientras se escribe
         cmbProductosMenu.getEditor().textProperty().addListener((obs, oldVal, newVal) -> {
             Producto seleccionado = cmbProductosMenu.getSelectionModel().getSelectedItem();
-            // Evitar que se filtre si el texto cambió solo porque seleccionamos algo de la lista
             if (seleccionado != null && seleccionado.getNombre().equals(newVal)) return;
 
             filteredMenu.setPredicate(producto -> {
@@ -120,7 +119,6 @@ public class GestorPromocionesController {
             }
         });
 
-        // Saltos rápidos en el resto del formulario
         txtNombre.setOnKeyPressed(e -> { if (e.getCode() == KeyCode.ENTER) txtPrecio.requestFocus(); });
         txtPrecio.setOnKeyPressed(e -> { if (e.getCode() == KeyCode.ENTER) cmbProductosMenu.requestFocus(); });
 
@@ -159,7 +157,6 @@ public class GestorPromocionesController {
         filteredMenu = new FilteredList<>(masterMenu, p -> true);
         cmbProductosMenu.setItems(filteredMenu);
 
-        // Estilizar los elementos dentro de la lista desplegable para que se lean perfecto
         cmbProductosMenu.setCellFactory(lv -> new ListCell<Producto>() {
             @Override
             protected void updateItem(Producto item, boolean empty) {

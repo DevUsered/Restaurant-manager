@@ -46,7 +46,7 @@ public class VentasController {
     @FXML
     private ScrollPane sPPromociones;
     @FXML
-    private HBox panelPromociones;
+    private VBox panelPromociones;
 
     private Factura facturaActual;
     private String categoriaActiva = "Todos";
@@ -138,7 +138,8 @@ public class VentasController {
     private void agregarAlCarrito(Producto p) {
         int disponible = calcularDisponibilidadEnVivo(p);
         if (disponible <= 0) {
-            mostrarAlerta("Sin Stock", p.getNombre() + " está agotado o faltan insumos.", Alert.AlertType.WARNING);
+            String motivoExacto = obtenerMotivoSinStock(p);
+            mostrarAlerta("Sin Stock", "No se puede agregar: " + p.getNombre() + ".\n👉 " + motivoExacto, Alert.AlertType.WARNING);
             return;
         }
         NodoDE<DetalleFactura> ac = facturaActual.getDetalles().getCabeza();
@@ -157,6 +158,64 @@ public class VentasController {
         }
         actualizarVistaCarrito();
         mostrarProductosPorCategoria(categoriaActiva);
+        cargarPromocionesActivas();
+    }
+    private String obtenerMotivoSinStock(Producto p) {
+        Map<Integer, Integer> prodDirectosAtrapados = new HashMap<>();
+        Map<String, Double> insumosAtrapados = new HashMap<>();
+
+        NodoDE<DetalleFactura> ac = facturaActual.getDetalles().getCabeza();
+        while (ac != null) {
+            Producto prodCart = ac.getDato().getProducto();
+            int cant = ac.getDato().getCantidad();
+            registrarConsumoSimulado(prodCart, cant, prodDirectosAtrapados, insumosAtrapados);
+            ac = ac.getSiguiente();
+        }
+
+        return diagnosticarFalta(p, prodDirectosAtrapados, insumosAtrapados, 1);
+    }
+    private String diagnosticarFalta(Producto p, Map<Integer, Integer> prodDirectos, Map<String, Double> insumos, int cantidadRequerida) {
+        if (p.isPromocion()) {
+            Promocion promo = (Promocion) p;
+            for (DetalleCombo dc : promo.getProductosCombo()) {
+                int dispInterna = calcularMaximoPosible(dc.getProducto(), prodDirectos, insumos);
+                if (dispInterna < dc.getCantidad()) {
+                    return diagnosticarFalta(dc.getProducto(), prodDirectos, insumos, dc.getCantidad());
+                }
+            }
+            return "Faltan componentes para el combo.";
+        } else if (p.tieneReceta() && p.getReceta() != null) {
+            if (p.getReceta().getIngredientes().isEmpty()) {
+                int reservado = prodDirectos.getOrDefault(p.getId(), 0);
+                if (p.getStock() - reservado < cantidadRequerida) return "Falta stock en vitrina de: " + p.getNombre();
+                return "Error de stock.";
+            }
+            for (Map.Entry<String, Double> entry : p.getReceta().getIngredientes().entrySet()) {
+                String cod = entry.getKey();
+                double cantNec = entry.getValue() * cantidadRequerida;
+
+                Insumo ins = App.attizos.getInventario().getInventarioInsumos().get(cod);
+                if (ins == null || ins.isVencido()) {
+                    return "El insumo está vencido o eliminado: " + (ins != null ? ins.getNombre() : cod);
+                }
+
+                double stockReal = ins.getStockActual();
+                double reservado = insumos.getOrDefault(cod, 0.0);
+                double libre = stockReal - reservado;
+
+                if (libre < cantNec) {
+                    return "Falta insumo: " + ins.getNombre() + "\n(Solo quedan " + String.format("%.2f", libre) + " " + ins.getUnidad() + " libres)";
+                }
+            }
+            return "Ingredientes insuficientes para: " + p.getNombre();
+        } else {
+            int reservado = prodDirectos.getOrDefault(p.getId(), 0);
+            double libre = p.getStock() - reservado;
+            if (libre < cantidadRequerida) {
+                return "Producto físico agotado: " + p.getNombre() + "\n(Disponibles: " + (int)Math.max(libre, 0) + ")";
+            }
+            return "Stock insuficiente.";
+        }
     }
 
     @FXML
@@ -441,14 +500,14 @@ public class VentasController {
                 double cantNec = entry.getValue();
 
                 double stockReal = 0;
-                Insumo ins = inventarioFrescoBD.get(cod);
+                Insumo ins = App.attizos.getInventario().getInventarioInsumos().get(cod);
                 if (ins != null && !ins.isVencido()) stockReal = ins.getStockActual();
 
                 double reservado = insumos.getOrDefault(cod, 0.0);
                 double libre = stockReal - reservado;
                 if (libre < 0) libre = 0;
 
-                int porciones = (int) (libre / cantNec);
+                int porciones = (int) Math.floor((libre / cantNec) + 0.0001);
                 if (porciones < maxPlatos) maxPlatos = porciones;
             }
             return maxPlatos == Integer.MAX_VALUE ? 0 : maxPlatos;
@@ -516,22 +575,22 @@ public class VentasController {
         while (ac != null){
             Promocion promo = ac.getDato();
 
-            VBox tarjetaPromo = new VBox(6);
+            VBox tarjetaPromo = new VBox(8);
             tarjetaPromo.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
-            tarjetaPromo.setMinWidth(110);
+            tarjetaPromo.setMinWidth(150);
             tarjetaPromo.setStyle("-fx-background-color: rgba(255,255,255,0.25); -fx-background-radius: 10; -fx-padding: 8 12; -fx-cursor: hand;");
 
             ImageView imgView = new ImageView();
             String datoImagen = promo.getImagenURL();
             Image imgOptimizada = UtilidadesImagen.obtenerImagenOptimizada(datoImagen);
             imgView.setImage(imgOptimizada);
-            imgView.setFitHeight(65);
-            imgView.setFitWidth(65);
+            imgView.setFitHeight(110);
+            imgView.setFitWidth(110);
             imgView.setPreserveRatio(false);
 
-            javafx.scene.shape.Rectangle clip = new javafx.scene.shape.Rectangle(75, 75);
-            clip.setArcWidth(10);
-            clip.setArcHeight(10);
+            javafx.scene.shape.Rectangle clip = new javafx.scene.shape.Rectangle(110, 110);
+            clip.setArcWidth(15);
+            clip.setArcHeight(15);
             imgView.setClip(clip);
 
             VBox textosPromo = new VBox(4);
@@ -564,7 +623,7 @@ public class VentasController {
     private void descontarStockProductoFisico(Producto p, int cant){
         if(p.tieneReceta() && p.getReceta() != null) {
             for (Map.Entry<String, Double> entry : p.getReceta().getIngredientes().entrySet()) {
-                Insumo ins = inventarioFrescoBD.get(entry.getKey());
+                Insumo ins = App.attizos.getInventario().getInventarioInsumos().get(entry.getKey());
                 if (ins != null) ins.setStockActual(ins.getStockActual() - (entry.getValue() * cant));
             }
         }else{

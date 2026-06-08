@@ -119,4 +119,33 @@ public class PromocionDAO {
         }
         return null;
     }
+    public static void verificarYDesactivarPromociones() {
+        String sqlSelect = "SELECT id_producto, fecha_fin FROM productos WHERE categoria = 'Promocion' AND estado = 'Activo' AND fecha_fin IS NOT NULL";
+        String sqlUpdate = "UPDATE productos SET estado = 'Inactivo' WHERE id_producto = ?";
+
+        try (Connection conn = ConexionBD.getConexion();
+             PreparedStatement psSelect = conn.prepareStatement(sqlSelect);
+             ResultSet rs = psSelect.executeQuery()) {
+
+            LocalDate hoy = LocalDate.now();
+
+            while (rs.next()) {
+                int id = rs.getInt("id_producto");
+                String fechaFinStr = rs.getString("fecha_fin");
+
+                if (fechaFinStr != null && !fechaFinStr.isEmpty()) {
+                    LocalDate fin = LocalDate.parse(fechaFinStr);
+                    if (fin.isBefore(hoy)) {
+                        try (PreparedStatement psUpdate = conn.prepareStatement(sqlUpdate)) {
+                            psUpdate.setInt(1, id);
+                            psUpdate.executeUpdate();
+                            System.out.println("🚨 Promoción " + id + " caducada y desactivada automáticamente.");
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Error al verificar caducidad: " + e.getMessage());
+        }
+    }
 }
