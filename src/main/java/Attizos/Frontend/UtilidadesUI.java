@@ -1,7 +1,16 @@
 package Attizos.Frontend;
+import javafx.application.Platform;
+import javafx.scene.Cursor;
+import javafx.scene.Scene;
+import javafx.scene.control.Alert;
 import javafx.scene.control.DatePicker;
 import javafx.scene.control.ComboBox;
 import javafx.scene.Node;
+
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+
 public class UtilidadesUI {
 
     public static void formatearDatePicker(DatePicker dp) {
@@ -28,5 +37,22 @@ public class UtilidadesUI {
                     break;
             }
         });
+    }
+    public static <T> void ejecutarTareaAsincrona(Node nodoRaiz, Supplier<T> tareaFondo, Consumer<T> accionUI){
+        Scene scene = nodoRaiz.getScene();
+        if(scene != null) scene.setCursor(Cursor.WAIT);
+        nodoRaiz.setDisable(true);
+
+        CompletableFuture.supplyAsync(tareaFondo)
+                .whenCompleteAsync((resultado, error) ->{
+                    if(scene != null) scene.setCursor(Cursor.DEFAULT);
+                    nodoRaiz.setDisable(false);
+
+                    if(error != null){
+                        AlertaPersonalizada.mostrarAlerta("Error", "Ocurrió un error: " + error.getMessage(), Alert.AlertType.ERROR);
+                    }else{
+                        accionUI.accept(resultado);
+                    }
+                }, Platform::runLater);
     }
 }

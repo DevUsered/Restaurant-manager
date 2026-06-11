@@ -1,5 +1,7 @@
 package Attizos.Backend.Attizos;
 
+import java.time.LocalDate;
+
 public class Empleado {
     private String idEmpleado;
     private String nombre;
@@ -9,6 +11,7 @@ public class Empleado {
 
     private String username;
     private String passwordHash;
+    private LocalDate fechaUltimoPago;
 
     // Constructor
     public Empleado(){}
@@ -65,6 +68,21 @@ public class Empleado {
     }
     public void setPasswordHash(String passwordHash) {
         this.passwordHash = passwordHash;
+    }
+
+    public LocalDate getFechaUltimoPago() {
+        return fechaUltimoPago;
+    }
+
+    public void setFechaUltimoPago(LocalDate fechaUltimoPago) {
+        this.fechaUltimoPago = fechaUltimoPago;
+    }
+    public boolean isPagadoEsteMes(){
+        if(fechaUltimoPago == null) return false;
+
+        LocalDate hoy = LocalDate.now();
+        return fechaUltimoPago.getMonth() == hoy.getMonth() &&
+                fechaUltimoPago.getYear() == hoy.getYear();
     }
 
     public boolean tieneAccesoSistema(){

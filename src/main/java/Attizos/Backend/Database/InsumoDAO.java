@@ -10,6 +10,21 @@ import java.util.HashMap;
 import java.time.LocalDate;
 
 public class InsumoDAO {
+    public static String generarSiguienteCodigo(){
+        String sql = "SELECT MAX(CAST(SUBSTRING(codigo, 5) AS INTEGER)) FROM insumos_catalogo WHERE codigo LIKE 'INS-%'";
+        try (Connection con = ConexionBD.getConexion();
+             PreparedStatement ps = con.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            if (rs.next()) {
+                int maxNumero = rs.getInt(1);
+                return String.format("INS-%03d", maxNumero + 1);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error al generar código: " + e.getMessage());
+        }
+        return "INS-001";
+    }
     public static boolean insertarInsumoNuevo(Insumo insumo, double costoInicial) {
         String sqlCatalogo = " INSERT INTO insumos_catalogo (codigo, nombre, categoria, unidad_medida, stock_minimo, stock_maximo, estado)" +
                 "VALUES (?, ?, ?, ?, ?, ?, 'Activo')";

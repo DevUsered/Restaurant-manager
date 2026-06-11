@@ -47,7 +47,8 @@ public class ConexionSQLite {
                 + "sueldo REAL NOT NULL, "
                 + "username TEXT, "
                 + "password_hash TEXT, "
-                + "estado TEXT DEFAULT 'Activo'"
+                + "estado TEXT DEFAULT 'Activo', "
+                + "fecha_ultimo_pago TEXT"
                 + ");";
         String sqlInsumos = "CREATE TABLE IF NOT EXISTS insumos_catalogo ("
                 + "codigo TEXT PRIMARY KEY, "
@@ -126,9 +127,9 @@ public class ConexionSQLite {
 
     public static void sincronizarEmpleados() {
         System.out.println("Iniciando sincronización de empleados.");
-        String sqlLeerPostgres = "SELECT id_empleado, nombre, cargo, sueldo, username, password_hash, estado FROM empleados";
+        String sqlLeerPostgres = "SELECT id_empleado, nombre, cargo, sueldo, username, password_hash, estado, fecha_ultimo_pago FROM empleados";
         String sqlLimpiarSQLite = "DELETE FROM empleados";
-        String sqlInsertarSQLite = "INSERT INTO empleados (id_empleado, nombre, cargo, sueldo, username, password_hash, estado) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        String sqlInsertarSQLite = "INSERT INTO empleados (id_empleado, nombre, cargo, sueldo, username, password_hash, estado, fecha_ultimo_pago) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection connPG = ConexionBD.getConexion();
              PreparedStatement stmtLeer = connPG.prepareStatement(sqlLeerPostgres);
@@ -149,6 +150,8 @@ public class ConexionSQLite {
                 stmtInsertar.setString(5, rs.getString("username"));
                 stmtInsertar.setString(6, rs.getString("password_hash"));
                 stmtInsertar.setString(7, rs.getString("estado"));
+                Date fechaPago = rs.getDate("fecha_ultimo_pago");
+                stmtInsertar.setString(8, fechaPago != null ? fechaPago.toString() : null);
 
                 stmtInsertar.executeUpdate();
                 contador++;
@@ -267,7 +270,7 @@ public class ConexionSQLite {
     }
     public static ArrayList<Empleado> obtenerEmpleadosLocal() {
         ArrayList<Empleado> lista = new ArrayList<>();
-        String sql = "SELECT id_empleado, nombre, cargo, sueldo, username, estado FROM empleados WHERE estado = 'Activo'";
+        String sql = "SELECT id_empleado, nombre, cargo, sueldo, username, estado, fecha_ultimo_pago FROM empleados WHERE estado = 'Activo'";
 
         try (Connection conn = getConexion();
              PreparedStatement ps = conn.prepareStatement(sql);
@@ -286,6 +289,10 @@ public class ConexionSQLite {
                     emp.setUsername(userName);
                 }
 
+                String fechaStr = rs.getString("fecha_ultimo_pago");
+                if (fechaStr != null && !fechaStr.trim().isEmpty() && !fechaStr.equals("null")) {
+                    emp.setFechaUltimoPago(LocalDate.parse(fechaStr));
+                }
                 lista.add(emp);
             }
         } catch (SQLException e) {

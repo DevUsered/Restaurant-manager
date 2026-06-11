@@ -13,6 +13,7 @@ public class  ConexionBD {
     private static String url;
     private static String user;
     private static String password;
+    public static String geminiKey = "";
 
     static {
         String rutaAppData = System.getenv("APPDATA");
@@ -31,10 +32,20 @@ public class  ConexionBD {
                 url = propiedades.getProperty("db.url");
                 user = propiedades.getProperty("db.user");
                 password = propiedades.getProperty("db.password");
+
+                geminiKey = propiedades.getProperty("GEMINI_API_KEY", "");
+                boolean necesitaActualizar = false;
                 if (!propiedades.containsKey("CLOUDINARY_CLOUD_NAME")) {
                     propiedades.setProperty("CLOUDINARY_CLOUD_NAME", "PON_TU_CLOUD_NAME_AQUI");
                     propiedades.setProperty("CLOUDINARY_API_KEY", "PON_TU_API_KEY_AQUI");
                     propiedades.setProperty("CLOUDINARY_API_SECRET", "PON_TU_API_SECRET_AQUI");
+                    necesitaActualizar = true;
+                }
+                if(!propiedades.containsKey("GEMINI_API_KEY")) {
+                    propiedades.setProperty("GEMINI_API_KEY", "PON_TU_API_KEY_AQUI");
+                    necesitaActualizar = true;
+                }
+                if(necesitaActualizar){
                     try (FileOutputStream fos = new FileOutputStream(archivoConfig)) {
                         propiedades.store(fos, "Configuración actualizada con Cloudinary");
                     }catch (IOException e){
@@ -46,6 +57,7 @@ public class  ConexionBD {
                         propiedades.setProperty("CLOUDINARY_CLOUD_NAME", "PON_TU_CLOUD_NAME_AQUI");
                         propiedades.setProperty("CLOUDINARY_API_KEY", "PON_TU_API_KEY_AQUI");
                         propiedades.setProperty("CLOUDINARY_API_SECRET", "PON_TU_API_SECRET_AQUI");
+                        propiedades.setProperty("GEMINI_API_KEY", "PON_TU_API_KEY_AQUI");
                         try (FileOutputStream fos = new FileOutputStream(archivoConfig)) {
                             propiedades.store(fos, "Configuración recreada");
                         } catch (IOException e2) {
@@ -67,6 +79,7 @@ public class  ConexionBD {
             propiedades.setProperty("CLOUDINARY_CLOUD_NAME", "PON_TU_CLOUD_NAME_AQUI");
             propiedades.setProperty("CLOUDINARY_API_KEY", "PON_TU_API_KEY_AQUI");
             propiedades.setProperty("CLOUDINARY_API_SECRET", "PON_TU_API_SECRET_AQUI");
+            propiedades.setProperty("GEMINI_API_KEY", "PON_TU_API_KEY_AQUI");
 
             try(FileOutputStream fos = new FileOutputStream(archivoConfig)){
                 propiedades.store(fos, "Configuración de Base de datos y Servicios en la Nube");

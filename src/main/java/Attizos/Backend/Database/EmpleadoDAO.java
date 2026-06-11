@@ -1,10 +1,8 @@
 package Attizos.Backend.Database;
 
 import Attizos.Backend.Attizos.*;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+
+import java.sql.*;
 import java.util.ArrayList;
 
 public class EmpleadoDAO {
@@ -21,7 +19,6 @@ public class EmpleadoDAO {
             ps.setString(3, empleado.getCargo());
             ps.setDouble(4, empleado.getSueldo());
 
-            // Ya no usamos instanceof. Si tiene datos de acceso, los guardamos; si no, van nulos.
             if (empleado.tieneAccesoSistema()) {
                 ps.setString(5, empleado.getUsername());
                 ps.setString(6, empleado.getPasswordHash());
@@ -54,10 +51,11 @@ public class EmpleadoDAO {
                 String user = rs.getString("username");
                 String pass = rs.getString("password_hash");
 
-                // El código se reduce a una sola línea.
-                // Un solo objeto maneja al Admin, al Cajero y al Cocinero por igual.
                 Empleado emp = new Empleado(id, nombre, cargo, sueldo, "Activo", user, pass);
-
+                Date dbDate = rs.getDate("fecha_ultimo_pago");
+                if(dbDate != null){
+                    emp.setFechaUltimoPago(dbDate.toLocalDate());
+                }
                 empleados.add(emp);
             }
         } catch (SQLException e) {
@@ -105,6 +103,17 @@ public class EmpleadoDAO {
 
         } catch (SQLException e) {
             System.err.println("❌ Error al dar de baja al empleado: " + e.getMessage());
+            return false;
+        }
+    }
+    public static boolean registrarFechaPago(String idEmpleado){
+        String sql = "UPDATE empleados SET fecha_ultimo_pago = CURRENT_DATE WHERE id_empleado = ?";
+        try (Connection con = ConexionBD.getConexion();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, idEmpleado);
+            return ps.executeUpdate() > 0;
+        }catch (SQLException e){
+            System.err.println("❌ Error al registrar fecha de pago: " + e.getMessage());
             return false;
         }
     }

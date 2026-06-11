@@ -51,6 +51,7 @@
                                                 <TableColumn fx:id="colCargo" prefWidth="120.0" text="CARGO" />
                                                 <TableColumn fx:id="colSueldo" prefWidth="100.0" text="SUELDO (Bs)" />
                                                 <TableColumn fx:id="colUsername" prefWidth="120.0" text="USUARIO ACCESO" />
+                                    <TableColumn fx:id="colEstadoPago" prefWidth="120.0" text="Estado Mes" />
                                             </columns>
                                         </TableView>
 

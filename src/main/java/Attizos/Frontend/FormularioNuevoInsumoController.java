@@ -1,5 +1,6 @@
 package Attizos.Frontend;
 
+import Attizos.Backend.AI.AuditoriaAI;
 import Attizos.Backend.Attizos.App;
 import Attizos.Backend.Attizos.Insumo;
 import Attizos.Backend.Database.InsumoDAO;
@@ -7,16 +8,14 @@ import Attizos.Backend.Database.ReportesDAO;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
-import javafx.scene.control.Alert;
-import javafx.scene.control.ComboBox;
-import javafx.scene.control.DatePicker;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
 
 import java.time.DateTimeException;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
@@ -32,6 +31,7 @@ public class FormularioNuevoInsumoController {
     @FXML private DatePicker dpVencimiento;
     @FXML private AnchorPane rootPane;
     @FXML private HBox topBar;
+    @FXML private CheckBox chkNoCaduca;
 
     private double xOffset = 0;
     private double yOffset = 0;
@@ -43,6 +43,47 @@ public class FormularioNuevoInsumoController {
             xOffset = event.getSceneX();
             yOffset = event.getSceneY();
         });
+        dpVencimiento.setDisable(true);
+        if (chkNoCaduca != null) chkNoCaduca.setDisable(true);
+
+        txtStockInicial.textProperty().addListener((obs, oldVal, newVal) -> {
+            try {
+                double stock = Double.parseDouble(newVal.replace(",", "."));
+                boolean tieneStock = stock > 0;
+
+                if (chkNoCaduca != null) chkNoCaduca.setDisable(!tieneStock);
+
+                if (chkNoCaduca != null && chkNoCaduca.isSelected()) {
+                    dpVencimiento.setDisable(true);
+                } else {
+                    dpVencimiento.setDisable(!tieneStock);
+                }
+
+                if (!tieneStock) {
+                    dpVencimiento.setValue(null);
+                    if (chkNoCaduca != null) chkNoCaduca.setSelected(false);
+                }
+            } catch (NumberFormatException e) {
+                dpVencimiento.setDisable(true);
+                if (chkNoCaduca != null) {
+                    chkNoCaduca.setDisable(true);
+                    chkNoCaduca.setSelected(false);
+                }
+            }
+        });
+
+        if (chkNoCaduca != null) {
+            chkNoCaduca.setOnAction(e -> {
+                if (chkNoCaduca.isSelected()) {
+                    dpVencimiento.setValue(LocalDate.of(2099, 12, 31));
+                    dpVencimiento.setDisable(true);
+                } else {
+                    // Devolvemos el control al usuario
+                    dpVencimiento.setValue(null);
+                    dpVencimiento.setDisable(false);
+                }
+            });
+        }
 
         topBar.setOnMouseDragged(event -> {
             Stage stage = (Stage) rootPane.getScene().getWindow();
@@ -117,36 +158,55 @@ public class FormularioNuevoInsumoController {
                 mostrarError("El stock mínino no puedes ser mayor que el stock máximo");
                 return;
             }
-            LocalDate vencimiento = dpVencimiento.getValue();
-            if(vencimiento == null){
+            LocalDate vencimientoTemp = dpVencimiento.getValue();
+            if(inicial <= 0){
+                vencimientoTemp = LocalDate.of(2099, 12, 31);
+            }else if(vencimientoTemp == null){
                 mostrarError("Por favor, seleccione o ingrese la fecha de vencimiento.");
                 return;
             }
-            if(vencimiento.isBefore(LocalDate.now())){
+            if(vencimientoTemp.isBefore(LocalDate.now())){
                 mostrarError("No se puede agregar un insumo vencido. ");
                 return;
             }
-            if (inicial > 0) {
-                DialogoPersonalizado.mostrarDialogo(
-                        "Costo del stock inicial",
-                        "Registro de Gasto: " + inicial + " " + unidad + " de " + nombre,
-                        "Ingrese el costo total pagado en Bs:",
-                        "0.00"
-                ).ifPresent(costoStr -> {
-                    try {
-                        double costo = Double.parseDouble(costoStr.replace(",", "."));
-                        if(costo < 0){
-                            mostrarError("El costo no puede ser negativo. ");
-                            return;
+            final LocalDate vencimientoFinal = vencimientoTemp;
+            long diasFaltantes = ChronoUnit.DAYS.between(LocalDate.now(), vencimientoFinal);
+            UtilidadesUI.ejecutarTareaAsincrona(rootPane,
+                    () -> AuditoriaAI.analizarCreacionInsumo(nombre, categoria, unidad, min, max, diasFaltantes),
+                    veredictoIA -> {
+                        if (veredictoIA.startsWith("ALERTA:")) {
+                            boolean forzarGuardado = AlertaPersonalizada.mostrarConfirmacion(
+                                    " Auditoría de IA: Catálogo",
+                                    veredictoIA + "\n\n¿Deseas ignorar la advertencia y crear el insumo en el catálogo?"
+                            );
+                            if (!forzarGuardado) {
+                                return;
+                            }
                         }
-                        ejecutarGuardado(cod, nombre, categoria, unidad, inicial, min, max, vencimiento, costo, event);
-                    } catch (NumberFormatException e) {
-                        mostrarError("El costo ingresado no es válido.");
+
+                        if (inicial > 0) {
+                            DialogoPersonalizado.mostrarDialogo(
+                                    "Costo del stock inicial",
+                                    "Registro de Gasto: " + inicial + " " + unidad + " de " + nombre,
+                                    "Ingrese el costo total pagado en Bs:",
+                                    "0.00"
+                            ).ifPresent(costoStr -> {
+                                try {
+                                    double costo = Double.parseDouble(costoStr.replace(",", "."));
+                                    if (costo < 0) {
+                                        mostrarError("El costo no puede ser negativo. ");
+                                        return;
+                                    }
+                                    ejecutarGuardado(cod, nombre, categoria, unidad, inicial, min, max, vencimientoFinal, costo, event);
+                                } catch (NumberFormatException e) {
+                                    mostrarError("El costo ingresado no es válido.");
+                                }
+                            });
+                        } else {
+                            ejecutarGuardado(cod, nombre, categoria, unidad, inicial, min, max, vencimientoFinal, 0.0, event);
+                        }
                     }
-                });
-            } else {
-                ejecutarGuardado(cod, nombre, categoria, unidad, inicial, min, max, vencimiento, 0.0, event);
-            }
+            );
         } catch (NumberFormatException e) {
             mostrarError("Los campos de stock deben ser números válidos (Ej: 1.5).");
         }
@@ -206,22 +266,6 @@ public class FormularioNuevoInsumoController {
     }
 
     private String generarCodigoAutomatico() {
-        HashMap<String, Insumo> inv = App.attizos.getInventario().getInventarioInsumos();
-        int maxNumero = 0;
-
-        if (inv != null) {
-            for (String codigo : inv.keySet()) {
-                if (codigo.toUpperCase().startsWith("INS-")) {
-                    try {
-                        int numero = Integer.parseInt(codigo.substring(4));
-                        if (numero > maxNumero) {
-                            maxNumero = numero;
-                        }
-                    } catch (NumberFormatException e) {
-                    }
-                }
-            }
-        }
-        return String.format("INS-%03d", maxNumero + 1);
+        return InsumoDAO.generarSiguienteCodigo();
     }
 }

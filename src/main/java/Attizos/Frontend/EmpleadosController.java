@@ -57,6 +57,8 @@ public class EmpleadosController {
     private TextField txtUsername;
     @FXML
     private PasswordField txtPassword;
+    @FXML
+    private TableColumn<Empleado, Boolean> colEstadoPago;
 
 
     private ObservableList<Empleado> masterData;
@@ -69,6 +71,25 @@ public class EmpleadosController {
         colNombre.setCellValueFactory(new PropertyValueFactory<>("nombre"));
         colCargo.setCellValueFactory(new PropertyValueFactory<>("cargo"));
         colSueldo.setCellValueFactory(new PropertyValueFactory<>("sueldo"));
+        colEstadoPago.setCellValueFactory(new PropertyValueFactory<>("pagadoEsteMes"));
+        colEstadoPago.setCellFactory(column -> new javafx.scene.control.TableCell<Empleado, Boolean>() {
+            @Override
+            protected void updateItem(Boolean pagado, boolean empty) {
+                super.updateItem(pagado, empty);
+                if (empty || pagado == null) {
+                    setText(null);
+                    setStyle("");
+                } else {
+                    if (pagado) {
+                        setText("✅ Pagado");
+                        setStyle("-fx-text-fill: #218c4e; -fx-font-weight: bold; -fx-alignment: CENTER;"); // Verde
+                    } else {
+                        setText("❌ Pendiente");
+                        setStyle("-fx-text-fill: #ff4c4c; -fx-font-weight: bold; -fx-alignment: CENTER;"); // Rojo
+                    }
+                }
+            }
+        });
 
         colUsername.setCellValueFactory(cellData -> {
             Empleado emp = cellData.getValue();
@@ -224,8 +245,9 @@ public class EmpleadosController {
         masterData.clear();
         if(App.attizos != null && App.attizos.getEmpleados() != null){
             masterData.addAll(App.attizos.getEmpleados());
-        }
+            }
         masterData.sort(Comparator.comparing(Empleado::getCargo));
+        tablaEmpleados.refresh();
     }
 
     @FXML
@@ -374,16 +396,32 @@ public class EmpleadosController {
                         mostrarAlerta("Error", "El monto a cancelar debe ser mayor a 0.");
                         return;
                     }
-                    boolean egresoRegistrado = ReportesDAO.registrarEgreso(conceptoFinal, montoPagar);
+                    UtilidadesUI.ejecutarTareaAsincrona(
+                            tablaEmpleados,
+                            () ->{
+                                boolean egresoRegistrado = ReportesDAO.registrarEgreso(conceptoFinal, montoPagar);
 
-                    if(egresoRegistrado){
-                        String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
-                        App.registrarAuditoria(operador, "Empleado", sel.getNombre(), "Pago de Sueldo", montoPagar, "Pago del periodo: " + periodo);
+                                if(egresoRegistrado){
+                                    String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
+                                    App.registrarAuditoria(operador, "Empleado", sel.getNombre(), "Pago de Sueldo", montoPagar, "Pago del periodo: " + periodo);
 
-                        mostrarExito("Pago Registrado", "✅ Se han cancelado Bs. " + montoPagar + " a " + sel.getNombre() + ".\nEl gasto ya figura en los reportes de la empresa.");
-                    }else{
-                        mostrarAlerta("Error", "No se pudo registrar el pago en la base de datos. Revise su conexión.");
-                    }
+                                    EmpleadoDAO.registrarFechaPago(sel.getIdEmpleado());
+                                    sel.setFechaUltimoPago(LocalDate.now());
+
+                                    // Esta es la operación pesada que congelaba todo
+                                    ConexionSQLite.sincronizarEmpleados();
+                                }
+                                return egresoRegistrado;
+                            },
+                            (exito) ->{
+                                if(exito){
+                                    mostrarExito("Pago Registrado", "✅ Se han cancelado Bs. " + montoPagar + " a " + sel.getNombre() + ".\nEl gasto ya figura en los reportes de la empresa.");
+                                    tablaEmpleados.refresh();
+                                } else {
+                                    mostrarAlerta("Error", "No se pudo registrar el pago en la base de datos. Revise su conexión.");
+                                }
+                            }
+                    );
                 }catch (NumberFormatException e){
                     mostrarAlerta("Error de formato", "El monto ingresado no es válido. Ingrese un número para el monto a pagar.");
                 }
