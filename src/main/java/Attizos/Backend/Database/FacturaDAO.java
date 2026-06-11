@@ -11,8 +11,8 @@ import java.time.LocalDateTime;
 import java.util.Map;
 
 public class FacturaDAO {
-    public static int[] registrarVenta(String nombreCliente, double total, Map<Producto, Integer> carrito ){
-        String sqlFactura = "INSERT INTO facturas (nombre_cliente, total, estado, numero_ticket, fecha_hora) VALUES (?, ?, 'Completada', ?, ?)";
+    public static int[] registrarVenta(String nombreCliente, double total, Map<Producto, Integer> carrito, String estadoFactura ){
+        String sqlFactura = "INSERT INTO facturas (nombre_cliente, total, estado, numero_ticket, fecha_hora) VALUES (?, ?, ?, ?, ?)";
         String sqlDetalle = "INSERT INTO facturas_detalle (numero_factura, id_producto, cantidad, subtotal) VALUES (?, ?, ?, ?)";
         String sqlRestarVitrina = "UPDATE productos SET stock_directo = stock_directo - ? WHERE id_producto = ?";
 
@@ -45,8 +45,9 @@ public class FacturaDAO {
             try(PreparedStatement psFac = con.prepareStatement(sqlFactura, Statement.RETURN_GENERATED_KEYS)){
                 psFac.setString(1, nombreCliente);
                 psFac.setDouble(2, total);
-                psFac.setInt(3, numeroTicketDiario);
-                psFac.setTimestamp(4, Timestamp.valueOf(LocalDateTime.now()));
+                psFac.setString(3, estadoFactura);
+                psFac.setInt(4, numeroTicketDiario);
+                psFac.setTimestamp(5, Timestamp.valueOf(LocalDateTime.now()));
                 psFac.executeUpdate();
 
                 try(ResultSet rs = psFac.getGeneratedKeys()){

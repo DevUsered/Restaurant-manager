@@ -132,16 +132,14 @@ public class VentasController {
             mostrarAlerta("Sin Stock", "No se puede agregar: " + p.getNombre() + ".\n👉 " + motivoExacto, Alert.AlertType.WARNING);
             return;
         }
-        NodoDE<DetalleFactura> ac = facturaActual.getDetalles().getCabeza();
         boolean existe = false;
-        while (ac != null) {
-            if (ac.getDato().getProducto().getId() == p.getId()) {
-                int nuevaCant = ac.getDato().getCantidad() + 1;
+        for(DetalleFactura df : facturaActual.getDetalles()){
+            if(df.getProducto().getId() == p.getId()){
+                int nuevaCant = df.getCantidad() + 1;
                 facturaActual.modificarCantidad(p, nuevaCant);
                 existe = true;
                 break;
             }
-            ac = ac.getSiguiente();
         }
         if (!existe) {
             facturaActual.agregarProducto(p, 1);
@@ -154,14 +152,11 @@ public class VentasController {
         Map<Integer, Integer> prodDirectosAtrapados = new HashMap<>();
         Map<String, Double> insumosAtrapados = new HashMap<>();
 
-        NodoDE<DetalleFactura> ac = facturaActual.getDetalles().getCabeza();
-        while (ac != null) {
-            Producto prodCart = ac.getDato().getProducto();
-            int cant = ac.getDato().getCantidad();
+        for(DetalleFactura df : facturaActual.getDetalles()){
+            Producto prodCart = df.getProducto();
+            int cant = df.getCantidad();
             registrarConsumoSimulado(prodCart, cant, prodDirectosAtrapados, insumosAtrapados);
-            ac = ac.getSiguiente();
         }
-
         return diagnosticarFalta(p, prodDirectosAtrapados, insumosAtrapados, 1);
     }
     private String diagnosticarFalta(Producto p, Map<Integer, Integer> prodDirectos, Map<String, Double> insumos, int cantidadRequerida) {
@@ -214,20 +209,18 @@ public class VentasController {
             mostrarAlerta("Atención", "Seleccione un producto del carrito para reducir su cantidad.", Alert.AlertType.WARNING);
             return;
         }
-        NodoDE<DetalleFactura> actual = facturaActual.getDetalles().getCabeza();
-        while (actual != null) {
-            if (actual.getDato().getProducto().getId() == productoSeleccionadoEnCarrito.getId()) {
-                int nuevaCant = actual.getDato().getCantidad() - 1;
-                if (nuevaCant > 0) {
+        for(DetalleFactura df : facturaActual.getDetalles()){
+            if(df.getProducto().getId() == productoSeleccionadoEnCarrito.getId()){
+                int nuevaCant = df.getCantidad() - 1;
+                if(nuevaCant > 0){
                     facturaActual.modificarCantidad(productoSeleccionadoEnCarrito, nuevaCant);
-                } else {
+                }else{
                     facturaActual.eliminarProducto(productoSeleccionadoEnCarrito);
                     productoSeleccionadoEnCarrito = null;
                     filaSeleccionada = null;
                 }
                 break;
             }
-            actual = actual.getSiguiente();
         }
         actualizarVistaCarrito();
         mostrarProductosPorCategoria(categoriaActiva);
@@ -257,7 +250,6 @@ public class VentasController {
         }
 
         Map<Producto, Integer> carritoDB = new HashMap<>();
-        NodoDE<DetalleFactura> actual = facturaActual.getDetalles().getCabeza();
 
         StringBuilder jsonVenta = new StringBuilder();
         jsonVenta.append("{\"cliente\": \"").append(nombreCli).append("\", ");
@@ -265,22 +257,25 @@ public class VentasController {
         jsonVenta.append("\"detalles\": [");
 
         boolean primero = true;
-        while (actual != null) {
-            DetalleFactura det = actual.getDato();
-            carritoDB.put(det.getProducto(), det.getCantidad());
+        for(DetalleFactura df : facturaActual.getDetalles()){
+            carritoDB.put(df.getProducto(), df.getCantidad());
             if (primero) jsonVenta.append(", ");
-            jsonVenta.append("{\"id_producto\": ").append(det.getProducto().getId())
-                    .append(", \"cantidad\": ").append(det.getCantidad()).append("}");
+            jsonVenta.append("{\"id_producto\": ").append(df.getProducto().getId())
+                    .append(", \"cantidad\": ").append(df.getCantidad()).append("}");
             primero = false;
-            actual = actual.getSiguiente();
         }
         jsonVenta.append("]}");
 
         int numeroTicketDiario = -1;
         int numeroFacturaGlobal = -1;
+        if(facturaActual.requiereCocina()){
+            facturaActual.setEstado("En cocina");
+        }else{
+            facturaActual.setEstado("Finalizada");
+        }
 
         if (!App.modoOffline) {
-            int[] resultados = FacturaDAO.registrarVenta(nombreCli, facturaActual.getTotal(), carritoDB);
+            int[] resultados = FacturaDAO.registrarVenta(nombreCli, facturaActual.getTotal(), carritoDB, facturaActual.getEstado());
             if (resultados != null) {
                 numeroFacturaGlobal = resultados[0];
                 numeroTicketDiario = resultados[1];
@@ -387,12 +382,8 @@ public class VentasController {
         vBoxCarrito.getChildren().clear();
 
         double imgSize = 45.0;
-        NodoDE<DetalleFactura> actual = facturaActual.getDetalles().getCabeza();
-
-        while (actual != null) {
-            DetalleFactura det = actual.getDato();
-            Producto p = det.getProducto();
-
+        for(DetalleFactura df : facturaActual.getDetalles()){
+            Producto p = df.getProducto();
             HBox itemRow = new HBox(12);
             itemRow.getStyleClass().add("cart-item");
             if (p == productoSeleccionadoEnCarrito) {
@@ -419,7 +410,7 @@ public class VentasController {
             name.setMaxWidth(110);
             name.setWrapText(true);
 
-            Label qty = new Label("x" + det.getCantidad());
+            Label qty = new Label("x" + df.getCantidad());
             qty.setStyle("-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #111111;");
 
             textos.getChildren().addAll(name, qty);
@@ -427,7 +418,7 @@ public class VentasController {
             Region spacer = new Region();
             HBox.setHgrow(spacer, Priority.ALWAYS);
 
-            Label price = new Label("Bs. " + String.format("%.2f", det.getSubtotal()));
+            Label price = new Label("Bs. " + String.format("%.2f", df.getSubtotal()));
             price.getStyleClass().add("cart-product-price");
 
             itemRow.getChildren().addAll(imgView, textos, spacer, price);
@@ -438,7 +429,6 @@ public class VentasController {
             });
 
             vBoxCarrito.getChildren().add(itemRow);
-            actual = actual.getSiguiente();
         }
         lblTotal.setText(String.format("%.2f", facturaActual.getTotal()));
     }
@@ -447,12 +437,10 @@ public class VentasController {
         Map<Integer, Integer> prodDirectosAtrapados = new HashMap<>();
         Map<String, Double> insumosAtrapados = new HashMap<>();
 
-        NodoDE<DetalleFactura> ac = facturaActual.getDetalles().getCabeza();
-        while (ac != null) {
-            Producto prodCart = ac.getDato().getProducto();
-            int cant = ac.getDato().getCantidad();
+        for(DetalleFactura df : facturaActual.getDetalles()){
+            Producto prodCart = df.getProducto();
+            int cant = df.getCantidad();
             registrarConsumoSimulado(prodCart, cant, prodDirectosAtrapados, insumosAtrapados);
-            ac = ac.getSiguiente();
         }
         return calcularMaximoPosible(p, prodDirectosAtrapados, insumosAtrapados);
     }

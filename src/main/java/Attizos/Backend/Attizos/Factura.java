@@ -3,13 +3,14 @@ package Attizos.Backend.Attizos;
 import Attizos.Backend.Listas.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 
 public class Factura {
     private int numeroFactura;
     private int numeroTicket;
     private LocalDateTime fecha;
     private String nombreCliente;
-    private ListaDE<DetalleFactura> detalles;
+    private ArrayList<DetalleFactura> detalles;
     private double total;
     private String estado;
 
@@ -17,8 +18,8 @@ public class Factura {
         this.numeroFactura = numeroFactura;
         this.nombreCliente = nombreCliente;
         this.fecha = LocalDateTime.now();
-        this.estado = "Completada";
-        this.detalles = new ListaDE<>();
+        this.estado = "Pendiente";
+        this.detalles = new ArrayList<>();
         this.total = 0.0;
     }
 
@@ -26,7 +27,7 @@ public class Factura {
     public boolean agregarProducto(Producto producto, int cantidad) {
         if (producto != null && cantidad > 0) {
             DetalleFactura nuevoDetalle = new DetalleFactura(producto, cantidad);
-            detalles.insertarAlFinal(nuevoDetalle);
+            detalles.add(nuevoDetalle);
             calcularTotal();
             return true;
         }
@@ -36,14 +37,12 @@ public class Factura {
     // Elimina el producto de la lista del carrito sin devolver nada al almacén
     public void eliminarProducto(Producto producto) {
         if (producto != null) {
-            NodoDE<DetalleFactura> ac = detalles.getCabeza();
-            while (ac != null) {
-                if (ac.getDato().getProducto().getId() == producto.getId()) {
-                    detalles.eliminarPorValor(ac.getDato());
+            for(DetalleFactura df : detalles){
+                if(df.getProducto().getId() == producto.getId()){
+                    detalles.remove(df);
                     calcularTotal();
                     return;
                 }
-                ac = ac.getSiguiente();
             }
         }
     }
@@ -51,30 +50,21 @@ public class Factura {
     // Modifica la cantidad en la lista del carrito sin alterar el almacén
     public boolean modificarCantidad(Producto producto, int nuevaCantidad) {
         if (producto == null || nuevaCantidad < 0) return false;
-
-        NodoDE<DetalleFactura> ac = detalles.getCabeza();
-        while (ac != null) {
-            DetalleFactura detalle = ac.getDato();
-            if (detalle.getProducto().getId() == producto.getId()) {
-                if (nuevaCantidad == 0) {
-                    eliminarProducto(producto);
-                } else {
-                    detalle.setCantidad(nuevaCantidad);
-                    calcularTotal();
-                }
+        for(DetalleFactura df : detalles){
+            if(df.getProducto().getId() == producto.getId()){
+                df.setCantidad(nuevaCantidad);
+                calcularTotal();
                 return true;
             }
-            ac = ac.getSiguiente();
         }
         return false;
     }
 
     private void calcularTotal() {
         this.total = 0.0;
-        NodoDE<DetalleFactura> actual = detalles.getCabeza();
-        while (actual != null) {
-            this.total += actual.getDato().getSubtotal();
-            actual = actual.getSiguiente();
+        if (detalles == null) return;
+        for(DetalleFactura df : detalles){
+            this.total += df.getSubtotal();
         }
     }
 
@@ -92,12 +82,10 @@ public class Factura {
         sb.append(String.format("%-5s | %-20s | %-10s\n", "CANT", "PRODUCTO", "SUBTOTAL"));
         sb.append("-----------------------------------------\n");
 
-        NodoDE<DetalleFactura> actual = detalles.getCabeza();
-        while (actual != null) {
-            DetalleFactura det = actual.getDato();
+        for(DetalleFactura df : detalles){
             sb.append(String.format("%-5d | %-20.20s | Bs.%8.2f\n",
-                    det.getCantidad(), det.getProducto().getNombre(), det.getSubtotal()));
-            actual = actual.getSiguiente();
+                    df.getCantidad(), df.getProducto().getNombre(), df.getSubtotal()));
+
         }
         sb.append("-----------------------------------------\n");
         sb.append(String.format("TOTAL A PAGAR:               Bs.%8.2f\n", total));
@@ -111,14 +99,14 @@ public class Factura {
     public String getNombreCliente() { return nombreCliente; }
     public void setNombreCliente(String nombreCliente) { this.nombreCliente = nombreCliente; }
     public LocalDateTime getFecha() { return fecha; }
-    public ListaDE<DetalleFactura> getDetalles() { return detalles; }
+    public ArrayList<DetalleFactura> getDetalles() { return detalles; }
 
     public void setTotal(double total) {
         this.total = total;
     }
     public int getNumeroTicket() { return numeroTicket; }
     public void setNumeroTicket(int numeroTicket) { this.numeroTicket = numeroTicket; }
-    public void setDetalles(ListaDE<DetalleFactura> detalles) {
+    public void setDetalles(ArrayList<DetalleFactura> detalles) {
         this.detalles = detalles;
     }
 
@@ -130,5 +118,20 @@ public class Factura {
 
     public void setEstado(String estado) {
         this.estado = estado;
+    }
+
+    public String getEstado() {
+        return estado;
+    }
+    public boolean requiereCocina(){
+        if(detalles == null || detalles.isEmpty()) return false;
+
+        for(DetalleFactura df : detalles){
+            Producto p = df.getProducto();
+            if(p.tieneReceta() || p.isPromocion()){
+                return true;
+            }
+        }
+        return false;
     }
 }

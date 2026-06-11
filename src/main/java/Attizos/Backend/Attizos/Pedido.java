@@ -4,14 +4,15 @@ import Attizos.Backend.Listas.*;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 
 public class Pedido {
     private int idPedido;
-    private int numeroTicket;         // 🔥 NUEVO: Para el número diario que ve el cocinero
-    private String descripcionBreve;  // 🔥 NUEVO: Para la vista rápida en la tabla
+    private int numeroTicket;
+    private String descripcionBreve;
     
     private String fechaHora;
-    private ListaDE<DetalleFactura> productos;
+    private ArrayList<DetalleFactura> productos;
     private double total;
     private String estado;
     private String cliente;
@@ -22,7 +23,7 @@ public class Pedido {
         this.fechaHora = LocalDateTime.now().format(formato);
     }
 
-    public Pedido(int idPedido, String cliente, ListaDE<DetalleFactura> productos, double total) {
+    public Pedido(int idPedido, String cliente, ArrayList<DetalleFactura> productos, double total) {
         this.idPedido = idPedido;
         this.cliente = cliente;
         this.productos = productos;
@@ -40,7 +41,7 @@ public class Pedido {
     public int getNumeroTicket() { return numeroTicket; }
     public String getDescripcionBreve() { return descripcionBreve; }
     public String getFechaHora() { return fechaHora; }
-    public ListaDE<DetalleFactura> getProductos() { return productos; }
+    public ArrayList<DetalleFactura> getProductos() { return productos; }
     public double getTotal() { return total; }
     public String getEstado() { return estado; }
     public String getCliente() { return cliente; }
@@ -53,7 +54,7 @@ public class Pedido {
     public void setDescripcionBreve(String descripcionBreve) { this.descripcionBreve = descripcionBreve; }
     public void setEstado(String estado) { this.estado = estado; }
     public void setCliente(String cliente) { this.cliente = cliente; }
-    public void setProductos(ListaDE<DetalleFactura> productos) { this.productos = productos; }
+    public void setProductos(ArrayList<DetalleFactura> productos) { this.productos = productos; }
     public void setTotal(double total) { this.total = total; }
     public void setFechaHora(String fechaHora) { this.fechaHora = fechaHora; }
 
@@ -74,11 +75,8 @@ public class Pedido {
         } 
         // Si viene de la memoria RAM con la lista, iteramos (compatibilidad antigua)
         else if (productos != null) {
-            NodoDE<DetalleFactura> actual = productos.getCabeza();
-            while (actual != null) {
-                DetalleFactura det = actual.getDato();
-                sb.append(String.format("      👉 %d x %s\n", det.getCantidad(), det.getProducto().getNombre()));
-                actual = actual.getSiguiente();
+            for(DetalleFactura df : productos){
+                sb.append(String.format("      👉 %d x %s\n", df.getCantidad(), df.getProducto().getNombre()));
             }
         }
         sb.append("----------------------------------------------------------------");

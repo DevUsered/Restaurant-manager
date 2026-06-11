@@ -88,8 +88,8 @@
                                                                     <font><Font name="System Bold" size="38.0" /></font>
                                                                 </Label>
 
-                                                                <Label style="-fx-font-weight: bold; -fx-font-size: 14px;" text="Ticket Promedio" textFill="#555555" GridPane.columnIndex="3" />
-                                                                <Label fx:id="lblTicketProm" text="Bs. 0.00" textFill="#DAA520" GridPane.columnIndex="3" GridPane.rowIndex="1">
+                                                                <Label style="-fx-font-weight: bold; -fx-font-size: 14px;" text="Número de Tickets" textFill="#555555" GridPane.columnIndex="3" />
+                                                                <Label fx:id="lblTicketProm" text="0" textFill="#DAA520" GridPane.columnIndex="3" GridPane.rowIndex="1">
                                                                     <font><Font name="System Bold" size="38.0" /></font>
                                                                 </Label>
                                                             </children>

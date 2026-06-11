@@ -49,15 +49,11 @@ public class TicketController {
         vboxProductosCaja.getChildren().clear();
         vboxProductosCliente.getChildren().clear();
 
-        NodoDE<DetalleFactura> actual = factura.getDetalles().getCabeza();
-        while (actual != null) {
-            DetalleFactura det = actual.getDato();
-            vboxProductosCaja.getChildren().add(crearFilaProducto(det));
-            vboxProductosCliente.getChildren().add(crearFilaProducto(det));
-            actual = actual.getSiguiente();
+        for(DetalleFactura df : factura.getDetalles()){
+            vboxProductosCaja.getChildren().add(crearFilaProducto(df));
+            vboxProductosCliente.getChildren().add(crearFilaProducto(df));
         }
     }
-
     private HBox crearFilaProducto(DetalleFactura det) {
         HBox fila = new HBox();
         fila.setSpacing(5);

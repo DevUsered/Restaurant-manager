@@ -1,10 +1,9 @@
 package Attizos.Backend.Attizos;
 
 import Attizos.Backend.Listas.*;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
+
+import java.time.LocalDateTime;
+import java.util.*;
 import java.time.LocalDate;
 
 public class Restaurante
@@ -13,8 +12,8 @@ public class Restaurante
     private ArrayList<Producto> menu;
     private Inventario inventario;
     private ArrayList<Empleado> empleados;
-    private ListaDE<Reserva> reservas;
-    private ListaDE<Pedido> colaPedidos;
+    private ArrayList<Reserva> reservas;
+    private LinkedList<Pedido> colaPedidos;
     private ArrayList<Promocion> promocionesActivas;
 
     private HashMap<Integer, HashMap<String, Double>> lotesConsumidosPorPedido;
@@ -24,8 +23,8 @@ public class Restaurante
         this.inventario = new Inventario(nombre);
         this.menu = new ArrayList<>();
         this.empleados = new ArrayList<Empleado>();
-        this.reservas = new ListaDE<>();
-        this.colaPedidos = new ListaDE<>();
+        this.reservas = new ArrayList<>();
+        this.colaPedidos = new LinkedList<>();
         this.lotesConsumidosPorPedido = new HashMap<>();
         this.promocionesActivas = new ArrayList<>();
     }
@@ -83,10 +82,10 @@ public class Restaurante
         return null;
     }
     public void agregarReserva(Reserva r) {
-        reservas.insertarAlFinal(r);
+        reservas.add(r);
     }
 
-    public ListaDE<Reserva> getReservas() {
+    public ArrayList<Reserva> getReservas() {
         return reservas;
     }
 
@@ -95,86 +94,75 @@ public class Restaurante
         String letraDia = inicialesDias[fechaReserva.getDayOfWeek().getValue() - 1];
 
         int correlativoMes = 1;
-        NodoDE<Reserva> aux = reservas.getCabeza();
-        while (aux != null) {
-            java.time.LocalDateTime f = aux.getDato().getFecha();
-            if (f.getMonthValue() == fechaReserva.getMonthValue() && f.getYear() == fechaReserva.getYear()) {
+        for( Reserva r : reservas){
+            LocalDateTime f = r.getFecha();
+            if(f.getMonthValue() == fechaReserva.getMonthValue() && f.getYear() == fechaReserva.getYear()){
                 correlativoMes++;
             }
-            aux = aux.getSiguiente();
         }
         int diaMes = fechaReserva.getDayOfMonth();
         return String.format("%s%03d%02d",letraDia,correlativoMes,diaMes);
     }
 
     public Reserva buscarReserva(String id) {
-        NodoDE<Reserva> aux = reservas.getCabeza();
-        while (aux != null) {
-            if (aux.getDato().getId().equalsIgnoreCase(id)) return aux.getDato();
-            aux = aux.getSiguiente();
+        for(Reserva r : reservas){
+            if(r.getId().equalsIgnoreCase(id)) return r;
         }
         return null;
     }
 
-    public ListaDE<Pedido> getPedidos(){ return colaPedidos; }
+    public LinkedList<Pedido> getPedidos(){ return colaPedidos; }
     public void agregarPedido(Pedido p){
-        colaPedidos.insertarAlFinal(p);
+        colaPedidos.addLast(p);
     }
     public Pedido buscarPedido(int id){
-        NodoDE<Pedido> aux = colaPedidos.getCabeza();
-        while (aux != null) {
-            if (aux.getDato().getIdPedido() == id) return aux.getDato();
-            aux = aux.getSiguiente();
+        for(Pedido p : colaPedidos){
+            if(p.getIdPedido() == id) return p;
         }
         return null;
     }
     public Pedido atenderSiguientePedido(){
-        return colaPedidos.eliminarElInicio();
+        return colaPedidos.pollFirst();
     }
     public boolean cancelarPedido(int idPedido){
-        NodoDE<Pedido> ac = colaPedidos.getCabeza();
-        while(ac != null){
-            if(ac.getDato().getIdPedido() == idPedido){
-                Pedido pedidoCancelado = ac.getDato();
-
+        Iterator<Pedido> iterador = colaPedidos.iterator();
+        while (iterador.hasNext()){
+            Pedido pedidoCancelado = iterador.next();
+            if(pedidoCancelado.getIdPedido() == idPedido){
                 HashMap<String, Double> lotesUsados = lotesConsumidosPorPedido.get(idPedido);
-                if(lotesUsados != null){
-                    for(Map.Entry<String, Double> entry : lotesUsados.entrySet()){
+                if(lotesUsados != null) {
+                    for (Map.Entry<String, Double> entry : lotesUsados.entrySet()) {
                         String codLoteExacto = entry.getKey();
                         double cantidadADevolver = entry.getValue();
 
                         Insumo loteReal = inventario.buscarInsumo(codLoteExacto);
-                        if(loteReal != null){
+                        if (loteReal != null) {
                             loteReal.setStockActual(loteReal.getStockActual() + cantidadADevolver);
-                        }else{
+                        } else {
                             String base = codLoteExacto.split("-L")[0];
                             Insumo insumoBase = inventario.buscarInsumo(base);
-                            if(insumoBase != null) insumoBase.setStockActual(insumoBase.getStockActual() + cantidadADevolver);
+                            if (insumoBase != null)
+                                insumoBase.setStockActual(insumoBase.getStockActual() + cantidadADevolver);
                         }
                     }
                     lotesConsumidosPorPedido.remove(idPedido);
                 }
-                NodoDE<DetalleFactura> detAc = pedidoCancelado.getProductos().getCabeza();
-                while(detAc != null){
-                    Producto p = detAc.getDato().getProducto();
+                for(DetalleFactura df : pedidoCancelado.getProductos()){
+                    Producto p = df.getProducto();
                     if(!p.tieneReceta()){
-                        p.aumentarStock(detAc.getDato().getCantidad());
+                        p.aumentarStock(df.getCantidad());
                     }
-                    detAc = detAc.getSiguiente();
                 }
-                colaPedidos.eliminarPorValor(pedidoCancelado);
-                return  true;
+                iterador.remove();
+                return true;
             }
-            ac = ac.getSiguiente();
         }
         return false;
     }
     public void registrarVentaFinalizada(Factura f){
-        NodoDE<DetalleFactura> ac = f.getDetalles().getCabeza();
-
         HashMap<String, Double> consumoExactoDeEstaFactura = new HashMap<>();
-        while(ac != null){
-            DetalleFactura df = ac.getDato();
+
+        for (DetalleFactura df : f.getDetalles()) {
             Producto p = df.getProducto();
             int cantVendida = df.getCantidad();
             if(p.tieneReceta() && p.getReceta() != null){
@@ -201,7 +189,6 @@ public class Restaurante
             }else{
                 p.reducirStock(cantVendida);
             }
-            ac = ac.getSiguiente();
         }
         lotesConsumidosPorPedido.put(f.getNumeroFactura(), consumoExactoDeEstaFactura);
     }

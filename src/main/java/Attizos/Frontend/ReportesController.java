@@ -262,6 +262,9 @@ public class ReportesController {
                 Map<String, Double> ventasPorDiaTemp = new TreeMap<>();
 
                 for(Factura f : facturasDB){
+                    if(f.getEstado() == null  && !f.getEstado().equalsIgnoreCase("Finalizada")){
+                        continue;
+                    }
                     boolean enRango = true;
                     if(f.getFecha() != null){
                         LocalDate fechaFac = f.getFecha().toLocalDate();
@@ -300,6 +303,9 @@ public class ReportesController {
                 Platform.runLater(() -> {
                     listaFacturas.clear();
                     for(Factura f : facturasDB) {
+                        if(f.getEstado() == null || !f.getEstado().equalsIgnoreCase("Completada")) {
+                            continue;
+                        }
                         boolean enRango = true;
                         if(f.getFecha() != null){
                             LocalDate fechaFac = f.getFecha().toLocalDate();
@@ -327,12 +333,10 @@ public class ReportesController {
                     masterLogs.addAll(auditoriaDB);
 
                     double balance = finalIngresos - finalEgresos;
-                    double ticketPromedio = (finalContador > 0) ? (finalIngresos / finalContador) : 0.0;
-
                     lblIngresos.setText("Bs. " + String.format("%.2f", finalIngresos));
                     lblEgresos.setText("Bs. " + String.format("%.2f", finalEgresos));
                     lblBalance.setText("Bs. " + String.format("%.2f", balance));
-                    lblTicketProm.setText("Bs. " + String.format("%.2f", ticketPromedio));
+                    lblTicketProm.setText("Bs. " + String.format(String.valueOf(finalContador)));
                     lblTotalSueldos.setText("Bs. " + String.format("%.2f", finalSueldos));
 
                     if (balance >= 0) {
