@@ -20,7 +20,11 @@ public class App {
     private static ScheduledExecutorService temporizadorSincronizacion;
 
     public static void iniciarSincronizacionAutomatica() {
-        temporizadorSincronizacion = Executors.newScheduledThreadPool(1);
+        temporizadorSincronizacion = Executors.newScheduledThreadPool(1, r -> {
+            Thread t = Executors.defaultThreadFactory().newThread(r);
+            t.setDaemon(true);
+            return t;
+        });
 
         temporizadorSincronizacion.scheduleAtFixedRate(() -> {
             try {
@@ -33,11 +37,11 @@ public class App {
                         Attizos.Frontend.ServicioNube.sincronizarImagenesPendientes();
 
                         ConexionSQLite.actualizarCacheCompleta();
-                        ListaDE<Producto> menuAct = ConexionSQLite.obtenerMenuLocal();
-                        attizos.setMenu(menuAct);
+                        ArrayList<Producto> menuActualizado = ConexionSQLite.obtenerMenuLocal();
+                        attizos.setMenu(menuActualizado);
                         RecetaDAO.cargarRecetas();
                         PromocionDAO.verificarYDesactivarPromociones();
-                        ListaDE<Promocion> promocionDB = ConexionSQLite.obtenerPromocionesLocal(menuAct);
+                        ArrayList<Promocion> promocionDB = ConexionSQLite.obtenerPromocionesLocal(menuActualizado);
                         attizos.setPromocionesActivas(promocionDB);
                         System.out.println("✅ [Auto-Sync] Sistema actualizado con éxito.");
                     }
@@ -59,7 +63,7 @@ public class App {
         cargarProductos();
         System.out.println("✅ Datos locales cargados.");
 
-        new Thread(() ->{
+        Thread hiloInicial = new Thread(() ->{
             try(Connection con = ConexionBD.getConexion()){
                 if(con != null && !con.isClosed()){
                     System.out.println("🔄 Sincronizando datos con la Base de Datos...");
@@ -73,19 +77,21 @@ public class App {
                         attizos.getInventario().getInventarioInsumos().putAll(stockRealNube);
                         System.out.println("✅ RAM actualizada con el stock real de la nube.");
                     }
-                    ListaDE<Producto> menuActualizado = ConexionSQLite.obtenerMenuLocal();
+                    ArrayList<Producto> menuActualizado = ConexionSQLite.obtenerMenuLocal();
                     attizos.setMenu(menuActualizado);
                     RecetaDAO.cargarRecetas();
-                    ListaDE<Promocion> promocionDB = ConexionSQLite.obtenerPromocionesLocal(menuActualizado);
+                    ArrayList<Promocion> promocionDB = ConexionSQLite.obtenerPromocionesLocal(menuActualizado);
                     attizos.setPromocionesActivas(promocionDB);
                 }
             }catch (SQLException e){
                 System.err.println("[Segundo Plano] Sin internet. Attizos sigue funcionando al 100% en modo local.");
             }
-        }).start();
+        });
+        hiloInicial.setDaemon(true);
+        hiloInicial.start();
         iniciarSincronizacionAutomatica();
     }
-    private static void cargarInventario() {
+    public static void cargarInventario() {
         HashMap<String, Insumo> inventario = ConexionSQLite.obtenerInventarioLocal();
         if (inventario != null && !inventario.isEmpty()) {
             for (Insumo i : inventario.values()) {
@@ -108,16 +114,13 @@ public class App {
     }
 
     public static void cargarProductos() {
-        ListaDE<Producto> menuDB = ConexionSQLite.obtenerMenuLocal();
-        if (menuDB != null && !menuDB.esVacia()) {
-            NodoDE<Producto> actual = menuDB.getCabeza();
-            while (actual != null) {
-                attizos.agregarProducto(actual.getDato());
-                actual = actual.getSiguiente();
+        ArrayList<Producto> menuDB = ConexionSQLite.obtenerMenuLocal();
+        if (menuDB != null && !menuDB.isEmpty()) {
+            for (Producto p : menuDB) {
+                attizos.getMenu().add(p);
             }
-            System.out.println("✅ Menú cargado en RAM con " + menuDB.getLongitud() + " productos.");
             RecetaDAO.cargarRecetas();
-            ListaDE<Promocion> promocionDB = ConexionSQLite.obtenerPromocionesLocal(menuDB);
+            ArrayList<Promocion> promocionDB = ConexionSQLite.obtenerPromocionesLocal(menuDB);
             attizos.setPromocionesActivas(promocionDB);
             System.out.println("Promociones cargados. ");
         } else {

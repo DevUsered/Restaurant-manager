@@ -31,9 +31,30 @@ public class  ConexionBD {
                 url = propiedades.getProperty("db.url");
                 user = propiedades.getProperty("db.user");
                 password = propiedades.getProperty("db.password");
-                System.out.println("Archivo config.properties cargado correctamente.");
-            } catch (IOException e) {
-                System.out.println("Error al cargar config.properties: " + e.getMessage());
+                if (!propiedades.containsKey("CLOUDINARY_CLOUD_NAME")) {
+                    propiedades.setProperty("CLOUDINARY_CLOUD_NAME", "PON_TU_CLOUD_NAME_AQUI");
+                    propiedades.setProperty("CLOUDINARY_API_KEY", "PON_TU_API_KEY_AQUI");
+                    propiedades.setProperty("CLOUDINARY_API_SECRET", "PON_TU_API_SECRET_AQUI");
+                    try (FileOutputStream fos = new FileOutputStream(archivoConfig)) {
+                        propiedades.store(fos, "Configuración actualizada con Cloudinary");
+                    }catch (IOException e){
+                        System.err.println("Error al actualizar config.properties: " + e.getMessage());
+                        cargarValoresPorDefecto();
+                        propiedades.setProperty("db.url", url);
+                        propiedades.setProperty("db.user", user);
+                        propiedades.setProperty("db.password", password);
+                        propiedades.setProperty("CLOUDINARY_CLOUD_NAME", "PON_TU_CLOUD_NAME_AQUI");
+                        propiedades.setProperty("CLOUDINARY_API_KEY", "PON_TU_API_KEY_AQUI");
+                        propiedades.setProperty("CLOUDINARY_API_SECRET", "PON_TU_API_SECRET_AQUI");
+                        try (FileOutputStream fos = new FileOutputStream(archivoConfig)) {
+                            propiedades.store(fos, "Configuración recreada");
+                        } catch (IOException e2) {
+                            System.err.println("No se pudo recrear config.properties: " + e2.getMessage());
+                        }
+                    }
+                    }
+            } catch (IOException ex) {
+                System.out.println("Error al cargar config.properties: " + ex.getMessage());
                 cargarValoresPorDefecto();
             }
         }else{

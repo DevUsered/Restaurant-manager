@@ -10,71 +10,62 @@ import java.time.LocalDate;
 public class Restaurante
 {
     private String nombre;
-    private ListaDE<Producto> menu;
+    private ArrayList<Producto> menu;
     private Inventario inventario;
     private ArrayList<Empleado> empleados;
     private ListaDE<Reserva> reservas;
     private ListaDE<Pedido> colaPedidos;
-    private ListaDE<Promocion> promocionesActivas;
+    private ArrayList<Promocion> promocionesActivas;
 
     private HashMap<Integer, HashMap<String, Double>> lotesConsumidosPorPedido;
 
     public Restaurante(String nombre){
         this.nombre = nombre;
         this.inventario = new Inventario(nombre);
-        this.menu = new ListaDE<Producto>();
+        this.menu = new ArrayList<>();
         this.empleados = new ArrayList<Empleado>();
         this.reservas = new ListaDE<>();
         this.colaPedidos = new ListaDE<>();
         this.lotesConsumidosPorPedido = new HashMap<>();
-        this.promocionesActivas = new ListaDE<>();
+        this.promocionesActivas = new ArrayList<>();
     }
     public void agregarProducto(Producto nuevo) {
         if (nuevo != null) {
-            menu.insertarAlFinal(nuevo);
+            menu.add(nuevo);
         }
     }
     public Producto buscarPorId(int id) {
-        NodoDE<Producto> aux = menu.getCabeza();
-        while (aux != null) {
-            if (aux.getDato().getId() == id) {
-                return aux.getDato();
-            }
-            aux = aux.getSiguiente();
+        for(Producto p : menu){
+            if(p.getId() == id) return p;
         }
         return null;
     }
     public boolean eliminarProducto(int id) {
-        Producto prod = buscarPorId(id);
-        if (prod != null) {
-            menu.eliminarPorValor(prod);
-            return true;
+        for(Producto p : menu){
+            if(p.getId() == id){
+                menu.remove(p);
+                return true;
+            }
         }
         return false;
     }
-    public ListaDE<Producto> obtenerProductosDisponibles() {
-        ListaDE<Producto> disponibles = new ListaDE<>();
-        NodoDE<Producto> aux = menu.getCabeza();
-        while (aux != null) {
-            Producto p = aux.getDato();
-
-            if (p.tieneReceta() || p.getStock() > 0) {
-                disponibles.insertarAlFinal(p);
+    public ArrayList<Producto> obtenerProductosDisponibles() {
+        ArrayList<Producto> disponibles = new ArrayList<>();
+        for(Producto p : menu){
+            if(p.getEstado() != null && p.getEstado().equalsIgnoreCase("Activo")){
+                disponibles.add(p);
             }
-            aux = aux.getSiguiente();
         }
         return disponibles;
     }
-    public ListaDE<Producto> buscarPorCategoria(String cat) {
-        ListaDE<Producto> filtrados = new ListaDE<>();
-        NodoDE<Producto> aux = menu.getCabeza();
-        while (aux != null) {
-            if (aux.getDato().getCategoria().equalsIgnoreCase(cat)) {
-                filtrados.insertarAlFinal(aux.getDato());
+    public ArrayList<Producto> buscarPorCategoria(String cat) {
+        ArrayList<Producto> productos = new ArrayList<>();
+        for(Producto p : menu){
+            if(p.getCategoria().equalsIgnoreCase(cat)){
+                productos.add(p);
             }
-            aux = aux.getSiguiente();
         }
-        return filtrados;
+        return productos;
     }
     public void agregarEmpleado(Empleado nuevoEmpleado) {
         if(nuevoEmpleado != null){
@@ -217,7 +208,7 @@ public class Restaurante
     public Inventario getInventario() {
         return inventario;
     }
-    public ListaDE<Producto> getMenu() {
+    public ArrayList<Producto> getMenu() {
         return menu;
     }
     public String getNombre() {
@@ -248,26 +239,24 @@ public class Restaurante
     }
     public int generarIdNuevoProducto(){
         int idGenerado = 1;
-        NodoDE<Producto> auxId = menu.getCabeza();
-        while(auxId != null){
-            if(auxId.getDato().getId() >= idGenerado){
-                idGenerado = auxId.getDato().getId() + 1;
+        for(Producto p : menu){
+            if(p.getId() >= idGenerado){
+                idGenerado = p.getId() + 1;
             }
-            auxId = auxId.getSiguiente();
         }
         return idGenerado;
     }
 
-    public void setMenu(ListaDE<Producto> menuActualizado) {
+    public void setMenu(ArrayList<Producto> menuActualizado) {
         if(menuActualizado != null){
             this.menu = menuActualizado;
         }
     }
-    public ListaDE<Promocion> getPromocionesActivas(){
+    public ArrayList<Promocion> getPromocionesActivas(){
         return promocionesActivas;
     }
 
-    public void setPromocionesActivas(ListaDE<Promocion> promocionesActivas) {
+    public void setPromocionesActivas(ArrayList<Promocion> promocionesActivas) {
         this.promocionesActivas = promocionesActivas;
     }
 }

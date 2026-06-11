@@ -2,8 +2,12 @@ package Attizos.Backend.Database;
 
 import Attizos.Backend.Attizos.*;
 import Attizos.Backend.Listas.*;
+import Attizos.Frontend.UtilidadesImagen;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.net.URL;
 import java.sql.*;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -207,15 +211,17 @@ public class ConexionSQLite {
             int contador = 0;
 
             while (rs.next()) {
-                stmtInsertar.setInt(1, rs.getInt("id_producto"));
+                int id = rs.getInt("id_producto");
+                String imagenOriginal = rs.getString("imagen_base64");
+                String imagenLocal = asegurarImagenLocal(imagenOriginal, id);
+                stmtInsertar.setInt(1, id);
                 stmtInsertar.setString(2, rs.getString("nombre"));
                 stmtInsertar.setDouble(3, rs.getDouble("precio"));
                 stmtInsertar.setString(4, rs.getString("categoria"));
                 stmtInsertar.setString(5, rs.getString("tipo_clase"));
                 stmtInsertar.setInt(6, rs.getInt("stock_directo"));
-                // CORREGIDO: Manejo seguro del boolean de Postgres a int de SQLite
                 stmtInsertar.setInt(7, rs.getBoolean("tiene_receta") ? 1 : 0);
-                stmtInsertar.setString(8, rs.getString("imagen_base64"));
+                stmtInsertar.setString(8, imagenLocal);
                 stmtInsertar.setString(9, rs.getString("atributos_extra"));
                 stmtInsertar.setString(10, rs.getDate("fecha_inicio") != null ? rs.getDate("fecha_inicio").toString() : null);
                 stmtInsertar.setString(11, rs.getDate("fecha_fin") != null ? rs.getDate("fecha_fin").toString() : null);
@@ -313,8 +319,8 @@ public class ConexionSQLite {
         return inventario;
     }
 
-    public static ListaDE<Producto> obtenerMenuLocal() {
-        ListaDE<Producto> menu = new ListaDE<>();
+    public static ArrayList<Producto> obtenerMenuLocal() {
+        ArrayList<Producto> menu = new ArrayList<>();
         String sql = "SELECT id_producto, nombre, precio, categoria, stock_directo, tiene_receta, imagen_base64, atributos_extra, estado FROM productos WHERE estado = 'Activo' ORDER BY id_producto";
 
         try (Connection conn = getConexion();
@@ -332,7 +338,7 @@ public class ConexionSQLite {
                 String jsonStr = rs.getString("atributos_extra");
 
                 if (imagenBase64 == null || imagenBase64.trim().isEmpty()) {
-                    imagenBase64 = "\\src\\main\\resources\\images\\default.png";
+                    imagenBase64 = "default.png";
                 }
 
                 Producto nuevoProducto = new Producto(id, nombre, precio, categoria, stockDirecto, imagenBase64, rs.getString("estado"));
@@ -351,7 +357,7 @@ public class ConexionSQLite {
                     }
                 }
 
-                menu.insertarAlFinal(nuevoProducto);
+                menu.add(nuevoProducto);
             }
         } catch (SQLException e) {
             System.err.println("❌ Error al leer el menú local: " + e.getMessage());
@@ -489,8 +495,8 @@ public class ConexionSQLite {
         }
         return siguiente;
     }
-    public static ListaDE<Promocion> obtenerPromocionesLocal(ListaDE<Producto> menu) {
-        ListaDE<Promocion> listaPromo = new ListaDE<>();
+    public static ArrayList<Promocion> obtenerPromocionesLocal(ArrayList<Producto> menu) {
+        ArrayList<Promocion> listaPromo = new ArrayList<>();
         String sqlPromo = "SELECT id_producto, nombre, precio, imagen_base64, fecha_inicio, fecha_fin FROM productos WHERE categoria = 'Promocion' AND estado = 'Activo'";
         // Usamos id_producto tal como lo definiste al crear tu tabla detalle_combo en SQLite
         String sqlDetalle = "SELECT id_producto, cantidad FROM detalle_combo WHERE id_promocion = ?";
@@ -524,27 +530,77 @@ public class ConexionSQLite {
 
                             // Buscar producto físico dentro del menú que ya cargamos en RAM
                             Producto productoFisico = null;
-                            NodoDE<Producto> actual = menu.getCabeza();
-                            while (actual != null) {
-                                if (actual.getDato().getId() == idProductoReal) {
-                                    productoFisico = actual.getDato();
+                            for(Producto p : menu){
+                                if(p.getId() == idProductoReal){
+                                    productoFisico = p;
                                     break;
                                 }
-                                actual = actual.getSiguiente();
                             }
-
                             if (productoFisico != null) {
                                 promo.agregarProducto(productoFisico, cantidad);
                             }
                         }
                     }
                 }
-                listaPromo.insertarAlFinal(promo);
+                listaPromo.add(promo);
             }
         } catch (SQLException e) {
             System.err.println("❌ Error al leer promociones locales: " + e.getMessage());
         }
         return listaPromo;
     }
+    public static void actualizarImagenProductoLocal(int idProucto, String nuevaRutaImagen){
+        String sql = "UPADTE productos SET imagen_base64 = ? WHERE id_producto = ?";
+        try(Connection conn = getConexion();
+            PreparedStatement ps = conn.prepareStatement(sql)
+        ){
+            ps.setString(1, nuevaRutaImagen);
+            ps.setInt(2, idProucto);
+            ps.executeUpdate();
+        }catch (SQLException e){
+            System.out.println("Error al actualizar imagen de producto: " + e.getMessage());
+        }
+    }
+    private static String descargarImagenSiEsUrl(String urlImagen, int idProducto) {
+        if (urlImagen == null || !urlImagen.startsWith("http")) return urlImagen;
+        String extension = urlImagen.contains(".png") ? ".png" : ".jpg";
+        String nombreArchivo = "producto_" + idProducto + extension;
+        File destino = new File(UtilidadesImagen.DIRECTORIO_IMAGENES, nombreArchivo);
+        if (destino.exists()) return destino.getAbsolutePath();
+        try (InputStream in = new URL(urlImagen).openStream();
+             FileOutputStream out = new FileOutputStream(destino)) {
+            byte[] buffer = new byte[4096];
+            int bytesRead;
+            while ((bytesRead = in.read(buffer)) != -1) out.write(buffer, 0, bytesRead);
+            return destino.getAbsolutePath();
+        } catch (Exception e) {
+            System.err.println("Error descargando " + urlImagen + ": " + e.getMessage());
+            return urlImagen;
+        }
+    }
+    private static String asegurarImagenLocal(String imagenUrlOrPath, int idProducto) {
+        if (imagenUrlOrPath == null || imagenUrlOrPath.equals("default.png"))
+            return "default.png";
+        if (!imagenUrlOrPath.startsWith("http"))
+            return imagenUrlOrPath; // ya es ruta local
+
+        // Es URL, descargar
+        String ext = imagenUrlOrPath.contains(".png") ? ".png" : ".jpg";
+        String nombre = "producto_" + idProducto + ext;
+        File destino = new File(UtilidadesImagen.DIRECTORIO_IMAGENES, nombre);
+        if (destino.exists()) return destino.getAbsolutePath();
+
+        try (InputStream in = new URL(imagenUrlOrPath).openStream();
+             FileOutputStream out = new FileOutputStream(destino)) {
+            byte[] buf = new byte[4096];
+            int len;
+            while ((len = in.read(buf)) != -1) out.write(buf, 0, len);
+            return destino.getAbsolutePath();
+        } catch (Exception e) {
+            System.err.println("Error descargando imagen para producto " + idProducto + ": " + e.getMessage());
+            return "default.png";
+        }
+    }
+
 
 }

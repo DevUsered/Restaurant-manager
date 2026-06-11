@@ -1,8 +1,9 @@
 package Attizos.Frontend;
 
 import Attizos.Backend.Attizos.*;
-import Attizos.Backend.Database.PedidoDAO;
-import Attizos.Backend.Database.FacturaDAO;
+import Attizos.Backend.Database.*;
+import Attizos.Backend.Listas.ListaDE;
+import Attizos.Backend.Listas.NodoDE;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.collections.FXCollections;
@@ -20,14 +21,14 @@ import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import javafx.util.Duration;
 
+import java.util.ArrayList;
+
 public class CocinaController {
 
     @FXML private TableView<Pedido> tablaPedidos;
-    // Sugerencia: En tu FXML, cambia el texto de colIdPedido a "TICKET" o "N°"
-    @FXML private TableColumn<Pedido, Integer> colIdPedido; 
+    @FXML private TableColumn<Pedido, Integer> colIdPedido;
     
-    // Sugerencia: Agrega esta columna en tu FXML para la descripción rápida
-    @FXML private TableColumn<Pedido, String> colDescripcion; 
+    @FXML private TableColumn<Pedido, String> colDescripcion;
     @FXML private TableColumn<Pedido, String> colEstado;
 
     @FXML private ListView<String> listaDetallesCocina;
@@ -36,7 +37,7 @@ public class CocinaController {
     @FXML private Button btnConfirmar;
 
     private ObservableList<Pedido> listaColaPedidos = FXCollections.observableArrayList();
-    private Timeline radarDePedidos; // Nuestro reloj automático
+    private Timeline radarDePedidos;
 
     @FXML
     public void initialize() {
@@ -127,6 +128,7 @@ public class CocinaController {
         boolean cancelado = FacturaDAO.anularVenta(seleccionado.getIdPedido());
 
         if (cancelado) {
+            actualizarDespuesDeCancelar();
             mostrarExito("Anulado", "El pedido se anuló contablemente y los ingredientes regresaron al inventario.");
             cargarColaDesdeBackend();
             listaDetallesCocina.getItems().clear();
@@ -161,5 +163,17 @@ public class CocinaController {
     }
     private void mostrarExito(String titulo, String mensaje) {
         AlertaPersonalizada.mostrarAlerta(titulo, mensaje, Alert.AlertType.INFORMATION);
+    }
+    private void actualizarDespuesDeCancelar(){
+        //Insumos
+        App.attizos.getInventario().getInventarioInsumos().clear();
+        App.attizos.getInventario().getInventarioInsumos().putAll(InsumoDAO.obtenerInventarioActivo());
+        //Productos fijos
+        App.attizos.getMenu().clear();
+        ArrayList<Producto> menuAct = ConexionSQLite.obtenerMenuLocal();
+
+        App.attizos.getMenu().addAll(menuAct);
+        RecetaDAO.cargarRecetas();
+        App.attizos.setPromocionesActivas(ConexionSQLite.obtenerPromocionesLocal(menuAct));
     }
 }

@@ -2,8 +2,6 @@ package Attizos.Frontend;
 
 import Attizos.Backend.Attizos.*;
 import Attizos.Backend.Database.*;
-import Attizos.Backend.Listas.ListaDE;
-import Attizos.Backend.Listas.NodoDE;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -20,6 +18,7 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -447,7 +446,7 @@ public class ProductosController {
                                         RecetaDAO.guardarReceta(nuevo.getId(), nuevo.getReceta());
                                     }
                                     ReportesDAO.registrarEgreso("Compra Inicial: "+ nuevo.getNombre(), costoTotal);
-                                    App.attizos.getMenu().insertarAlFinal(nuevo);
+                                    App.attizos.getMenu().add(nuevo);
                                     String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
                                     App.registrarAuditoria(operador, "Producto", nuevo.getNombre(), "Creación", cant, "Nuevo producto con stock inicial");
                                     cargarMenu();
@@ -466,7 +465,7 @@ public class ProductosController {
                     if(nuevo.tieneReceta()){
                         RecetaDAO.guardarReceta(nuevo.getId(), nuevo.getReceta());
                     }
-                    App.attizos.getMenu().insertarAlFinal(nuevo);
+                    App.attizos.getMenu().add(nuevo);
                     String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
                     App.registrarAuditoria(operador, "Producto", nuevo.getNombre(), "Creación", 0, "Nuevo producto de preparación");
                     cargarMenu();
@@ -592,15 +591,12 @@ public class ProductosController {
     }
     private void cargarMenu() {
         masterData.clear();
-        ListaDE<Producto> menuDB = App.attizos.getMenu();
+        ArrayList<Producto> menuDB = App.attizos.getMenu();
         if(menuDB != null) {
-            NodoDE<Producto> act = menuDB.getCabeza();
-            while (act != null) {
-                Producto p = act.getDato();
+            for(Producto p : menuDB) {
                 if(p.getEstado() != null && p.getEstado().equals("Activo") && !p.isPromocion() && !p.getCategoria().equalsIgnoreCase("Promocion")) {
-                    masterData.add(act.getDato());
+                    masterData.add(p);
                 }
-                act = act.getSiguiente();
             }
         }
     }

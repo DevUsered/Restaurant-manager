@@ -12,24 +12,47 @@ import java.util.HashMap;
 
 public class UtilidadesImagen {
     private static final HashMap<String, Image> cacheRAM = new HashMap<>();
+    public static final String DIRECTORIO_IMAGENES = System.getenv("APPDATA") +
+            File.separator + "Attizos" +
+            File.separator + "Imagenes";
+    static{
+        File directorio = new File(DIRECTORIO_IMAGENES);
+        if(!directorio.exists()){
+            directorio.mkdirs();
+        }
+    }
 
-    public static Image obtenerImagenOptimizada(String rutaUrl){
-        if(rutaUrl == null || rutaUrl.trim().isEmpty() || rutaUrl.equals("default.png")){
-            if(!cacheRAM.containsKey("default")){
-                cacheRAM.put("default", new Image(UtilidadesImagen.class.getResourceAsStream("/images/default.png")));
+    private static Image getDefaultImage(){
+        if(!cacheRAM.containsKey("default")){
+            try{
+                InputStream is = UtilidadesImagen.class.getResourceAsStream("/images/default.png");
+                if(is != null){
+                    cacheRAM.put("default", new Image(is));
+                }
+            }catch (Exception e){
+                System.out.println("Error al cargar imagen por defecto: " + e.getMessage());
             }
-            return cacheRAM.get("default");
+        }
+        return cacheRAM.get("default");
+    }
+    public static Image obtenerImagenOptimizada(String rutaUrl){
+        Image imgDefecto = getDefaultImage();
+        if(rutaUrl == null || rutaUrl.trim().isEmpty() || rutaUrl.equals("default.png")){
+            return imgDefecto;
         }
         if(cacheRAM.containsKey(rutaUrl)) {
             return cacheRAM.get(rutaUrl);
         }
         Image imagenFinal = null;
         try{
-            String nombreArchivo = rutaUrl.substring(rutaUrl.lastIndexOf("/") + 1);
+            String nombreArchivo = rutaUrl.replace("\\", "/");
+            if (nombreArchivo.contains("/")) {
+                nombreArchivo = nombreArchivo.substring(nombreArchivo.lastIndexOf("/") + 1);
+            }
             File archivoLocal = new File(DIRECTORIO_IMAGENES, nombreArchivo);
 
             if(archivoLocal.exists()){
-                imagenFinal = new Image(archivoLocal.toURI().toString());
+                imagenFinal = new Image(archivoLocal.toURI().toString(), true);
             }else if(rutaUrl.startsWith("http")){
                 imagenFinal = new Image(rutaUrl, true);
             }
@@ -37,15 +60,13 @@ public class UtilidadesImagen {
             System.out.println("Error al cargar imagen optimizada: " + e.getMessage());
         }
         if(imagenFinal == null || imagenFinal.isError()){
-            imagenFinal = cacheRAM.get("default");
+            imagenFinal = imgDefecto;
         }else{
             cacheRAM.put(rutaUrl, imagenFinal);
         }
         return imagenFinal;
     }
-    public static final String DIRECTORIO_IMAGENES = System.getenv("APPDATA") +
-                                                        File.separator + "Attizos" +
-                                                        File.separator + "Imagenes";
+
 
     public static String guardarImagenLocal(File archivo, String nombreProducto){
         if(archivo == null || !archivo.exists()){

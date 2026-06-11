@@ -4,6 +4,7 @@ import Attizos.Backend.Attizos.*;
 import Attizos.Backend.Listas.*;
 
 import java.sql.*;
+import java.util.ArrayList;
 import java.util.Map;
 
 public class ProductoDAO {
@@ -47,8 +48,8 @@ public class ProductoDAO {
         }
         return false;
     }
-    public static ListaDE<Producto> obtenerMenuCompleto() {
-        ListaDE<Producto> menu = new ListaDE<>();
+    public static ArrayList<Producto> obtenerMenuCompleto() {
+        ArrayList<Producto> menu = new ArrayList<>();
         String sql = "SELECT * FROM productos WHERE estado = 'Activo' ORDER BY id_producto";
 
         try (Connection con = ConexionBD.getConexion()) {
@@ -88,7 +89,7 @@ public class ProductoDAO {
                     nuevoProducto.setReceta(RecetaDAO.obtenerRecetaPorProducto(id));
                 }
 
-                menu.insertarAlFinal(nuevoProducto);
+                menu.add(nuevoProducto);
             }
         } catch (SQLException e) {
             System.err.println("❌ Error al cargar el menú desde BD: " + e.getMessage());

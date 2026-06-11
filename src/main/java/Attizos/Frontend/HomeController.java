@@ -47,13 +47,10 @@ public class HomeController {
 
         // 2. Extraemos las categorías únicas del menú
         Set<String> categorias = new HashSet<>();
-        NodoDE<Producto> actual = App.attizos.getMenu().getCabeza();
-        while(actual != null){
-            Producto p = actual.getDato();
+        for(Producto p : App.attizos.getMenu()){
             if(p.getEstado() != null && p.getEstado().equals("Activo") && !p.isPromocion() && !p.getCategoria().equalsIgnoreCase("Promocion")) {
                 categorias.add(p.getCategoria());
             }
-            actual = actual.getSiguiente();
         }
         for (String cat : categorias) {
             flowCategorias.getChildren().add(crearBotonCategoria(cat));
@@ -75,17 +72,13 @@ public class HomeController {
 
     private void filterAndDisplay(String categorie){
         containerProducts.getChildren().clear();
-
-        NodoDE<Producto> actual = App.attizos.getMenu().getCabeza();
-        while(actual != null){
-            Producto p = actual.getDato();
+        for(Producto p : App.attizos.getMenu()){
             if(p.getEstado() != null && p.getEstado().equals("Activo") && !p.getCategoria().equalsIgnoreCase("Promocion")) {
                 if (categorie.equals("Todo") || p.getCategoria().equalsIgnoreCase(categorie)) {
                     StackPane newCard = createCard(p);
                     containerProducts.getChildren().add(newCard);
                 }
             }
-            actual = actual.getSiguiente();
         }
     }
 

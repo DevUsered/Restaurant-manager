@@ -86,12 +86,8 @@ public class RecetaDAO {
     private static Producto buscarProductoActivo(int idProducto){
         if(App.attizos == null || App.attizos.getMenu() == null) return null;
 
-        NodoDE<Producto> ac = App.attizos.getMenu().getCabeza();
-        while(ac != null){
-            if(ac.getDato().getId() == idProducto){
-                return ac.getDato();
-            }
-            ac = ac.getSiguiente();
+        for(Producto p : App.attizos.getMenu()){
+            if(p.getId() == idProducto) return p;
         }
         return null;
     }

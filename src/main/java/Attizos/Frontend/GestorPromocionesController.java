@@ -187,19 +187,10 @@ public class GestorPromocionesController {
         listaPromosVisibles.clear();
         masterMenu.clear();
 
-        NodoDE<Promocion> acPromo = App.attizos.getPromocionesActivas().getCabeza();
-        while (acPromo != null) {
-            listaPromosVisibles.add(acPromo.getDato());
-            acPromo = acPromo.getSiguiente();
-        }
-
-        NodoDE<Producto> acProd = App.attizos.getMenu().getCabeza();
-        while (acProd != null) {
-            Producto p = acProd.getDato();
-            if (!p.isPromocion() && "Activo".equals(p.getEstado())) {
-                masterMenu.add(p);
+        for(Promocion promo : App.attizos.getPromocionesActivas()) {
+            if (promo.getEstado() != null && promo.getEstado().equals("Activo")) {
+                listaPromosVisibles.add(promo);
             }
-            acProd = acProd.getSiguiente();
         }
     }
 
@@ -290,7 +281,7 @@ public class GestorPromocionesController {
 
             if (promoEnEdicion == null) {
                 if (PromocionDAO.guardarNuevaPromocion(promoAGuardar)) {
-                    App.attizos.getPromocionesActivas().insertarAlFinal(promoAGuardar);
+                    App.attizos.getPromocionesActivas().add(promoAGuardar);
                     App.registrarAuditoria(operador, "Promociones", nombre, "Creación", 0, "Nueva promoción a Bs." + precio);
                     AlertaPersonalizada.mostrarAlerta("Éxito", "Promoción creada correctamente.", Alert.AlertType.INFORMATION);
                 }
@@ -397,7 +388,7 @@ public class GestorPromocionesController {
                     if (motivo.isEmpty()) {
                         AlertaPersonalizada.mostrarAlerta("Error", "Debe justificar la eliminación.", Alert.AlertType.WARNING);
                     } else if (ProductoDAO.eliminarProducto(sel.getId())) {
-                        App.attizos.getPromocionesActivas().eliminarPorValor(sel);
+                        App.attizos.getPromocionesActivas().remove(sel);
 
                         String op = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
                         App.registrarAuditoria(op, "Promociones", sel.getNombre(), "Eliminación", 0, "Motivo: " + motivo);

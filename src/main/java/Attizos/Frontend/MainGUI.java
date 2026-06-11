@@ -25,6 +25,9 @@ public class MainGUI extends Application {
             ventanaPrincipal.setScene(scene);
             ventanaPrincipal.setResizable(false);
             ventanaPrincipal.centerOnScreen();
+            ventanaPrincipal.setOnCloseRequest(event ->{
+                System.exit(0);
+            });
             ventanaPrincipal.show();
         }catch (Exception e){
             e.printStackTrace();

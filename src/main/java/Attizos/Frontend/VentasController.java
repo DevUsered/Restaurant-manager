@@ -22,10 +22,7 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class VentasController {
     @FXML
@@ -54,7 +51,7 @@ public class VentasController {
     private Producto productoSeleccionadoEnCarrito;
     private HBox filaSeleccionada;
 
-    private ListaDE<Producto> menuRAM;
+    private ArrayList<Producto> menuRAM;
     private HashMap<String, Insumo> inventarioFrescoBD;
 
     @FXML
@@ -90,13 +87,10 @@ public class VentasController {
 
         Set<String> cats = new HashSet<>();
         if (menuRAM != null) {
-            NodoDE<Producto> actual = menuRAM.getCabeza();
-            while (actual != null) {
-                Producto p = actual.getDato();
-                if (p.getEstado() != null && p.getEstado().equals("Activo") && !p.isPromocion() && !p.getCategoria().equalsIgnoreCase("Promocion")) {
+            for(Producto p : menuRAM){
+                if(p.getEstado() != null && p.getEstado().equals("Activo") && !p.isPromocion() && !p.getCategoria().equalsIgnoreCase("Promocion")){
                     cats.add(p.getCategoria());
                 }
-                actual = actual.getSiguiente();
             }
         }
         for (String c : cats) {
@@ -119,18 +113,14 @@ public class VentasController {
         flPProductos.getChildren().clear();
         String busqueda = (tfBuscar != null && tfBuscar.getText() != null) ? tfBuscar.getText().toLowerCase() : "";
         if (menuRAM != null) {
-            NodoDE<Producto> actual = App.attizos.getMenu().getCabeza();
-            while (actual != null) {
-                Producto p = actual.getDato();
-
-                if (p.getEstado() != null && p.getEstado().equals("Activo") && !p.isPromocion() && !p.getCategoria().equalsIgnoreCase("Promocion")) {
+            for(Producto p : App.attizos.getMenu()){
+                if(p.getEstado() != null && p.getEstado().equals("Activo") && !p.isPromocion() && !p.getCategoria().equalsIgnoreCase("Promocion")){
                     boolean coincideCategoria = categoria.equals("Todos") || p.getCategoria().equalsIgnoreCase(categoria);
                     boolean coincideBusqueda = p.getNombre().toLowerCase().contains(busqueda);
-                    if (coincideCategoria && coincideBusqueda) {
+                    if(coincideCategoria && coincideBusqueda){
                         crearTarjetaProducto(p);
                     }
                 }
-                actual = actual.getSiguiente();
             }
         }
     }
@@ -554,9 +544,9 @@ public class VentasController {
     }
 
     private void cargarPromocionesActivas(){
-        ListaDE<Promocion> listaPromos = App.attizos.getPromocionesActivas();
+        ArrayList<Promocion> listaPromos = App.attizos.getPromocionesActivas();
 
-        if(listaPromos == null || listaPromos.esVacia()){
+        if(listaPromos == null || listaPromos.isEmpty()){
             if(sPPromociones != null){
                 sPPromociones.setVisible(false);
                 sPPromociones.setManaged(false);
@@ -570,11 +560,7 @@ public class VentasController {
         }
 
         hBPromociones.getChildren().clear();
-        NodoDE<Promocion> ac = listaPromos.getCabeza();
-
-        while (ac != null){
-            Promocion promo = ac.getDato();
-
+        for(Promocion promo : listaPromos) {
             VBox tarjetaPromo = new VBox(8);
             tarjetaPromo.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
             tarjetaPromo.setMinWidth(150);
@@ -615,8 +601,6 @@ public class VentasController {
             tarjetaPromo.setOnMouseExited(e -> tarjetaPromo.setStyle("-fx-background-color: rgba(255,255,255,0.25); -fx-background-radius: 8; -fx-padding: 8 12; -fx-cursor: hand;"));
 
             hBPromociones.getChildren().add(tarjetaPromo);
-
-            ac = ac.getSiguiente();
         }
     }
 

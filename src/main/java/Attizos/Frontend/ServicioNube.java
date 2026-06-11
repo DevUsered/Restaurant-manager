@@ -1,11 +1,14 @@
 package Attizos.Frontend;
 
 import Attizos.Backend.Attizos.Producto;
+import Attizos.Backend.Database.ConexionSQLite;
 import Attizos.Backend.Database.ProductoDAO;
-import Attizos.Backend.Listas.ListaDE;
-import Attizos.Backend.Listas.NodoDE;
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
+
+import java.io.FileOutputStream;
+import java.net.URL;
+import java.util.ArrayList;
 import java.util.Properties;
 
 import java.io.File;
@@ -14,6 +17,7 @@ import java.util.Map;
 
 public class ServicioNube {
     private static  Cloudinary CLOUDINARY;
+    private static final String DEFAULT_IMAGE = "default.png";
     static {
         File archivoConfigAppData = new File(System.getenv("APPDATA") + File.separator + "Attizos" + File.separator + "config.properties");
         Properties prop = new Properties();
@@ -38,8 +42,11 @@ public class ServicioNube {
     }
 
     public static String subirImagen(File archivoFisico){
+        if(CLOUDINARY == null){
+            return DEFAULT_IMAGE;
+        }
         if(archivoFisico == null || !archivoFisico.exists()){
-            return "default.png";
+            return DEFAULT_IMAGE;
         }
         try{
             Map respuesta = CLOUDINARY.uploader().upload(archivoFisico, ObjectUtils.asMap(
@@ -47,39 +54,68 @@ public class ServicioNube {
                     "use_filename", true,
                     "unique_filename",true
             ));
-
-            String urlEnLaNube = respuesta.get("secure_url").toString();
-            System.out.println("Imagen subida con exito: " + urlEnLaNube);
-            return urlEnLaNube;
+            return respuesta.get("secure_url").toString();
         }catch (Exception e){
             System.out.println("Error al subir la imagen: " + e.getMessage());
-            return "default.png";
+            return DEFAULT_IMAGE;
+        }
+    }
+    public static String descargarImagen(String urlImagen, int idProducto){
+        if (urlImagen == null || !urlImagen.startsWith("http")) return urlImagen;
+        String extension = urlImagen.contains(".png") ? ".png" : ".jpg";
+        String nombreArchivo = "producto_"+ idProducto + extension;
+        File destino = new File(UtilidadesImagen.DIRECTORIO_IMAGENES, nombreArchivo);
+        if(destino.exists()){
+            return destino.getAbsolutePath();
+        }
+        try(InputStream in = new URL(urlImagen).openStream();
+            FileOutputStream out = new FileOutputStream(destino)){
+            byte[] buffer = new byte[4096];
+            int bytesRead;
+            while ((bytesRead = in.read(buffer)) != -1) {
+                out.write(buffer, 0, bytesRead);
+            }
+            System.out.println("Imagen descargada: " + destino.getAbsolutePath());
+            return destino.getAbsolutePath();
+        }catch (Exception e){
+            System.out.println("Error al descargar imagen: " + e.getMessage());
+            return urlImagen;
         }
     }
     public static void sincronizarImagenesPendientes(){
+        if(CLOUDINARY == null){
+            System.out.println("Cloudinary inactivo: no se sincronizaron las imánes.");
+            return;
+        }
         try {
-            ListaDE<Producto> productos = ProductoDAO.obtenerMenuCompleto();
-            NodoDE<Producto> ac = productos.getCabeza();
-
-            while(ac != null){
-                Producto p = ac.getDato();
+            ArrayList<Producto> productos = ProductoDAO.obtenerMenuCompleto();
+            for(Producto p : productos){
                 String imagenActual = p.getImagenURL();
+                if(imagenActual != null && !imagenActual.startsWith("http")) {
+                    String rutaLocal = descargarImagen(imagenActual, p.getId());
+                    if (!rutaLocal.equals(imagenActual)) {
+                        ConexionSQLite.actualizarImagenProductoLocal(p.getId(), rutaLocal);
+                        p.setImagenURL(rutaLocal);
+                    }
+                    continue;
+                }
+                if(imagenActual != null && !imagenActual.equals(DEFAULT_IMAGE) && !imagenActual.startsWith("http")){
 
-                if(imagenActual != null && !imagenActual.startsWith("http") && !imagenActual.equals("default.png")){
-                    File archivoLocal = new File(UtilidadesImagen.DIRECTORIO_IMAGENES, imagenActual);
-
+                    String nombreArchivo = new File(imagenActual).getName();
+                    File archivoLocal = new File(UtilidadesImagen.DIRECTORIO_IMAGENES, nombreArchivo);
                     if(archivoLocal.exists()){
-                        System.out.println("Subiendo imagen pendiente");
                         String urlNube = subirImagen(archivoLocal);
-
-                        if(urlNube.startsWith("http")){
-                            p.setImagenURL(urlNube);
+                        if(urlNube != null && urlNube.startsWith("http")){
                             ProductoDAO.actualizarImagenProducto(p.getId(), urlNube);
-                            System.out.println("Imagen sincronizada para producto: " + p.getNombre());
+                            ConexionSQLite.actualizarImagenProductoLocal(p.getId(), urlNube);
+                            System.out.println("Imagen sincronizada para producto ID " + p.getId() + ": " + urlNube);
                         }
+                    }else{
+                        System.out.println("Archivo local no encontrado: " + archivoLocal.getAbsolutePath());
+                        ConexionSQLite.actualizarImagenProductoLocal(p.getId(), DEFAULT_IMAGE);
+                        ProductoDAO.actualizarImagenProducto(p.getId(), DEFAULT_IMAGE);
                     }
                 }
-                ac = ac.getSiguiente();
             }
         }catch (Exception e) {
             System.out.println("Error al sincronizar imágenes pendientes: " + e.getMessage());
