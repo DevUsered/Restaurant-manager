@@ -1,5 +1,6 @@
 package Attizos.Backend.Database;
 
+import Attizos.Backend.Api.ApiClient;
 import Attizos.Backend.Attizos.*;
 import Attizos.Backend.Listas.*;
 import Attizos.Frontend.UtilidadesImagen;
@@ -126,32 +127,27 @@ public class ConexionSQLite {
     }
 
     public static void sincronizarEmpleados() {
-        System.out.println("Iniciando sincronización de empleados.");
-        String sqlLeerPostgres = "SELECT id_empleado, nombre, cargo, sueldo, username, password_hash, estado, fecha_ultimo_pago FROM empleados";
+        System.out.println("Iniciando sincronización de empleados via API REST.");
         String sqlLimpiarSQLite = "DELETE FROM empleados";
         String sqlInsertarSQLite = "INSERT INTO empleados (id_empleado, nombre, cargo, sueldo, username, password_hash, estado, fecha_ultimo_pago) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
-        try (Connection connPG = ConexionBD.getConexion();
-             PreparedStatement stmtLeer = connPG.prepareStatement(sqlLeerPostgres);
-             ResultSet rs = stmtLeer.executeQuery();
-
-             Connection connSQL = getConexion();
+        try (Connection connSQL = getConexion();
              Statement stmtLimpiar = connSQL.createStatement();
              PreparedStatement stmtInsertar = connSQL.prepareStatement(sqlInsertarSQLite)) {
-
             stmtLimpiar.executeUpdate(sqlLimpiarSQLite);
+            ArrayList<Empleado> empleadosDelServidor = ApiClient.obtenerEmpleadosDelServidor();
 
             int contador = 0;
-            while (rs.next()) {
-                stmtInsertar.setString(1, rs.getString("id_empleado"));
-                stmtInsertar.setString(2, rs.getString("nombre"));
-                stmtInsertar.setString(3, rs.getString("cargo"));
-                stmtInsertar.setDouble(4, rs.getDouble("sueldo"));
-                stmtInsertar.setString(5, rs.getString("username"));
-                stmtInsertar.setString(6, rs.getString("password_hash"));
-                stmtInsertar.setString(7, rs.getString("estado"));
-                Date fechaPago = rs.getDate("fecha_ultimo_pago");
-                stmtInsertar.setString(8, fechaPago != null ? fechaPago.toString() : null);
+            for(Empleado emp : empleadosDelServidor){
+                stmtInsertar.setString(1, emp.getIdEmpleado());
+                stmtInsertar.setString(2, emp.getNombre());
+                stmtInsertar.setString(3, emp.getCargo());
+                stmtInsertar.setDouble(4, emp.getSueldo());
+                stmtInsertar.setString(5, emp.getUsername());
+                stmtInsertar.setString(6, emp.getPasswordHash());
+                stmtInsertar.setString(7, emp.getEstado());
+
+                stmtInsertar.setString(8, emp.getFechaUltimoPago() != null ? emp.getFechaUltimoPago().toString() : null);
 
                 stmtInsertar.executeUpdate();
                 contador++;
@@ -608,6 +604,4 @@ public class ConexionSQLite {
             return "default.png";
         }
     }
-
-
 }

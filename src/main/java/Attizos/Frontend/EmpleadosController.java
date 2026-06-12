@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 
+import Attizos.Backend.Api.ApiClient;
 import Attizos.Backend.Attizos.*;
 import Attizos.Backend.Database.ConexionSQLite;
 import Attizos.Backend.Database.EmpleadoDAO;
@@ -179,7 +180,7 @@ public class EmpleadosController {
                 nuevoEmpleado.setUsername(user);
                 nuevoEmpleado.setPasswordHash(pass);
             }
-            boolean guardadoDB = EmpleadoDAO.insertarEmpleado(nuevoEmpleado);
+            boolean guardadoDB = ApiClient.guardarEmpleadoEnServidor(nuevoEmpleado);
             if(guardadoDB) {
                 masterData.add(nuevoEmpleado);
                 if (App.attizos != null) {
@@ -205,7 +206,7 @@ public class EmpleadosController {
             DialogoPersonalizado.mostrarDialogo("Confirmar Despido", "Cuidado: Va a eliminar al empleado " + despedido.getNombre(), "Escriba 'SI' para confirmar el despido:", "")
                     .ifPresent(respuesta -> {
                         if (respuesta.trim().equalsIgnoreCase("SI")) {
-                            boolean eliminadoDB = EmpleadoDAO.eliminarEmpleado(despedido.getIdEmpleado());
+                            boolean eliminadoDB = ApiClient.inactivarEmpleadoEnServidor(despedido.getIdEmpleado());
                             if(eliminadoDB) {
                                 masterData.remove(index);
                                 if (App.attizos != null) {
@@ -315,7 +316,7 @@ public class EmpleadosController {
                 empleadoActualizado.setUsername(user);
                 empleadoActualizado.setPasswordHash(pass);
             }
-            boolean actualizadoDB = EmpleadoDAO.actualizarEmpleado(empleadoActualizado);
+            boolean actualizadoDB = ApiClient.actualizarEmpleadoEnServidor(empleadoActualizado);
             if(actualizadoDB) {
                 for(int i = 0; i < masterData.size(); i++){
                     if(masterData.get(i).getIdEmpleado().equals(id)){
@@ -405,10 +406,9 @@ public class EmpleadosController {
                                     String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
                                     App.registrarAuditoria(operador, "Empleado", sel.getNombre(), "Pago de Sueldo", montoPagar, "Pago del periodo: " + periodo);
 
-                                    EmpleadoDAO.registrarFechaPago(sel.getIdEmpleado());
+                                    ApiClient.registrarPagoEnServidor(sel.getIdEmpleado());
                                     sel.setFechaUltimoPago(LocalDate.now());
 
-                                    // Esta es la operación pesada que congelaba todo
                                     ConexionSQLite.sincronizarEmpleados();
                                 }
                                 return egresoRegistrado;
