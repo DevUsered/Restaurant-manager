@@ -160,28 +160,25 @@ public class ConexionSQLite {
 
     public static void sincronizarInsumos() {
         System.out.println("Sincronizando insumos...");
-        String sqlLeerPG = "SELECT codigo, nombre, categoria, unidad_medida, stock_minimo, stock_maximo, estado FROM insumos_catalogo";
         String sqlLimpiarSQLite = "DELETE FROM insumos_catalogo";
         String sqlInsertarSQLite = "INSERT INTO insumos_catalogo (codigo, nombre, categoria, unidad_medida, stock_minimo, stock_maximo, estado) VALUES (?, ?, ?, ?, ?, ?, ?)";
 
-        try (Connection connPG = ConexionBD.getConexion();
-             PreparedStatement stmtLeer = connPG.prepareStatement(sqlLeerPG);
-             ResultSet rs = stmtLeer.executeQuery();
-             Connection connSQL = getConexion();
+        try (Connection connSQL = getConexion();
              Statement stmtLimpiar = connSQL.createStatement();
              PreparedStatement stmtInsertar = connSQL.prepareStatement(sqlInsertarSQLite)) {
 
             stmtLimpiar.executeUpdate(sqlLimpiarSQLite);
+            ArrayList<Insumo> insumosDelServidor = ApiClient.obtenerInsumoDelServidor();
             int contador = 0;
 
-            while (rs.next()) {
-                stmtInsertar.setString(1, rs.getString("codigo"));
-                stmtInsertar.setString(2, rs.getString("nombre"));
-                stmtInsertar.setString(3, rs.getString("categoria"));
-                stmtInsertar.setString(4, rs.getString("unidad_medida"));
-                stmtInsertar.setDouble(5, rs.getDouble("stock_minimo"));
-                stmtInsertar.setDouble(6, rs.getDouble("stock_maximo"));
-                stmtInsertar.setString(7, rs.getString("estado"));
+            for(Insumo ins : insumosDelServidor){
+                stmtInsertar.setString(1, ins.getCodigo());
+                stmtInsertar.setString(2, ins.getNombre());
+                stmtInsertar.setString(3, ins.getCategoria());
+                stmtInsertar.setString(4, ins.getUnidad());
+                stmtInsertar.setDouble(5, ins.getStockMinimo());
+                stmtInsertar.setDouble(6, ins.getStockMaximo());
+                stmtInsertar.setString(7, ins.getEstado());
 
                 stmtInsertar.executeUpdate();
                 contador++;

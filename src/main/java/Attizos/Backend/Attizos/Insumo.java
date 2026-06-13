@@ -1,16 +1,22 @@
 package Attizos.Backend.Attizos;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 public class Insumo {
     private String codigo;
     private String nombre;
     private String categoria;
-    private String unidad; // Ej: "kg", "lt", "gr", "und"
     private double stockActual;
     private double stockMinimo;
     private double stockMaximo;
     private LocalDate fechaVencimiento;
+
+    public String estado;
+    private String unidad;
+    
+    public Insumo(){}
 
     public Insumo(String codigo, String nombre, String categoria, String unidad,
                   double stockActual, double stockMinimo, double stockMaximo,
@@ -70,6 +76,39 @@ public class Insumo {
             System.out.println("Vencimiento: No perecedero");
         }
     }
+
+    public void setCodigo(String codigo) {
+        this.codigo = codigo;
+    }
+
+    public void setNombre(String nombre) {
+        this.nombre = nombre;
+    }
+
+    public void setCategoria(String categoria) {
+        this.categoria = categoria;
+    }
+
+    public void setUnidad(String unidad) {
+        this.unidad = unidad;
+    }
+
+    public void setStockMinimo(double stockMinimo) {
+        this.stockMinimo = stockMinimo;
+    }
+
+    public void setStockMaximo(double stockMaximo) {
+        this.stockMaximo = stockMaximo;
+    }
+
+    public String getEstado() {
+        return estado;
+    }
+
+    public void setEstado(String estado) {
+        this.estado = estado;
+    }
+
     @Override
     public String toString(){
         return nombre;

@@ -1,6 +1,7 @@
 package Attizos.Frontend;
 
 import Attizos.Backend.AI.AuditoriaAI;
+import Attizos.Backend.Api.ApiClient;
 import Attizos.Backend.Attizos.*;
 import Attizos.Backend.Database.InsumoDAO;
 import Attizos.Backend.Database.ReportesDAO;
@@ -241,7 +242,7 @@ public class InventarioController {
                                                mostrarAlerta("Error", "El costo no puede ser negativo");
                                                return;
                                            }
-                                           boolean exitoDB = InsumoDAO.registrarNuevaCompraLote(codigoBase, cantidad, costo, nuevaFecha);
+                                           boolean exitoDB = ApiClient.registrarLoteEnServidor(codigoBase, cantidad, costo, nuevaFecha);
                                            if (exitoDB) {
                                                App.attizos.getInventario().getInventarioInsumos().clear();
                                                App.attizos.getInventario().getInventarioInsumos().putAll(InsumoDAO.obtenerInventarioActivo());
@@ -284,7 +285,7 @@ public class InventarioController {
                         if(motivo.trim().isEmpty()){
                             mostrarAlerta("Obligatorio", "Debe ingresar una explicación válida para los reportes de almacén.");
                         }else{
-                            boolean descuentoExitoso = InsumoDAO.descontarStockFEFO(seleccionado.getCodigo(), 1);
+                            boolean descuentoExitoso = ApiClient.descontarStockFEFOEnServidor(seleccionado.getCodigo(), 1);
                             if(descuentoExitoso){
                                 App.attizos.getInventario().getInventarioInsumos().clear();
                                 App.attizos.getInventario().getInventarioInsumos().putAll(InsumoDAO.obtenerInventarioActivo());
@@ -323,7 +324,7 @@ public class InventarioController {
                     if (motivo.trim().isEmpty()) {
                         mostrarAlerta("Obligatorio", "Es obligatorio dejar un registro del porqué se elimina información del sistema.");
                     } else {
-                        boolean eliminadoDB = InsumoDAO.darDeBajaInsumo(seleccionado.getCodigo());
+                        boolean eliminadoDB = ApiClient.inactivarInsumoEnServidor(seleccionado.getCodigo());
                         if(eliminadoDB) {
                             App.attizos.getInventario().getInventarioInsumos().remove(seleccionado.getCodigo());
                             String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
@@ -384,7 +385,7 @@ public class InventarioController {
             if (motivo.trim().isEmpty()) {
                 mostrarAlerta("Obligatorio", "Debe ingresar una justificación válida para retirar la merma.");
             } else {
-                double retirado = InsumoDAO.darDeBajaLotesVencidos(seleccionado.getCodigo());
+                double retirado = ApiClient.darDeBajaLotesVencidosEnServidor(seleccionado.getCodigo());
 
                 if (retirado > 0) {
                     App.attizos.getInventario().getInventarioInsumos().clear();

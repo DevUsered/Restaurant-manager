@@ -1,6 +1,7 @@
 package Attizos.Frontend;
 
 import Attizos.Backend.AI.AuditoriaAI;
+import Attizos.Backend.Api.ApiClient;
 import Attizos.Backend.Attizos.App;
 import Attizos.Backend.Attizos.Insumo;
 import Attizos.Backend.Database.InsumoDAO;
@@ -215,7 +216,7 @@ public class FormularioNuevoInsumoController {
     private void ejecutarGuardado(String cod, String nom, String cat, String uni, double inicial, double min, double max, LocalDate ven,double costo, ActionEvent event) {
         try {
             Insumo nuevo = new Insumo(cod, nom, cat, uni, inicial, min, max, ven);
-            boolean guardado = InsumoDAO.insertarInsumoNuevo(nuevo, costo);
+            boolean guardado = ApiClient.guardarInsumoEnServidor(nuevo, costo);
             if(guardado) {
                 if(costo > 0){
                     ReportesDAO.registrarEgreso("Stock Inicial Catálogo: "+nom, costo);
@@ -266,6 +267,6 @@ public class FormularioNuevoInsumoController {
     }
 
     private String generarCodigoAutomatico() {
-        return InsumoDAO.generarSiguienteCodigo();
+        return ApiClient.obtenerSiguienteCodigoInsumo();
     }
 }

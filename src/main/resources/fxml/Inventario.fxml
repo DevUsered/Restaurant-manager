@@ -84,7 +84,7 @@
                                                 <HBox alignment="CENTER_RIGHT" spacing="10.0">
                                                     <children>
                                                         <Button mnemonicParsing="false" onAction="#disminuirStock" style="-fx-background-color: rgba(243, 156, 18, 0.1); -fx-text-fill: #f39c12; -fx-border-color: #f39c12; -fx-border-radius: 5; -fx-font-weight: bold; -fx-cursor: hand;" text="➖ Quitar 1 Unidad" />
-                                                        <Button mnemonicParsing="false" onAction="#eliminarInsumo" style="-fx-background-color: rgba(255, 76, 76, 0.1); -fx-text-fill: #ff4c4c; -fx-border-color: #ff4c4c; -fx-border-radius: 5; -fx-font-weight: bold; -fx-cursor: hand;" text="🗑 Eliminar Lote" />
+                                                        <Button mnemonicParsing="false" onAction="#eliminarInsumo" style="-fx-background-color: rgba(255, 76, 76, 0.1); -fx-text-fill: #ff4c4c; -fx-border-color: #ff4c4c; -fx-border-radius: 5; -fx-font-weight: bold; -fx-cursor: hand;" text="🗑 Eliminar Insumo" />
                                           <Button layoutX="384.0" layoutY="10.0" mnemonicParsing="false" onAction="#limpiarLotesCaducados" style="-fx-background-color: rgba(243, 156, 18, 0.1); -fx-text-fill: #f39c12; -fx-border-color: #f39c12; -fx-border-radius: 5; -fx-font-weight: bold; -fx-cursor: hand;" text="Quitar lote vencido" />
                                                     </children>
                                                 </HBox>
