@@ -51,7 +51,8 @@
                                                 <TableColumn fx:id="colCargo" prefWidth="120.0" text="CARGO" />
                                                 <TableColumn fx:id="colSueldo" prefWidth="100.0" text="SUELDO (Bs)" />
                                                 <TableColumn fx:id="colUsername" prefWidth="120.0" text="USUARIO ACCESO" />
-                                    <TableColumn fx:id="colEstadoPago" prefWidth="120.0" text="Estado Mes" />
+                                                <TableColumn fx:id="colEstadoPago" prefWidth="120.0" text="Estado Mes" />
+                                                <TableColumn fx:id="colFechaContrato" prefWidth="120.0" text="Fecha Contrato" />
                                             </columns>
                                         </TableView>
 
@@ -128,7 +129,7 @@
                                             <children>
                                                 <Button maxWidth="Infinity" mnemonicParsing="false" onAction="#guardarEmpleado" prefHeight="40.0" style="-fx-background-color: linear-gradient(to right, #00ff88, #00cc6a); -fx-text-fill: #111111; -fx-font-weight: bold; -fx-font-size: 14px; -fx-background-radius: 8; -fx-cursor: hand;" text="💾 GUARDAR NUEVO" />
                                                 <Button maxWidth="Infinity" mnemonicParsing="false" onAction="#actualizarEmpleado" prefHeight="40.0" style="-fx-background-color: rgba(218, 165, 32, 0.2); -fx-text-fill: #DAA520; -fx-border-color: #DAA520; -fx-border-width: 1.5; -fx-font-weight: bold; -fx-font-size: 14px; -fx-background-radius: 8; -fx-border-radius: 8; -fx-cursor: hand;" text="🔄 ACTUALIZAR CAMBIOS" />
-                                                <Button maxWidth="Infinity" mnemonicParsing="false" onAction="#limpiarFormulario" prefHeight="30.0" style="-fx-background-color: transparent; -fx-text-fill: #555555; -fx-border-color: #DDDDDD; -fx-border-radius: 5; -fx-cursor: hand;" text="🧹 Limpiar / Cancelar Edición" />
+                                                <Button maxWidth="Infinity" mnemonicParsing="false" onAction="#limpiarFormulario" prefHeight="30.0" style="-fx-background-color: transparent; -fx-text-fill: #555555; -fx-border-color: #DDDDDD; -fx-border-radius: 5; -fx-cursor: hand;" text="Limpiar / Cancelar Edición" />
                                             </children>
                                         </VBox>
                                     </children>

@@ -49,7 +49,8 @@ public class ConexionSQLite {
                 + "username TEXT, "
                 + "password_hash TEXT, "
                 + "estado TEXT DEFAULT 'Activo', "
-                + "fecha_ultimo_pago TEXT"
+                + "fecha_ultimo_pago TEXT, "
+                + "fecha_contrato TEXT"
                 + ");";
         String sqlInsumos = "CREATE TABLE IF NOT EXISTS insumos_catalogo ("
                 + "codigo TEXT PRIMARY KEY, "
@@ -120,6 +121,10 @@ public class ConexionSQLite {
     }
     public static void actualizarCacheCompleta() {
         System.out.println("Actualizando caché local completa...");
+        int promosCaducadas = ApiClient.verificarCaducidadPromociones();
+        if (promosCaducadas > 0) {
+            System.out.println("🚨 El servidor desactivó " + promosCaducadas + " promociones vencidas.");
+        }
         sincronizarEmpleados();
         sincronizarInsumos();
         sincronizarProductos();
@@ -129,7 +134,7 @@ public class ConexionSQLite {
     public static void sincronizarEmpleados() {
         System.out.println("Iniciando sincronización de empleados via API REST.");
         String sqlLimpiarSQLite = "DELETE FROM empleados";
-        String sqlInsertarSQLite = "INSERT INTO empleados (id_empleado, nombre, cargo, sueldo, username, password_hash, estado, fecha_ultimo_pago) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        String sqlInsertarSQLite = "INSERT INTO empleados (id_empleado, nombre, cargo, sueldo, username, password_hash, estado, fecha_ultimo_pago, fecha_contrato) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection connSQL = getConexion();
              Statement stmtLimpiar = connSQL.createStatement();
@@ -148,6 +153,7 @@ public class ConexionSQLite {
                 stmtInsertar.setString(7, emp.getEstado());
 
                 stmtInsertar.setString(8, emp.getFechaUltimoPago() != null ? emp.getFechaUltimoPago().toString() : null);
+                stmtInsertar.setString(9, emp.getFechaContrato() != null ? emp.getFechaContrato().toString() : null);
 
                 stmtInsertar.executeUpdate();
                 contador++;
@@ -191,79 +197,116 @@ public class ConexionSQLite {
 
     public static void sincronizarProductos() {
         System.out.println("Sincronizando productos...");
-        String sqlLeerPG = "SELECT id_producto, nombre, precio, categoria, tipo_clase, stock_directo, tiene_receta, imagen_base64, atributos_extra, fecha_inicio, fecha_fin, estado FROM productos";
         String sqlLimpiarSQLite = "DELETE FROM productos";
-        String sqlInsertarSQLite = "INSERT INTO productos (id_producto, nombre, precio, categoria, tipo_clase, stock_directo, tiene_receta, imagen_base64, atributos_extra, fecha_inicio, fecha_fin, estado) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        
+        String sqlInsertarSQLite = "INSERT OR REPLACE INTO productos " +
+                "(id_producto, nombre, precio, categoria, tipo_clase, stock_directo, tiene_receta, imagen_base64, atributos_extra, fecha_inicio, fecha_fin, estado) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
-        try (Connection connPG = ConexionBD.getConexion();
-             PreparedStatement stmtLeer = connPG.prepareStatement(sqlLeerPG);
-             ResultSet rs = stmtLeer.executeQuery();
-
-             Connection connSQL = getConexion();
+        try (Connection connSQL = getConexion();
              Statement stmtLimpiar = connSQL.createStatement();
              PreparedStatement stmtInsertar = connSQL.prepareStatement(sqlInsertarSQLite)) {
 
             stmtLimpiar.executeUpdate(sqlLimpiarSQLite);
+            ArrayList<Producto> productosDelServidor = ApiClient.obtenerProductosDelServidor();
             int contador = 0;
+            
+            for(Producto p : productosDelServidor) {
+                if(p.getCategoria() != null && p.getCategoria().equalsIgnoreCase("Promocion")) {
+                    continue; 
+                }
 
-            while (rs.next()) {
-                int id = rs.getInt("id_producto");
-                String imagenOriginal = rs.getString("imagen_base64");
-                String imagenLocal = asegurarImagenLocal(imagenOriginal, id);
-                stmtInsertar.setInt(1, id);
-                stmtInsertar.setString(2, rs.getString("nombre"));
-                stmtInsertar.setDouble(3, rs.getDouble("precio"));
-                stmtInsertar.setString(4, rs.getString("categoria"));
-                stmtInsertar.setString(5, rs.getString("tipo_clase"));
-                stmtInsertar.setInt(6, rs.getInt("stock_directo"));
-                stmtInsertar.setInt(7, rs.getBoolean("tiene_receta") ? 1 : 0);
+                stmtInsertar.setInt(1, p.getId());
+                stmtInsertar.setString(2, p.getNombre());
+                stmtInsertar.setDouble(3, p.getPrecio());
+                stmtInsertar.setString(4, p.getCategoria());
+                stmtInsertar.setString(5, "Producto");
+                stmtInsertar.setInt(6, (int) p.getStock());
+                stmtInsertar.setInt(7, p.tieneReceta() ? 1 : 0);
+
+                String imagenLocal = asegurarImagenLocal(p.getImagenURL(), p.getId());
                 stmtInsertar.setString(8, imagenLocal);
-                stmtInsertar.setString(9, rs.getString("atributos_extra"));
-                stmtInsertar.setString(10, rs.getDate("fecha_inicio") != null ? rs.getDate("fecha_inicio").toString() : null);
-                stmtInsertar.setString(11, rs.getDate("fecha_fin") != null ? rs.getDate("fecha_fin").toString() : null);
 
-                stmtInsertar.setString(12, rs.getString("estado"));
+                String atributos = (p.getAtributosDinamicos() != null) ? p.getAtributosDinamicos().toString() : "{}";
+                stmtInsertar.setString(9, atributos);
+                
+                stmtInsertar.setNull(10, java.sql.Types.VARCHAR);
+                stmtInsertar.setNull(11, java.sql.Types.VARCHAR);
+                
+                stmtInsertar.setString(12, p.getEstado());
+
                 stmtInsertar.executeUpdate();
                 contador++;
             }
-            System.out.println("Productos sincronizados: " + contador);
+            System.out.println("Productos sincronizados desde la nube: " + contador);
         } catch (SQLException e) {
-            System.out.println("Error al sincronizar productos: " + e.getMessage());
+            System.out.println("Error al sincronizar productos locales: " + e.getMessage());
         }
     }
     public static void sincronizarDetallesCombo() {
-        System.out.println("Sincronizando detalles de combos...");
-        String sqlLeerPG = "SELECT id_promocion, id_producto, cantidad FROM detalle_combo";
-        String sqlLimpiarSQLite = "DELETE FROM detalle_combo";
-        String sqlInsertarSQLite = "INSERT INTO detalle_combo (id_promocion, id_producto, cantidad) VALUES (?, ?, ?)";
+        System.out.println("Sincronizando promociones y combos...");
+        String sqlLimpiarDetalle = "DELETE FROM detalle_combo";
+        
+        String sqlInsertarPromo = "INSERT OR REPLACE INTO productos " +
+                "(id_producto, nombre, precio, categoria, tipo_clase, stock_directo, tiene_receta, imagen_base64, atributos_extra, fecha_inicio, fecha_fin, estado) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                
+        String sqlInsertarDetalle = "INSERT OR REPLACE INTO detalle_combo (id_promocion, id_producto, cantidad) VALUES (?, ?, ?)";
 
-        try (Connection connPG = ConexionBD.getConexion();
-             PreparedStatement stmtLeer = connPG.prepareStatement(sqlLeerPG);
-             ResultSet rs = stmtLeer.executeQuery();
-
-             Connection connSQL = getConexion();
+        try (Connection connSQL = getConexion();
              Statement stmtLimpiar = connSQL.createStatement();
-             PreparedStatement stmtInsertar = connSQL.prepareStatement(sqlInsertarSQLite)) {
+             PreparedStatement stmtPromo = connSQL.prepareStatement(sqlInsertarPromo);
+             PreparedStatement stmtDetalle = connSQL.prepareStatement(sqlInsertarDetalle)) {
 
-            stmtLimpiar.executeUpdate(sqlLimpiarSQLite);
-            int contador = 0;
+            stmtLimpiar.executeUpdate(sqlLimpiarDetalle);
+            ArrayList<Promocion> promosDelServidor = ApiClient.obtenerPromocionesDelServidor();
+            
+            int contadorPromo = 0;
+            int contadorDetalle = 0;
+            
+            for (Promocion promo : promosDelServidor) {
+                stmtPromo.setInt(1, promo.getId());
+                stmtPromo.setString(2, promo.getNombre());
+                stmtPromo.setDouble(3, promo.getPrecio());
+                stmtPromo.setString(4, "Promocion");
+                stmtPromo.setString(5, "Combo");
+                stmtPromo.setInt(6, 0); // No maneja stock directo
+                stmtPromo.setInt(7, 0); // No tiene receta de cocina directa
+                
+                String imgPromo = asegurarImagenLocal(promo.getImagenURL(), promo.getId());
+                stmtPromo.setString(8, imgPromo);
+                
+                stmtPromo.setString(9, "{}"); // Atributos extra vacíos
+                
+                if (promo.getFechaInicio() != null) stmtPromo.setString(10, promo.getFechaInicio().toString());
+                else stmtPromo.setNull(10, java.sql.Types.VARCHAR);
+                
+                if (promo.getFechaFin() != null) stmtPromo.setString(11, promo.getFechaFin().toString());
+                else stmtPromo.setNull(11, java.sql.Types.VARCHAR);
+                
+                stmtPromo.setString(12, promo.getEstado());
+                
+                stmtPromo.executeUpdate();
+                contadorPromo++;
 
-            while (rs.next()) {
-                stmtInsertar.setInt(1, rs.getInt("id_promocion"));
-                stmtInsertar.setInt(2, rs.getInt("id_producto"));
-                stmtInsertar.setInt(3, rs.getInt("cantidad"));
-
-                stmtInsertar.executeUpdate();
-                contador++;
+                if (promo.getProductosCombo() != null) {
+                    for (DetalleCombo detalle : promo.getProductosCombo()) {
+                        stmtDetalle.setInt(1, promo.getId());
+                        stmtDetalle.setInt(2, detalle.getProducto().getId());
+                        stmtDetalle.setInt(3, detalle.getCantidad());
+                        stmtDetalle.executeUpdate();
+                        contadorDetalle++;
+                    }
+                }
             }
-            System.out.println("Detalles de combos sincronizados: " + contador);
+            System.out.println("Promociones sincronizadas: " + contadorPromo + " (con " + contadorDetalle + " detalles internos).");
         } catch (SQLException e) {
-            System.out.println("Error al sincronizar detalles de combos: " + e.getMessage());
+            System.out.println("Error al sincronizar combos locales: " + e.getMessage());
         }
     }
     public static ArrayList<Empleado> obtenerEmpleadosLocal() {
         ArrayList<Empleado> lista = new ArrayList<>();
-        String sql = "SELECT id_empleado, nombre, cargo, sueldo, username, estado, fecha_ultimo_pago FROM empleados WHERE estado = 'Activo'";
+        String sql = "SELECT id_empleado, nombre, cargo, sueldo, username, estado, fecha_ultimo_pago, fecha_contrato FROM empleados WHERE estado = 'Activo'";
 
         try (Connection conn = getConexion();
              PreparedStatement ps = conn.prepareStatement(sql);
@@ -285,6 +328,10 @@ public class ConexionSQLite {
                 String fechaStr = rs.getString("fecha_ultimo_pago");
                 if (fechaStr != null && !fechaStr.trim().isEmpty() && !fechaStr.equals("null")) {
                     emp.setFechaUltimoPago(LocalDate.parse(fechaStr));
+                }
+                String fechaContratoStr = rs.getString("fecha_contrato");
+                if (fechaContratoStr != null && !fechaContratoStr.trim().isEmpty() && !fechaContratoStr.equals("null")) {
+                    emp.setFechaContrato(LocalDate.parse(fechaContratoStr));
                 }
                 lista.add(emp);
             }
@@ -365,7 +412,6 @@ public class ConexionSQLite {
         return menu;
     }
 
-    // MÉTODO NUEVO AGREGADO: Para autenticar el Login si se corta el Internet
     public static Empleado autenticarUsuarioLocal(String username, String passwordHash) {
         String sql = "SELECT id_empleado, nombre, cargo, sueldo, username, estado FROM empleados WHERE username = ? AND password_hash = ? AND estado = 'Activo'";
 
@@ -550,12 +596,12 @@ public class ConexionSQLite {
         return listaPromo;
     }
     public static void actualizarImagenProductoLocal(int idProucto, String nuevaRutaImagen){
-        String sql = "UPADTE productos SET imagen_base64 = ? WHERE id_producto = ?";
+        String sql = "UPDATE productos SET imagen_base64 = ? WHERE id_producto = ?";
         try(Connection conn = getConexion();
             PreparedStatement ps = conn.prepareStatement(sql)
         ){
             ps.setString(1, nuevaRutaImagen);
-            ps.setInt(2, idProucto);
+            ps.setString(2, String.valueOf(idProucto));
             ps.executeUpdate();
         }catch (SQLException e){
             System.out.println("Error al actualizar imagen de producto: " + e.getMessage());

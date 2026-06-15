@@ -1,8 +1,7 @@
 package Attizos.Frontend;
 
+import Attizos.Backend.Api.ApiClient;
 import Attizos.Backend.Attizos.*;
-import Attizos.Backend.Database.*;
-import Attizos.Backend.Listas.NodoDE;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -26,15 +25,10 @@ import javafx.stage.StageStyle;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.List;
+import java.util.*;
 
 public class ReportesController {
 
-    // --- PESTAÑA 1: FINANZAS Y VENTAS ---
     @FXML private DatePicker dpInicio;
     @FXML private DatePicker dpFin;
     @FXML private Label lblIngresos;
@@ -53,7 +47,6 @@ public class ReportesController {
     @FXML private TableColumn<Egreso, String> colConceptoEgreso;
     @FXML private TableColumn<Egreso, Double> colMontoEgreso;
 
-    // --- PESTAÑA 2: PLANILLA Y SUELDOS ---
     @FXML private Label lblTotalSueldos;
     @FXML private TableView<Empleado> tablaEmpleadosReporte;
     @FXML private TableColumn<Empleado, String> colEmpId;
@@ -61,7 +54,6 @@ public class ReportesController {
     @FXML private TableColumn<Empleado, String> colEmpCargo;
     @FXML private TableColumn<Empleado, Double> colEmpSueldo;
 
-    // --- PESTAÑA 3: TRAZABILIDAD (SEGUIDOR) ---
     @FXML private ComboBox<String> cmbTipoLog;
     @FXML private TextField txtBusquedaLog;
     @FXML private ComboBox<String> cmbAccionLog;
@@ -75,15 +67,11 @@ public class ReportesController {
     @FXML private TableColumn<RegistroAuditoria, Double> colCantidadLog;
     @FXML private TableColumn<RegistroAuditoria, String> colJustificacionLog;
 
-    // --- PESTAÑA 4: GRÁFICOS ---
     @FXML private LineChart<String, Number> chartVentas;
 
-    // Listas observables
     private ObservableList<Factura> listaFacturas = FXCollections.observableArrayList();
     private ObservableList<Egreso> listaEgresos = FXCollections.observableArrayList();
     private ObservableList<Empleado> listaEmpleados = FXCollections.observableArrayList();
-
-    // Listas para el buscador en tiempo real de Auditoría
     private ObservableList<RegistroAuditoria> masterLogs = FXCollections.observableArrayList();
     private FilteredList<RegistroAuditoria> filteredLogs;
 
@@ -92,10 +80,10 @@ public class ReportesController {
         configurarTablas();
         configurarBotonDobleClic();
         configurarFiltrosTrazabilidad();
-        generarReportes();
-
         UtilidadesUI.formatearDatePicker(dpInicio);
         UtilidadesUI.formatearDatePicker(dpFin);
+
+        generarReportes();
     }
 
     private void configurarTablas() {
@@ -112,7 +100,7 @@ public class ReportesController {
         colMontoEgreso.setCellValueFactory(new PropertyValueFactory<>("totalAmount"));
         colFechaEgreso.setCellValueFactory(cellData -> {
             LocalDate fecha = cellData.getValue().getDate();
-            return new SimpleStringProperty(fecha != null ? fecha.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) : LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
+            return new SimpleStringProperty(fecha != null ? fecha.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) : "");
         });
         tablaEgresos.setItems(listaEgresos);
 
@@ -122,7 +110,6 @@ public class ReportesController {
         colEmpSueldo.setCellValueFactory(new PropertyValueFactory<>("sueldo"));
         tablaEmpleadosReporte.setItems(listaEmpleados);
 
-        // Tabla de Auditoría
         colFechaLog.setCellValueFactory(new PropertyValueFactory<>("fechaHora"));
         colUsuarioLog.setCellValueFactory(new PropertyValueFactory<>("operador"));
         colTipoItemLog.setCellValueFactory(new PropertyValueFactory<>("tipoArea"));
@@ -135,6 +122,18 @@ public class ReportesController {
         tablaLogSeguimiento.setItems(filteredLogs);
     }
 
+    private void configurarBotonDobleClic() {
+        tablaVentas.setRowFactory(tv -> {
+            TableRow<Factura> row = new TableRow<>();
+            row.setOnMouseClicked(event -> {
+                if (event.getClickCount() == 2 && (!row.isEmpty())) {
+                    verDetalleFacturaTicket(row.getItem());
+                }
+            });
+            return row;
+        });
+    }
+
     private void configurarFiltrosTrazabilidad() {
         String estiloInputs = "-fx-text-fill: #111111; -fx-font-weight: bold; -fx-background-color: #f0f0f0; -fx-border-color: #a9a9a9; -fx-border-radius: 4; -fx-background-radius: 4;";
 
@@ -142,12 +141,11 @@ public class ReportesController {
         cmbTipoLog.setStyle(estiloInputs);
         cmbAccionLog.setStyle(estiloInputs);
         cmbUsuarioLog.setStyle(estiloInputs);
+
         cmbTipoLog.setItems(FXCollections.observableArrayList("Todos"));
         cmbTipoLog.setValue("Todos");
-
         cmbAccionLog.setItems(FXCollections.observableArrayList("Todas"));
         cmbAccionLog.setValue("Todas");
-
         cmbUsuarioLog.setItems(FXCollections.observableArrayList("Todos"));
         cmbUsuarioLog.setValue("Todos");
 
@@ -166,7 +164,6 @@ public class ReportesController {
         acciones.add("Todas");
         usuarios.add("Todos");
 
-        // Leer los datos reales que existen
         for (RegistroAuditoria log : masterLogs) {
             if (log.getTipoArea() != null) tipos.add(log.getTipoArea());
             if (log.getAccion() != null) acciones.add(log.getAccion());
@@ -234,149 +231,135 @@ public class ReportesController {
         LocalDate inicio = dpInicio.getValue();
         LocalDate fin = dpFin.getValue();
 
-        if (inicio != null && fin != null) {
-            if (inicio.isAfter(fin) || inicio.isEqual(fin)) {
-                AlertaPersonalizada.mostrarAlerta("Rango de Fechas Inválido",
-                        "La fecha de inicio debe ser anterior a la fecha de fin.", Alert.AlertType.WARNING);
-                return;
-            }
+        if (inicio != null && fin != null && (inicio.isAfter(fin) || inicio.isEqual(fin))) {
+            AlertaPersonalizada.mostrarAlerta("Rango Inválido", "La fecha de inicio debe ser anterior a la fecha de fin.", Alert.AlertType.WARNING);
+            return;
         }
         generarReportes();
     }
 
     private void generarReportes() {
-        LocalDate filtroInicio = dpInicio.getValue();
-        LocalDate filtroFin = dpFin.getValue();
+        String fechaIni = dpInicio.getValue() != null ? dpInicio.getValue().toString() : null;
+        String fechaFin = dpFin.getValue() != null ? dpFin.getValue().toString() : null;
 
-        new Thread(() ->{
-            try{
-                List<Factura>  facturasDB = ReportesDAO.obtenerFacturas();
-                List<Egreso> egresosDB = ReportesDAO.obtenerEgresos();
-                List<Empleado> empleadosDB = ReportesDAO.obtenerEmpleados();
-                List<RegistroAuditoria> auditoriaDB = ReportesDAO.obtenerAuditoria();
+        new Thread(() -> {
+            Map<String, Object> reporte = ApiClient.obtenerReporteConsolidado(fechaIni, fechaFin);
 
-                double ingresosTemp = 0.0;
-                double egresosTemp = 0.0;
-                int contadorVentasTemp = 0;
-                double sumaSueldosTemp = 0.0;
-                Map<String, Double> ventasPorDiaTemp = new TreeMap<>();
-
-                for(Factura f : facturasDB){
-                    if(f.getEstado() == null  && !f.getEstado().equalsIgnoreCase("Finalizada")){
-                        continue;
-                    }
-                    boolean enRango = true;
-                    if(f.getFecha() != null){
-                        LocalDate fechaFac = f.getFecha().toLocalDate();
-                        if (filtroInicio != null && fechaFac.isBefore(filtroInicio)) enRango = false;
-                        if (filtroFin != null && fechaFac.isAfter(filtroFin)) enRango = false;
-                    }
-                    if(enRango){
-                        ingresosTemp += f.getTotal();
-                        contadorVentasTemp++;
-                        if(f.getFecha() != null){
-                            String dia = f.getFecha().format(DateTimeFormatter.ofPattern("dd/MM"));
-                            ventasPorDiaTemp.put(dia, ventasPorDiaTemp.getOrDefault(dia, 0.0) + f.getTotal());
-                        }
-                    }
-                }
-
-                for (Egreso e : egresosDB) {
-                    boolean enRango = true;
-                    if (e.getDate() != null) {
-                        LocalDate fechaEgr = e.getDate();
-                        if (filtroInicio != null && fechaEgr.isBefore(filtroInicio)) enRango = false;
-                        if (filtroFin != null && fechaEgr.isAfter(filtroFin)) enRango = false;
-                    }
-                    if(enRango) egresosTemp += e.getTotalAmount();
-                }
-
-                for (Empleado emp : empleadosDB) {
-                    sumaSueldosTemp += emp.getSueldo();
-                }
-
-                double finalIngresos = ingresosTemp;
-                double finalEgresos = egresosTemp;
-                int finalContador = contadorVentasTemp;
-                double finalSueldos = sumaSueldosTemp;
-
-                Platform.runLater(() -> {
-                    listaFacturas.clear();
-                    for(Factura f : facturasDB) {
-                        if(f.getEstado() == null || !f.getEstado().equalsIgnoreCase("Completada")) {
-                            continue;
-                        }
-                        boolean enRango = true;
-                        if(f.getFecha() != null){
-                            LocalDate fechaFac = f.getFecha().toLocalDate();
-                            if (filtroInicio != null && fechaFac.isBefore(filtroInicio)) enRango = false;
-                            if (filtroFin != null && fechaFac.isAfter(filtroFin)) enRango = false;
-                        }
-                        if(enRango) listaFacturas.add(f);
-                    }
-
-                    listaEgresos.clear();
-                    for(Egreso e : egresosDB){
-                        boolean enRango = true;
-                        if (e.getDate() != null) {
-                            LocalDate fechaEgr = e.getDate();
-                            if (filtroInicio != null && fechaEgr.isBefore(filtroInicio)) enRango = false;
-                            if (filtroFin != null && fechaEgr.isAfter(filtroFin)) enRango = false;
-                        }
-                        if(enRango) listaEgresos.add(e);
-                    }
-
-                    listaEmpleados.clear();
-                    listaEmpleados.addAll(empleadosDB);
-
-                    masterLogs.clear();
-                    masterLogs.addAll(auditoriaDB);
-
-                    double balance = finalIngresos - finalEgresos;
-                    lblIngresos.setText("Bs. " + String.format("%.2f", finalIngresos));
-                    lblEgresos.setText("Bs. " + String.format("%.2f", finalEgresos));
-                    lblBalance.setText("Bs. " + String.format("%.2f", balance));
-                    lblTicketProm.setText("Bs. " + String.format(String.valueOf(finalContador)));
-                    lblTotalSueldos.setText("Bs. " + String.format("%.2f", finalSueldos));
-
-                    if (balance >= 0) {
-                        lblBalance.setStyle("-fx-text-fill: #218c4e;");
-                    } else {
-                        lblBalance.setStyle("-fx-text-fill: #ff4c4c;");
-                    }
-
-                    chartVentas.getData().clear();
-                    XYChart.Series<String, Number> serieVentas = new XYChart.Series<>();
-                    serieVentas.setName("Ingresos por Día");
-                    for (Map.Entry<String, Double> entry : ventasPorDiaTemp.entrySet()) {
-                        serieVentas.getData().add(new XYChart.Data<>(entry.getKey(), entry.getValue()));
-                    }
-                    chartVentas.getData().add(serieVentas);
-
-                    if(serieVentas.getNode() != null){
-                        serieVentas.getNode().setStyle("-fx-stroke: #2c3e50; -fx-stroke-width: 3px;");
-                    }
-                    for(XYChart.Data<String, Number> data : serieVentas.getData()){
-                        if(data.getNode() != null){
-                            data.getNode().setStyle("-fx-background-color: #2c3e50, white; -fx-background-radius: 5px; -fx-padding: 5px;");
-                        }
-                    }
-                    chartVentas.lookupAll(".axis").forEach(axis ->
-                            axis.setStyle("-fx-tick-label-fill: #111111; -fx-font-weight: bold; -fx-font-size: 13px;")
-                    );
-                    chartVentas.lookupAll(".chart-legend-item").forEach(legend ->
-                            legend.setStyle("-fx-text-fill: #111111; -fx-font-weight: bold;")
-                    );
-
-                    actualizarFiltrosDinamicos();
-                });
-            }catch (Exception e){
-                Platform.runLater(() -> {
-                    AlertaPersonalizada.mostrarAlerta("Sin Conexión", "No se pudieron cargar los reportes históricos desde el servidor principal.", Alert.AlertType.WARNING);
-                });
+            if (reporte != null) {
+                Platform.runLater(() -> procesarDatosDelServidor(reporte));
+            } else {
+                Platform.runLater(() -> AlertaPersonalizada.mostrarAlerta("Sin Conexión", "No se pudo cargar el reporte del servidor.", Alert.AlertType.WARNING));
             }
         }).start();
+    }
 
+    @SuppressWarnings("unchecked")
+    private void procesarDatosDelServidor(Map<String, Object> r) {
+        double ingresos = ((Number) r.get("totalIngresos")).doubleValue();
+        double egresos = ((Number) r.get("totalEgresos")).doubleValue();
+        double sueldos = ((Number) r.get("totalSueldos")).doubleValue();
+        int ventas = (Integer) r.get("cantidadVentas");
+        double balance = ingresos - egresos;
+
+        lblIngresos.setText(String.format("Bs. %.2f", ingresos));
+        lblEgresos.setText(String.format("Bs. %.2f", egresos));
+        lblTotalSueldos.setText(String.format("Bs. %.2f", sueldos));
+        lblTicketProm.setText(String.valueOf(ventas));
+        lblBalance.setText(String.format("Bs. %.2f", balance));
+        lblBalance.setStyle(balance >= 0 ? "-fx-text-fill: #218c4e;" : "-fx-text-fill: #ff4c4c;");
+
+        listaFacturas.clear();
+        List<Map<String, Object>> facturasDB = (List<Map<String, Object>>) r.get("facturas");
+        if (facturasDB != null) {
+            for (Map<String, Object> map : facturasDB) {
+                Factura f = new Factura((Integer) map.get("numero_factura"), (String) map.get("nombre_cliente"));
+                f.setNumeroTicket((Integer) map.get("numero_ticket"));
+                f.setTotal(((Number) map.get("total")).doubleValue());
+                f.setEstado((String) map.get("estado"));
+                try {
+                    String fechaStr = map.get("fecha_hora").toString().replace("T", " ");
+                    f.setFecha(LocalDateTime.parse(fechaStr.substring(0, 19), DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                } catch (Exception e) {}
+                listaFacturas.add(f);
+            }
+        }
+
+        listaEgresos.clear();
+        List<Map<String, Object>> egresosDB = (List<Map<String, Object>>) r.get("egresos");
+        if(egresosDB != null) {
+            for (Map<String, Object> map : egresosDB) {
+                Egreso e = new Egreso();
+                e.setDescription((String) map.get("concepto"));
+                e.setTotalAmount(((Number) map.get("monto")).doubleValue());
+                try { e.setDate(LocalDate.parse(map.get("fecha").toString().substring(0, 10))); } catch (Exception ex) {}
+                listaEgresos.add(e);
+            }
+        }
+
+        listaEmpleados.clear();
+        List<Map<String, Object>> empDB = (List<Map<String, Object>>) r.get("empleados");
+        if(empDB != null) {
+            for (Map<String, Object> map : empDB) {
+                Empleado emp = new Empleado();
+                emp.setIdEmpleado((String) map.get("id_empleado"));
+                emp.setNombre((String) map.get("nombre"));
+                emp.setCargo((String) map.get("cargo"));
+                emp.setSueldo(((Number) map.get("sueldo")).doubleValue());
+                emp.setUsername((String) map.get("username"));
+                listaEmpleados.add(emp);
+            }
+        }
+
+        masterLogs.clear();
+        List<Map<String, Object>> auditDB = (List<Map<String, Object>>) r.get("auditoria");
+        if(auditDB != null) {
+            for(Map<String, Object> map : auditDB) {
+                RegistroAuditoria log = new RegistroAuditoria(
+                        (String) map.get("operador"),
+                        (String) map.get("tipo_area"),
+                        (String) map.get("nombre_item"),
+                        (String) map.get("accion"),
+                        ((Number) map.get("cantidad")).doubleValue(),
+                        (String) map.get("motivo")
+                );
+                try {
+                    String fechaStr = map.get("fecha_hora").toString().replace("T", " ");
+                    LocalDateTime ldt = LocalDateTime.parse(fechaStr.substring(0, 19), DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+                    log.setDate(ldt.format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")));
+                } catch (Exception e) {}
+                masterLogs.add(log);
+            }
+        }
+
+        chartVentas.getData().clear();
+        XYChart.Series<String, Number> serieVentas = new XYChart.Series<>();
+        serieVentas.setName("Ingresos por Día");
+
+        Map<String, Double> ventasXDia = (Map<String, Double>) r.get("ventasPorDia");
+        if (ventasXDia != null) {
+            for (Map.Entry<String, Double> entry : ventasXDia.entrySet()) {
+                String diaLabel = entry.getKey().substring(5); // "MM-dd"
+                serieVentas.getData().add(new XYChart.Data<>(diaLabel, entry.getValue()));
+            }
+        }
+        chartVentas.getData().add(serieVentas);
+
+        if(serieVentas.getNode() != null){
+            serieVentas.getNode().setStyle("-fx-stroke: #2c3e50; -fx-stroke-width: 3px;");
+        }
+        for(XYChart.Data<String, Number> data : serieVentas.getData()){
+            if(data.getNode() != null){
+                data.getNode().setStyle("-fx-background-color: #2c3e50, white; -fx-background-radius: 5px; -fx-padding: 5px;");
+            }
+        }
+        chartVentas.lookupAll(".axis").forEach(axis ->
+                axis.setStyle("-fx-tick-label-fill: #111111; -fx-font-weight: bold; -fx-font-size: 13px;")
+        );
+        chartVentas.lookupAll(".chart-legend-item").forEach(legend ->
+                legend.setStyle("-fx-text-fill: #111111; -fx-font-weight: bold;")
+        );
+
+        actualizarFiltrosDinamicos();
     }
 
     @FXML
@@ -395,13 +378,11 @@ public class ReportesController {
                                         AlertaPersonalizada.mostrarAlerta("Error", "El monto debe ser mayor a 0.", Alert.AlertType.WARNING);
                                         return;
                                     }
-
-                                    // Registrar Gasto
-                                    boolean exito = ReportesDAO.registrarEgreso(concepto, monto);
+                                    boolean exito = ApiClient.registrarEgresoEnServidor(concepto, monto);
 
                                     if(exito){
                                         String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
-                                        ReportesDAO.registrarAuditoria(operador, "Finanzas", "Gasto Manual", "Egreso", monto, concepto);
+                                        ApiClient.registrarAuditoriaEnServidor(operador, "Finanzas", "Gasto Manual", "Egreso", monto, concepto);
 
                                         generarReportes();
                                         AlertaPersonalizada.mostrarAlerta("Éxito", "El gasto manual ha sido registrado.", Alert.AlertType.INFORMATION);
@@ -415,21 +396,15 @@ public class ReportesController {
                 });
     }
 
-    private void configurarBotonDobleClic() {
-        tablaVentas.setRowFactory(tv -> {
-            TableRow<Factura> row = new TableRow<>();
-            row.setOnMouseClicked(event -> {
-                if (event.getClickCount() == 2 && (!row.isEmpty())) {
-                    verDetalleFacturaTicket(row.getItem());
-                }
-            });
-            return row;
-        });
-    }
-
     private void verDetalleFacturaTicket(Factura seleccionada) {
         try {
-            Factura facDetalles = ReportesDAO.obtenerFacturaConDetalles(seleccionada.getNumeroFactura());
+            Factura facDetalles = ApiClient.obtenerFacturaConDetalles(seleccionada.getNumeroFactura());
+
+            if (facDetalles == null) {
+                AlertaPersonalizada.mostrarAlerta("Error", "No se pudo obtener el detalle de la factura desde el servidor.", Alert.AlertType.ERROR);
+                return;
+            }
+
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Ticket.fxml"));
             Parent root = loader.load();
 
@@ -474,19 +449,110 @@ public class ReportesController {
             return;
         }
 
-        String detalle = "IDENTIFICACIÓN (CI): " + seleccionado.getIdEmpleado() + "\n"
-                + "NOMBRE COMPLETO: " + seleccionado.getNombre() + "\n"
-                + "CARGO ASIGNADO: " + seleccionado.getCargo() + "\n"
-                + "SUELDO BASE: Bs. " + String.format("%.2f", seleccionado.getSueldo()) + "\n\n";
+        // 1. Cálculo de Antigüedad
+        String antiguedad = "Desconocida";
+        if (seleccionado.getFechaContrato() != null) {
+            java.time.Period periodo = java.time.Period.between(seleccionado.getFechaContrato(), LocalDate.now());
+            int agnos = periodo.getYears();
+            int meses = periodo.getMonths();
+            int dias = periodo.getDays();
 
-        if (seleccionado.getUsername() != null && !seleccionado.getUsername().trim().isEmpty()) {
-            detalle += "--- DATOS DEL SISTEMA ---\n"
-                    + "Usuario: " + seleccionado.getUsername() + "\n"
-                    + "Rol: Acceso Permitido\n";
-        } else {
-            detalle += "--- DATOS DEL SISTEMA ---\n"
-                    + "Sin acceso a la caja.\n";
+            if (agnos == 0 && meses == 0) {
+                antiguedad = dias + " días";
+            } else if (agnos == 0) {
+                antiguedad = meses + " meses y " + dias + " días";
+            } else {
+                antiguedad = agnos + " años y " + meses + " meses";
+            }
         }
-        AlertaPersonalizada.mostrarAlerta("Ficha Técnica - " + seleccionado.getNombre(), detalle, Alert.AlertType.INFORMATION);
+
+        double totalAdelantos = 0.0;
+        StringBuilder desgloseAdelantos = new StringBuilder();
+        int contadorAdelantos = 0;
+
+        String nombreBuscado = seleccionado.getNombre().toLowerCase();
+
+        for (Egreso e : listaEgresos) {
+            if (e.getDescription() != null) {
+                String desc = e.getDescription().toLowerCase();
+
+                if (desc.contains("adelanto") && desc.contains(nombreBuscado)) {
+                    totalAdelantos += e.getTotalAmount();
+                    contadorAdelantos++;
+
+                    String fechaStr = e.getDate() != null ? e.getDate().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) : "S/F";
+                    desgloseAdelantos.append("   • ").append(fechaStr)
+                            .append(" -> Bs. ").append(String.format("%.2f", e.getTotalAmount()))
+                            .append(" (").append(e.getDescription()).append(")\n");
+                }
+            }
+        }
+
+        if (contadorAdelantos == 0) {
+            desgloseAdelantos.append("   No se registran adelantos tomados en este periodo.\n");
+        }
+
+        // 3. Estado de pago actual
+        String estadoPago = "Sin registros de pago completo";
+        if (seleccionado.getFechaUltimoPago() != null) {
+            if (seleccionado.getFechaUltimoPago().getMonth() == LocalDate.now().getMonth() &&
+                    seleccionado.getFechaUltimoPago().getYear() == LocalDate.now().getYear()) {
+                estadoPago = "✅ Sueldo Mensual Cancelado (" + seleccionado.getFechaUltimoPago().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) + ")";
+            } else {
+                estadoPago = "❌ Sueldo del mes pendiente";
+            }
+        }
+
+        double sueldoBase = seleccionado.getSueldo();
+        double liquidoNeto = Math.max(0, sueldoBase - totalAdelantos); // Evita números negativos por si se sobregira
+        double costoAnualProyectado = (sueldoBase * 12) + sueldoBase; // 12 sueldos + 1 Aguinaldo
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("👤 PERFIL DEL EMPLEADO\n");
+        sb.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+        sb.append("Nombre: ").append(seleccionado.getNombre()).append("\n");
+        sb.append("CI / ID: ").append(seleccionado.getIdEmpleado()).append("\n");
+        sb.append("Cargo: ").append(seleccionado.getCargo()).append("\n\n");
+
+        sb.append("⏱ TIEMPO EN LA EMPRESA\n");
+        sb.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+        String fechaContratoStr = seleccionado.getFechaContrato() != null ? seleccionado.getFechaContrato().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) : "No registrada";
+        sb.append("Fecha Ingreso: ").append(fechaContratoStr).append("\n");
+        sb.append("Antigüedad: ").append(antiguedad).append("\n\n");
+
+        sb.append("📉 HISTORIAL DE ADELANTOS (Filtro de Fechas Actual)\n");
+        sb.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+        sb.append(desgloseAdelantos.toString());
+        sb.append("Total Retirado: Bs. ").append(String.format("%.2f", totalAdelantos)).append("\n\n");
+
+        sb.append("💰 CONTROL DE PLANILLA Y LIQUIDACIÓN\n");
+        sb.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+        sb.append("Sueldo Mensual Fijo:  Bs. ").append(String.format("%.2f", sueldoBase)).append("\n");
+        sb.append("Descuento Adelantos: -Bs. ").append(String.format("%.2f", totalAdelantos)).append("\n");
+        sb.append("Líquido Neto a Pagar:  Bs. ").append(String.format("%.2f", liquidoNeto)).append("\n");
+        sb.append("Estado de Cuenta:     ").append(estadoPago).append("\n");
+        sb.append("Costo Anual Proyectado: Bs. ").append(String.format("%.2f", costoAnualProyectado)).append("\n\n");
+
+        sb.append("🔐 ACCESO AL SISTEMA\n");
+        sb.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+        if (seleccionado.getUsername() != null && !seleccionado.getUsername().trim().isEmpty()) {
+            sb.append("Usuario de caja: ").append(seleccionado.getUsername()).append("\n");
+            sb.append("Estado: Habilitado para operar\n");
+        } else {
+            sb.append("Estado: Sin acceso al sistema (Solo operativo)\n");
+        }
+        Alert ficha = new Alert(Alert.AlertType.INFORMATION);
+        ficha.setTitle("Ficha Técnica");
+        ficha.setHeaderText("Reporte Financiero y Laboral: " + seleccionado.getNombre());
+
+        TextArea txtReporte = new TextArea(sb.toString());
+        txtReporte.setEditable(false);
+        txtReporte.setWrapText(true);
+        txtReporte.setPrefWidth(600);
+        txtReporte.setPrefHeight(350);
+        txtReporte.setStyle("-fx-font-size: 14px; -fx-font-family: 'Segoe UI', Helvetica, Arial, sans-serif;");
+
+        ficha.getDialogPane().setContent(txtReporte);
+        ficha.showAndWait();
     }
 }

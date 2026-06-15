@@ -1,7 +1,6 @@
 package Attizos.Backend.Api;
 
-import Attizos.Backend.Attizos.Empleado;
-import Attizos.Backend.Attizos.Insumo;
+import Attizos.Backend.Attizos.*;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -13,6 +12,9 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class ApiClient {
     private static final String BASE_URL = "http://localhost:8080/api";
@@ -227,4 +229,496 @@ public class ApiClient {
             return -1;
         }
     }
+    public static ArrayList<Producto> obtenerProductosDelServidor() {
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(BASE_URL + "/menu/productos"))
+                    .GET()
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 200) {
+                return mapper.readValue(response.body(), new com.fasterxml.jackson.core.type.TypeReference<ArrayList<Producto>>() {});
+            } else {
+                System.err.println("Error al obtener menú: Código " + response.statusCode());
+            }
+        } catch (Exception e) {
+            System.err.println("Falla de conexión al obtener productos: " + e.getMessage());
+        }
+        return new ArrayList<>();
+    }
+
+    public static boolean guardarProductoEnServidor(Producto producto) {
+        try {
+            String json = mapper.writeValueAsString(producto);
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(BASE_URL + "/menu/productos"))
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(json))
+                    .build();
+                    HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 200 || response.statusCode() == 201) {
+                Producto productoGuardado = mapper.readValue(response.body(), Producto.class);
+                producto.setId(productoGuardado.getId());
+                
+                return true;
+            } else {
+                System.err.println("Error al guardar producto. Código: " + response.statusCode());
+                return false;
+            }
+        } catch (Exception e) {
+            System.err.println("Error al guardar producto: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public static boolean actualizarProductoEnServidor(Producto producto) {
+        try {
+            String json = mapper.writeValueAsString(producto);
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(BASE_URL + "/menu/productos"))
+                    .header("Content-Type", "application/json")
+                    .PUT(HttpRequest.BodyPublishers.ofString(json))
+                    .build();
+
+            return httpClient.send(request, HttpResponse.BodyHandlers.ofString()).statusCode() == 200;
+        } catch (Exception e) {
+            System.err.println("Error al actualizar producto: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public static boolean inactivarProductoEnServidor(int idProducto) {
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(BASE_URL + "/menu/productos/" + idProducto + "/inactivar"))
+                    .PUT(HttpRequest.BodyPublishers.noBody())
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            
+            return response.statusCode() == 200 && response.body().trim().equals("true");
+        } catch (Exception e) {
+            System.err.println("Error al inactivar producto: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public static ArrayList<Promocion> obtenerPromocionesDelServidor() {
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(BASE_URL + "/menu/promociones"))
+                    .GET()
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 200) {
+                return mapper.readValue(response.body(), new com.fasterxml.jackson.core.type.TypeReference<ArrayList<Promocion>>() {});
+            }
+        } catch (Exception e) {
+            System.err.println("Falla de conexión al obtener combos: " + e.getMessage());
+        }
+        return new ArrayList<>();
+    }
+
+    public static boolean guardarPromocionEnServidor(Promocion promocion) {
+        try {
+            String json = mapper.writeValueAsString(promocion);
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(BASE_URL + "/menu/promociones"))
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(json))
+                    .build();
+
+            return httpClient.send(request, HttpResponse.BodyHandlers.ofString()).statusCode() == 200;
+        } catch (Exception e) {
+            System.err.println("Error al guardar promoción: " + e.getMessage());
+            return false;
+        }
+    }
+    public static boolean actualizarPromocionServidor(Promocion promocion) {
+        try {
+            String json = mapper.writeValueAsString(promocion);
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(BASE_URL + "/menu/promociones"))
+                    .header("Content-Type", "application/json")
+                    .PUT(HttpRequest.BodyPublishers.ofString(json))
+                    .build();
+
+            return httpClient.send(request, HttpResponse.BodyHandlers.ofString()).statusCode() == 200;
+        } catch (Exception e) {
+            System.err.println("Error al actualizar promoción: " + e.getMessage());
+            return false;
+        }
+    }
+    public static boolean guardarRecetaEnServidor(int idProducto, Receta receta) {
+        try {
+            String json = mapper.writeValueAsString(receta);
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(BASE_URL + "/menu/productos/" + idProducto + "/receta"))
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(json))
+                    .build();
+
+            return httpClient.send(request, HttpResponse.BodyHandlers.ofString()).statusCode() == 200;
+        } catch (Exception e) {
+            System.err.println("Error al guardar receta: " + e.getMessage());
+            return false;
+        }
+    }
+    public static int verificarCaducidadPromociones() {
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(BASE_URL + "/menu/promociones/verificar-caducidad"))
+                    .PUT(HttpRequest.BodyPublishers.noBody())
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 200) {
+                return Integer.parseInt(response.body());
+            } else {
+                System.err.println("Error al verificar caducidad de promociones. Código: " + response.statusCode());
+                return 0;
+            }
+        } catch (Exception e) {
+            System.err.println("Falla de conexión al verificar caducidad: " + e.getMessage());
+            return 0;
+        }
+    }
+
+    //Facturacion
+    public static int[] registrarVenta(String nombreCliente, double total, Map<Producto, Integer> carrito, String estadoFactura){
+        try {
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("nombreCliente", nombreCliente);
+            requestBody.put("total", total);
+            requestBody.put("estado", estadoFactura);
+
+            java.util.List<java.util.Map<String, Object>> itemsList = new java.util.ArrayList<>();
+            for (java.util.Map.Entry<Producto, Integer> item : carrito.entrySet()) {
+                java.util.Map<String, Object> i = new java.util.HashMap<>();
+                i.put("idProducto", item.getKey().getId());
+                i.put("cantidad", item.getValue());
+                i.put("precio", item.getKey().getPrecio());
+                i.put("tieneReceta", item.getKey().tieneReceta());
+                itemsList.add(i);
+            }
+            requestBody.put("items", itemsList);
+
+            String jsonVenta = mapper.writeValueAsString(requestBody);
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(BASE_URL + "/ventas"))
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(jsonVenta))
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 200) {
+                Map<String, Integer> respuesta = mapper.readValue(response.body(), new TypeReference<Map<String, Integer>>() {});
+                return new int[]{respuesta.get("numeroFactura"), respuesta.get("numeroTicket")};
+            } else {
+                System.err.println("Error al registrar venta en servidor. Código: " + response.statusCode());
+                return null;
+            }
+        } catch (Exception e) {
+            System.err.println("Falla al enviar venta: " + e.getMessage());
+            return null;
+        }
+    }
+    public static boolean anularVenta(int numeroFactura) {
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(BASE_URL + "/ventas/" + numeroFactura + "/anular"))
+                    .PUT(HttpRequest.BodyPublishers.noBody())
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            return response.statusCode() == 200 && response.body().trim().equals("true");
+        } catch (Exception e) {
+            System.err.println("Falla al anular venta: " + e.getMessage());
+            return false;
+        }
+    }
+    //Modulo comandas / cocina
+    public static ArrayList<Pedido> obtenerPedidosPendientes() {
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(BASE_URL + "/cocina/pendientes"))
+                    .GET()
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 200) {
+                java.util.List<java.util.Map<String, Object>> listaMaps = mapper.readValue(response.body(), new TypeReference<List<Map<String, Object>>>() {});
+                java.util.ArrayList<Pedido> pedidos = new java.util.ArrayList<>();
+
+                for (java.util.Map<String, Object> map : listaMaps) {
+                    Pedido p = new Pedido();
+                    p.setIdPedido((Integer) map.get("idPedido"));
+                    p.setNumeroTicket((Integer) map.get("numeroTicket"));
+                    p.setEstado((String) map.get("estado"));
+                    p.setCliente((String) map.get("cliente"));
+                    pedidos.add(p);
+                }
+                return pedidos;
+            }
+        } catch (Exception e) {
+            System.err.println("Falla al obtener pedidos de cocina: " + e.getMessage());
+        }
+        return new ArrayList<>();
+    }
+
+    public static ArrayList<String> obtenerDetallesParaCocina(int idPedido) {
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(BASE_URL + "/cocina/pedidos/" + idPedido + "/detalles"))
+                    .GET()
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 200) {
+                return mapper.readValue(response.body(), new TypeReference<ArrayList<String>>() {});
+            }
+        } catch (Exception e) {
+            System.err.println("Falla al obtener detalles de pedido: " + e.getMessage());
+        }
+        return new ArrayList<>();
+    }
+
+    public static boolean eliminarPedidoDespachado(int idPedido) {
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(BASE_URL + "/cocina/pedidos/" + idPedido + "/despachar"))
+                    .DELETE()
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            return response.statusCode() == 200 && response.body().trim().equals("true");
+        } catch (Exception e) {
+            System.err.println("Falla al despachar pedido: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public static boolean cancelarPedidoEnServidor(int idPedido) {
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(BASE_URL + "/cocina/pedidos/" + idPedido + "/cancelar"))
+                    .PUT(HttpRequest.BodyPublishers.noBody())
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            return response.statusCode() == 200 && response.body().trim().equals("true");
+        } catch (Exception e) {
+            System.err.println("Falla al cancelar pedido: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public static java.util.ArrayList<Reserva> obtenerReservasPendientes() {
+        try {
+            java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
+                    .uri(java.net.URI.create(BASE_URL + "/reservas/pendientes"))
+                    .GET()
+                    .build();
+
+            java.net.http.HttpResponse<String> response = httpClient.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 200) {
+                return mapper.readValue(response.body(), new com.fasterxml.jackson.core.type.TypeReference<java.util.ArrayList<Reserva>>() {});
+            }
+        } catch (Exception e) {
+            System.err.println("Falla al obtener reservas: " + e.getMessage());
+        }
+        return new java.util.ArrayList<>();
+    }
+
+    public static boolean guardarReservaEnServidor(Reserva reserva) {
+        try {
+            String json = mapper.writeValueAsString(reserva);
+            java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
+                    .uri(java.net.URI.create(BASE_URL + "/reservas"))
+                    .header("Content-Type", "application/json")
+                    .POST(java.net.http.HttpRequest.BodyPublishers.ofString(json))
+                    .build();
+
+            java.net.http.HttpResponse<String> response = httpClient.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+            return response.statusCode() == 200 && response.body().trim().equals("true");
+        } catch (Exception e) {
+            System.err.println("Falla al guardar reserva: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public static boolean actualizarEstadoReservaEnServidor(String idReserva, String nuevoEstado) {
+        try {
+            String url = BASE_URL + "/reservas/" + idReserva + "/estado?estado=" + nuevoEstado.replace(" ", "%20");
+            
+            java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
+                    .uri(java.net.URI.create(url))
+                    .PUT(java.net.http.HttpRequest.BodyPublishers.noBody())
+                    .build();
+
+            java.net.http.HttpResponse<String> response = httpClient.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+            return response.statusCode() == 200 && response.body().trim().equals("true");
+        } catch (Exception e) {
+            System.err.println("Falla al actualizar reserva: " + e.getMessage());
+            return false;
+        }
+    }
+    public static Map<String, Object> obtenerReporteConsolidado(String fechaInicio, String fechaFin) {
+        try {
+            String url = BASE_URL + "/reportes/consolidado";
+            if (fechaInicio != null && fechaFin != null) {
+                url += "?inicio=" + fechaInicio + "&fin=" + fechaFin;
+            }
+
+            java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
+                    .uri(java.net.URI.create(url))
+                    .GET()
+                    .build();
+
+            java.net.http.HttpResponse<String> response = httpClient.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 200) {
+                return mapper.readValue(response.body(), new com.fasterxml.jackson.core.type.TypeReference<java.util.Map<String, Object>>() {});
+            }
+        } catch (Exception e) {
+            System.err.println("Falla al obtener reportes: " + e.getMessage());
+        }
+        return null;
+    }
+    public static boolean registrarEgresoEnServidor(String descripcion, double monto) {
+        try {
+            String url = String.format("%s/reportes/egreso?descripcion=%s&monto=%s", BASE_URL, descripcion.replace(" ", "%20"), monto);
+            java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
+                    .uri(java.net.URI.create(url)).POST(java.net.http.HttpRequest.BodyPublishers.noBody()).build();
+
+            return httpClient.send(request, java.net.http.HttpResponse.BodyHandlers.ofString()).statusCode() == 200;
+        } catch (Exception e) {
+            System.err.println("Error al registrar egreso: " + e.getMessage());
+            return false;
+        }
+    }
+    public static Factura obtenerFacturaConDetalles(int numeroFactura) {
+        Factura factura = null;
+        try {
+            java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
+                    .uri(java.net.URI.create(BASE_URL + "/ventas/" + numeroFactura))
+                    .GET()
+                    .build();
+
+            java.net.http.HttpResponse<String> response = httpClient.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 200) {
+                java.util.Map<String, Object> mapaFac = mapper.readValue(response.body(), new com.fasterxml.jackson.core.type.TypeReference<java.util.Map<String, Object>>() {});
+
+                factura = new Factura(numeroFactura, (String) mapaFac.get("nombre_cliente"));
+                factura.setNumeroTicket((Integer) mapaFac.get("numero_ticket"));
+                factura.setTotal(((Number) mapaFac.get("total")).doubleValue());
+                factura.setEstado((String) mapaFac.get("estado"));
+
+                try {
+                    String fechaStr = mapaFac.get("fecha_hora").toString().replace("T", " ");
+                    factura.setFecha(java.time.LocalDateTime.parse(fechaStr.substring(0, 19), java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                } catch (Exception e) {}
+
+                List<java.util.Map<String, Object>> detalles = (List<java.util.Map<String, Object>>) mapaFac.get("detalles");
+                if (detalles != null) {
+                    for (java.util.Map<String, Object> det : detalles) {
+                        Producto p = new Producto();
+                        p.setId((Integer) det.get("id_producto"));
+                        p.setNombre((String) det.get("nombre"));
+                        p.setPrecio(((Number) det.get("precio")).doubleValue());
+
+                        factura.agregarProducto(p, (Integer) det.get("cantidad"));
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Falla al obtener detalles de la factura: " + e.getMessage());
+        }
+        return factura;
+    }
+
+    public static boolean existeEgresoPorConcepto(String concepto) {
+        try {
+            String url = BASE_URL + "/reportes/egreso/existe?concepto=" + concepto.replace(" ", "%20");
+            java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
+                    .uri(java.net.URI.create(url))
+                    .GET()
+                    .build();
+
+            java.net.http.HttpResponse<String> response = httpClient.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+            return response.statusCode() == 200 && response.body().trim().equals("true");
+        } catch (Exception e) {
+            System.err.println("Falla al verificar egreso: " + e.getMessage());
+            return false;
+        }
+    }
+    public static boolean registrarAuditoriaEnServidor(String operador, String tipoArea, String nombreItem, String accion, double cantidad, String motivo) {
+        try {
+            String url = String.format("%s/reportes/auditoria?operador=%s&tipoArea=%s&nombreItem=%s&accion=%s&cantidad=%s&motivo=%s",
+                    BASE_URL,
+                    operador.replace(" ", "%20"),
+                    tipoArea.replace(" ", "%20"),
+                    nombreItem.replace(" ", "%20"),
+                    accion.replace(" ", "%20"),
+                    cantidad,
+                    motivo.replace(" ", "%20"));
+
+            java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
+                    .uri(java.net.URI.create(url))
+                    .POST(java.net.http.HttpRequest.BodyPublishers.noBody())
+                    .build();
+
+            java.net.http.HttpResponse<String> response = httpClient.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+            return response.statusCode() == 200 || response.statusCode() == 201;
+        } catch (Exception e) {
+            System.err.println("Error subiendo auditoría al servidor: " + e.getMessage());
+            return false;
+        }
+    }
+    public static boolean isServidorDisponible() {
+        try {
+            java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
+                    .uri(java.net.URI.create(BASE_URL + "/empleados"))
+                    .timeout(Duration.ofSeconds(2)) // Si no responde en 2s, asumimos que no hay internet
+                    .GET()
+                    .build();
+
+            java.net.http.HttpResponse<String> response = httpClient.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+            return response.statusCode() == 200;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public static Empleado autenticarUsuarioEnServidor(String username, String password) {
+        try {
+            String url = BASE_URL + "/empleados/login?username=" + username + "&password=" + password;
+            java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
+                    .uri(java.net.URI.create(url))
+                    .GET()
+                    .build();
+
+            java.net.http.HttpResponse<String> response = httpClient.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 200 && !response.body().isEmpty()) {
+                return mapper.readValue(response.body(), Empleado.class);
+            }
+        } catch (Exception e) {
+            System.err.println("Error de autenticación en la nube: " + e.getMessage());
+        }
+        return null;
+    }
+
 }

@@ -4,8 +4,6 @@ import Attizos.Backend.AI.AuditoriaAI;
 import Attizos.Backend.Api.ApiClient;
 import Attizos.Backend.Attizos.App;
 import Attizos.Backend.Attizos.Insumo;
-import Attizos.Backend.Database.InsumoDAO;
-import Attizos.Backend.Database.ReportesDAO;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
@@ -219,7 +217,7 @@ public class FormularioNuevoInsumoController {
             boolean guardado = ApiClient.guardarInsumoEnServidor(nuevo, costo);
             if(guardado) {
                 if(costo > 0){
-                    ReportesDAO.registrarEgreso("Stock Inicial Catálogo: "+nom, costo);
+                    ApiClient.registrarEgresoEnServidor("Stock Inicial Catálogo: "+nom,costo);
                 }
                 App.attizos.getInventario().getInventarioInsumos().put(nuevo.getCodigo(), nuevo);
                 String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";

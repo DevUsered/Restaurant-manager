@@ -10,8 +10,6 @@ import java.util.Optional;
 import Attizos.Backend.Api.ApiClient;
 import Attizos.Backend.Attizos.*;
 import Attizos.Backend.Database.ConexionSQLite;
-import Attizos.Backend.Database.EmpleadoDAO;
-import Attizos.Backend.Database.ReportesDAO;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -43,6 +41,10 @@ public class EmpleadosController {
     private TableColumn<Empleado, Double> colSueldo;
     @FXML
     private TableColumn<Empleado, String> colUsername;
+    @FXML
+    private TableColumn<Empleado, Boolean> colEstadoPago;
+    @FXML
+    private TableColumn<Empleado, String> colFechaContrato;
 
     // --- FORMULARIO ---
     @FXML private TextField txtBuscador;
@@ -58,8 +60,7 @@ public class EmpleadosController {
     private TextField txtUsername;
     @FXML
     private PasswordField txtPassword;
-    @FXML
-    private TableColumn<Empleado, Boolean> colEstadoPago;
+
 
 
     private ObservableList<Empleado> masterData;
@@ -90,6 +91,10 @@ public class EmpleadosController {
                     }
                 }
             }
+        });
+        colFechaContrato.setCellValueFactory(cellData -> {
+            LocalDate fecha = cellData.getValue().getFechaContrato();
+            return new SimpleStringProperty(fecha != null ? fecha.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) : "N/A");
         });
 
         colUsername.setCellValueFactory(cellData -> {
@@ -169,6 +174,7 @@ public class EmpleadosController {
             nuevoEmpleado.setCargo(cargo);
             nuevoEmpleado.setSueldo(sueldo);
             nuevoEmpleado.setEstado("Activo");
+            nuevoEmpleado.setFechaContrato(LocalDate.now());
 
             if(cargo.equalsIgnoreCase("Administrador") || cargo.equalsIgnoreCase("Cajero") || cargo.equalsIgnoreCase("Cocinero")){
                 String user = txtUsername.getText().trim();
@@ -283,6 +289,8 @@ public class EmpleadosController {
             mostrarAlerta("Modo incorrecto", "Para actualizar, primero seleccione un empleado y presione 'Cargar para Editar'.");
             return;
         }
+        Empleado seleccionadoOriginal = tablaEmpleados.getSelectionModel().getSelectedItem();
+        if(seleccionadoOriginal == null) return;
 
         try {
             String id = txtId.getText().trim();
@@ -305,6 +313,10 @@ public class EmpleadosController {
             empleadoActualizado.setCargo(cargo);
             empleadoActualizado.setSueldo(sueldo);
             empleadoActualizado.setEstado("Activo");
+
+            empleadoActualizado.setFechaUltimoPago(seleccionadoOriginal.getFechaUltimoPago());
+            empleadoActualizado.setFechaContrato(seleccionadoOriginal.getFechaContrato());
+
 
             if (cargo.equalsIgnoreCase("Administrador") || cargo.equalsIgnoreCase("Cajero") || cargo.equalsIgnoreCase("Cocinero")) {
                 String user = txtUsername.getText().trim();
@@ -370,7 +382,7 @@ public class EmpleadosController {
             }
             String conceptoEgreso = "Sueldo: "+sel.getNombre() + " ("+periodo.trim()+")";
 
-            boolean yaPagado = ReportesDAO.existeEgresoPorConcepto(conceptoEgreso);
+            boolean yaPagado = ApiClient.existeEgresoPorConcepto(conceptoEgreso);
             if(yaPagado){
                 Optional<String> confirmacion = DialogoPersonalizado.mostrarDialogo(
                         "⚠ ADVERTENCIA DE PAGO DUPLICADO",
@@ -382,7 +394,7 @@ public class EmpleadosController {
                     mostrarAlerta("Operación Cancelada", "Se abortó el pago para evitar duplicidad.");
                     return;
                 }
-                conceptoEgreso += " (Pago Adicional/Extra)";
+                conceptoEgreso = "Adelanto Extra: " + sel.getNombre() + " (" + periodo.trim() + ")";
             }
             final String conceptoFinal = conceptoEgreso;
             DialogoPersonalizado.mostrarDialogo(
@@ -400,8 +412,7 @@ public class EmpleadosController {
                     UtilidadesUI.ejecutarTareaAsincrona(
                             tablaEmpleados,
                             () ->{
-                                boolean egresoRegistrado = ReportesDAO.registrarEgreso(conceptoFinal, montoPagar);
-
+                                boolean egresoRegistrado = ApiClient.registrarEgresoEnServidor(conceptoFinal, montoPagar);
                                 if(egresoRegistrado){
                                     String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
                                     App.registrarAuditoria(operador, "Empleado", sel.getNombre(), "Pago de Sueldo", montoPagar, "Pago del periodo: " + periodo);

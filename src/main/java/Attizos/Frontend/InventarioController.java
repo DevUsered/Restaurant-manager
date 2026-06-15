@@ -3,9 +3,6 @@ package Attizos.Frontend;
 import Attizos.Backend.AI.AuditoriaAI;
 import Attizos.Backend.Api.ApiClient;
 import Attizos.Backend.Attizos.*;
-import Attizos.Backend.Database.InsumoDAO;
-import Attizos.Backend.Database.ReportesDAO;
-import Attizos.Backend.Listas.NodoDE;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
@@ -245,8 +242,10 @@ public class InventarioController {
                                            boolean exitoDB = ApiClient.registrarLoteEnServidor(codigoBase, cantidad, costo, nuevaFecha);
                                            if (exitoDB) {
                                                App.attizos.getInventario().getInventarioInsumos().clear();
-                                               App.attizos.getInventario().getInventarioInsumos().putAll(InsumoDAO.obtenerInventarioActivo());
-                                               ReportesDAO.registrarEgreso("Registrar insumo", costo);
+                                               for (Insumo ins : ApiClient.obtenerInsumoDelServidor()) {
+                                                   App.attizos.getInventario().getInventarioInsumos().put(ins.getCodigo(), ins);
+                                               }
+                                               ApiClient.registrarEgresoEnServidor("Registrar insumo",costo);
 
                                                String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
                                                App.registrarAuditoria(operador, "Insumo", insumoBase.getNombre(), "Ingreso Lote", cantidad, "Ingreso de nuevo lote. Costo: " + costo);
@@ -288,7 +287,9 @@ public class InventarioController {
                             boolean descuentoExitoso = ApiClient.descontarStockFEFOEnServidor(seleccionado.getCodigo(), 1);
                             if(descuentoExitoso){
                                 App.attizos.getInventario().getInventarioInsumos().clear();
-                                App.attizos.getInventario().getInventarioInsumos().putAll(InsumoDAO.obtenerInventarioActivo());
+                                for (Insumo ins : ApiClient.obtenerInsumoDelServidor()) {
+                                    App.attizos.getInventario().getInventarioInsumos().put(ins.getCodigo(), ins);
+                                }
                                 String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
                                 App.registrarAuditoria(operador, "Insumo", seleccionado.getNombre(), "Ajuste Stock (-1)", 1.0, "Merma FEFO: " + motivo);
 
@@ -389,7 +390,9 @@ public class InventarioController {
 
                 if (retirado > 0) {
                     App.attizos.getInventario().getInventarioInsumos().clear();
-                    App.attizos.getInventario().getInventarioInsumos().putAll(InsumoDAO.obtenerInventarioActivo());
+                    for (Insumo ins : ApiClient.obtenerInsumoDelServidor()) {
+                        App.attizos.getInventario().getInventarioInsumos().put(ins.getCodigo(), ins);
+                    }
 
                     String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
                     App.registrarAuditoria(operador, "Insumo", seleccionado.getNombre(), "Merma por Caducidad", retirado, "Limpieza manual: " + motivo);

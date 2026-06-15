@@ -14,6 +14,8 @@ public class Factura {
     private double total;
     private String estado;
 
+    public Factura() {}
+
     public Factura(int numeroFactura, String nombreCliente) {
         this.numeroFactura = numeroFactura;
         this.nombreCliente = nombreCliente;

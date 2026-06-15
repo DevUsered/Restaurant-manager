@@ -1,5 +1,6 @@
 package Attizos.Frontend;
 
+import Attizos.Backend.Api.ApiClient;
 import Attizos.Backend.Attizos.*;
 import Attizos.Backend.Database.*;
 import javafx.beans.property.SimpleStringProperty;
@@ -8,13 +9,11 @@ import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
-import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
-import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 
@@ -24,8 +23,6 @@ import java.util.HashMap;
 import java.util.List;
 
 import java.io.File;
-import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
 
 public class ProductosController {
 
@@ -62,9 +59,9 @@ public class ProductosController {
     // Campos dinámicos
     private ComboBox<String> cmbTamanoPizza = new ComboBox<>(FXCollections.observableArrayList("Personal", "Mediana", "Familiar", "Gigante"));
     private CheckBox chkExtraQueso = new CheckBox("¿Lleva Extra Queso?");
-    private ComboBox<String> cmbTamanoBebida = new ComboBox<>(FXCollections.observableArrayList("Personal", "Mediana", "Familiar", "Litro", "2 Litros", "3 Litros"));
     private TextField txtTipoBebida = new TextField();
     private TextField txtSalsaPasta = new TextField();
+    private ComboBox<String> cmbTamanoBebida = new ComboBox<>(FXCollections.observableArrayList("Personal", "Medio litro", "1 Litro", "2 Litros", "3 Litros"));
 
     private CheckBox chkTieneRecetaOtro = new CheckBox("¿Se prepara en cocina (Tiene ingredientes)?");
 
@@ -440,13 +437,14 @@ public class ProductosController {
                                     mostrarAlerta("Error", "El costo no puede ser negativo.");
                                     return;
                                 }
-                                boolean guardadoDB = ProductoDAO.insertarProducto(nuevo);
+                                boolean guardadoDB = ApiClient.guardarProductoEnServidor(nuevo);
                                 if(guardadoDB) {
                                     if(nuevo.tieneReceta()){
-                                        RecetaDAO.guardarReceta(nuevo.getId(), nuevo.getReceta());
+                                        ApiClient.guardarRecetaEnServidor(nuevo.getId(), nuevo.getReceta());
                                     }
-                                    ReportesDAO.registrarEgreso("Compra Inicial: "+ nuevo.getNombre(), costoTotal);
+                                    ApiClient.registrarEgresoEnServidor("Compra Inicial: "+nuevo.getNombre(), costoTotal);
                                     App.attizos.getMenu().add(nuevo);
+                                    ConexionSQLite.sincronizarProductos();
                                     String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
                                     App.registrarAuditoria(operador, "Producto", nuevo.getNombre(), "Creación", cant, "Nuevo producto con stock inicial");
                                     cargarMenu();
@@ -460,10 +458,10 @@ public class ProductosController {
                             }
                         });
             }else {
-                boolean guardadoDB = ProductoDAO.insertarProducto(nuevo);
+                boolean guardadoDB = ApiClient.guardarProductoEnServidor(nuevo);
                 if(guardadoDB) {
                     if(nuevo.tieneReceta()){
-                        RecetaDAO.guardarReceta(nuevo.getId(), nuevo.getReceta());
+                        ApiClient.guardarRecetaEnServidor(nuevo.getId(), nuevo.getReceta());
                     }
                     App.attizos.getMenu().add(nuevo);
                     String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
@@ -509,9 +507,9 @@ public class ProductosController {
                                             return;
                                         }
                                         sel.aumentarStock(cantidad);
-                                        boolean actualizado = ProductoDAO.actualizarProducto(sel);
+                                        boolean actualizado = ApiClient.actualizarProductoEnServidor(sel);
                                         if(actualizado){
-                                            ReportesDAO.registrarEgreso("Compra: " + sel.getNombre() + " (" + cantidad + " und)", costoTotal);
+                                            ApiClient.registrarEgresoEnServidor("Compra: "+sel.getNombre()+ " ("+cantidad+ " und)", costoTotal);
                                             String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
                                             App.registrarAuditoria(operador, "Producto", sel.getNombre(), "Ajuste Stock", cantidad, "Ingreso de mercadería. Costo: Bs. " + costoTotal);
                                             tablaMenu.refresh();
@@ -549,7 +547,7 @@ public class ProductosController {
                                     if (motivo.trim().isEmpty()) {
                                         mostrarAlerta("Obligatorio", "Debe justificar la baja.");
                                     } else if (sel.reducirStock(cantidad)) {
-                                        boolean actualizado = ProductoDAO.actualizarProducto(sel);
+                                        boolean actualizado = ApiClient.actualizarProductoEnServidor(sel);
                                         if(actualizado) {
                                             String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
                                             App.registrarAuditoria(operador, "Producto", sel.getNombre(), "Ajuste Stock", cantidad, "Baja de mercadería: " + motivo);
@@ -579,11 +577,12 @@ public class ProductosController {
                     if(motivo.trim().isEmpty()){
                         mostrarAlerta("Seguridad", "Es obligatorio escribir un motivo para eliminar el producto.");
                     }else {
-                        boolean eliminadoDB = ProductoDAO.eliminarProducto(sel.getId());
+                        boolean eliminadoDB = ApiClient.inactivarProductoEnServidor(sel.getId());
                         if (eliminadoDB) {
+                            App.attizos.getMenu().remove(sel);
+                            cargarMenu();
                             String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
                             App.registrarAuditoria(operador, "Producto", sel.getNombre(), "Eliminación Lógica", sel.getStock(), motivo);
-                            cargarMenu();
                             mostrarExito("Eliminado", "Producto dado de baja. Ya no aparecerá en el menú.\nMotivo: " + motivo);
                         }
                     }
@@ -673,7 +672,7 @@ public class ProductosController {
                                 double nuevoPrecio = Double.parseDouble(nuevoPrecioStr.replace(",", "."));
                                 if (nuevoPrecio >= 0) {
                                     seleccionado.setPrecio(nuevoPrecio);
-                                    boolean actualizado = ProductoDAO.actualizarProducto(seleccionado);
+                                    boolean actualizado = ApiClient.actualizarProductoEnServidor(seleccionado);
                                     if(actualizado) {
                                         tablaMenu.refresh();
 
@@ -737,7 +736,7 @@ public class ProductosController {
         for(DetalleRecetaUI det : recetaTemporal){
             receta.agregarIngrediente(det.getInsumo().getCodigo(), det.getCantidad());
         }
-        boolean exitoDB = RecetaDAO.guardarReceta(sel.getId(), receta);
+        boolean exitoDB = ApiClient.guardarRecetaEnServidor(sel.getId(), receta);
         if(exitoDB){
             sel.setReceta(receta);
             String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";

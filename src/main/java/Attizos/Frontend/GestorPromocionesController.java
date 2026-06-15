@@ -1,13 +1,10 @@
 package Attizos.Frontend;
 
+import Attizos.Backend.Api.ApiClient;
 import Attizos.Backend.Attizos.App;
 import Attizos.Backend.Attizos.DetalleCombo;
 import Attizos.Backend.Attizos.Producto;
 import Attizos.Backend.Attizos.Promocion;
-import Attizos.Backend.Database.ConexionBD;
-import Attizos.Backend.Database.ProductoDAO;
-import Attizos.Backend.Database.PromocionDAO;
-import Attizos.Backend.Listas.NodoDE;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -192,6 +189,13 @@ public class GestorPromocionesController {
                 listaPromosVisibles.add(promo);
             }
         }
+        if (App.attizos.getMenu() != null) {
+            for (Producto p : App.attizos.getMenu()) {
+                if (p.getEstado() != null && p.getEstado().equals("Activo") && !p.getCategoria().equalsIgnoreCase("Promocion")) {
+                    masterMenu.add(p);
+                }
+            }
+        }
     }
 
     @FXML
@@ -280,7 +284,8 @@ public class GestorPromocionesController {
             String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
 
             if (promoEnEdicion == null) {
-                if (PromocionDAO.guardarNuevaPromocion(promoAGuardar)) {
+                boolean guardar = ApiClient.guardarPromocionEnServidor(promoAGuardar);
+                if (guardar) {
                     App.attizos.getPromocionesActivas().add(promoAGuardar);
                     App.registrarAuditoria(operador, "Promociones", nombre, "Creación", 0, "Nueva promoción a Bs." + precio);
                     AlertaPersonalizada.mostrarAlerta("Éxito", "Promoción creada correctamente.", Alert.AlertType.INFORMATION);
@@ -309,35 +314,7 @@ public class GestorPromocionesController {
     }
 
     private boolean actualizarPromocionEnBaseDeDatos(Promocion promo) {
-        if (!ProductoDAO.actualizarProducto(promo)) return false;
-
-        String sqlDelete = "DELETE FROM detalle_combo WHERE id_promocion = ?";
-        String sqlInsert = "INSERT INTO detalle_combo (id_promocion, id_producto, cantidad) VALUES (?, ?, ?)";
-
-        try (Connection conn = ConexionBD.getConexion()) {
-            conn.setAutoCommit(false);
-
-            try (PreparedStatement psDel = conn.prepareStatement(sqlDelete)) {
-                psDel.setInt(1, promo.getId());
-                psDel.executeUpdate();
-            }
-
-            try (PreparedStatement psIns = conn.prepareStatement(sqlInsert)) {
-                for (DetalleCombo dc : promo.getProductosCombo()) {
-                    psIns.setInt(1, promo.getId());
-                    psIns.setInt(2, dc.getProducto().getId());
-                    psIns.setInt(3, dc.getCantidad());
-                    psIns.addBatch();
-                }
-                psIns.executeBatch();
-            }
-
-            conn.commit();
-            return true;
-        } catch (Exception e) {
-            System.err.println("Error actualizando promo: " + e.getMessage());
-            return false;
-        }
+       return ApiClient.actualizarPromocionServidor(promo);
     }
 
     @FXML
@@ -369,8 +346,8 @@ public class GestorPromocionesController {
 
         String nuevoEstado = sel.getEstado().equals("Activo") ? "Inactivo" : "Activo";
         sel.setEstado(nuevoEstado);
-
-        if (ProductoDAO.actualizarProducto(sel)) {
+        boolean actualizar = ApiClient.actualizarProductoEnServidor(sel);
+        if (actualizar) {
             String op = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
             App.registrarAuditoria(op, "Promociones", sel.getNombre(), "Cambio Estado", 0, "Estado cambiado a: " + nuevoEstado);
             cargarDatos();
@@ -387,7 +364,7 @@ public class GestorPromocionesController {
                 .ifPresent(motivo -> {
                     if (motivo.isEmpty()) {
                         AlertaPersonalizada.mostrarAlerta("Error", "Debe justificar la eliminación.", Alert.AlertType.WARNING);
-                    } else if (ProductoDAO.eliminarProducto(sel.getId())) {
+                    } else if (ApiClient.inactivarProductoEnServidor(sel.getId())) {
                         App.attizos.getPromocionesActivas().remove(sel);
 
                         String op = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";

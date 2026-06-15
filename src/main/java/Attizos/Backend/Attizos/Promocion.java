@@ -9,6 +9,8 @@ public class Promocion extends Producto{
     private LocalDate fechaInicio;
     private LocalDate fechaFin;
 
+    public Promocion(){}
+
     public Promocion(int id, String nombre, double precioFinal, String imagenURL, LocalDate fechaInicio, LocalDate fechaFin){
         super(id, nombre, precioFinal,"Promocion",0, imagenURL, "Activo");
         this.productosCombo = new ArrayList<>();

@@ -1,5 +1,6 @@
 package Attizos.Backend.Attizos;
 
+import Attizos.Backend.Api.ApiClient;
 import Attizos.Backend.Database.*;
 import Attizos.Backend.Listas.*;
 import Attizos.Frontend.ServicioNube;
@@ -28,23 +29,20 @@ public class App {
 
         temporizadorSincronizacion.scheduleAtFixedRate(() -> {
             try {
-                try (java.sql.Connection con = Attizos.Backend.Database.ConexionBD.getConexion()) {
-                    if (con != null && !con.isClosed()) {
+                if(ApiClient.isServidorDisponible()){
                         System.out.println("⏳ [Auto-Sync] Buscando actualizaciones en la red...");
                         modoOffline = false;
 
                         ConexionSQLite.subirAuditoriaPendiente();
-                        Attizos.Frontend.ServicioNube.sincronizarImagenesPendientes();
-
+                        ServicioNube.sincronizarImagenesPendientes();
                         ConexionSQLite.actualizarCacheCompleta();
                         ArrayList<Producto> menuActualizado = ConexionSQLite.obtenerMenuLocal();
                         attizos.setMenu(menuActualizado);
-                        RecetaDAO.cargarRecetas();
-                        PromocionDAO.verificarYDesactivarPromociones();
                         ArrayList<Promocion> promocionDB = ConexionSQLite.obtenerPromocionesLocal(menuActualizado);
                         attizos.setPromocionesActivas(promocionDB);
                         System.out.println("✅ [Auto-Sync] Sistema actualizado con éxito.");
-                    }
+                    }else{
+                    throw new RuntimeException("Servidor inalcanzable");
                 }
             } catch (Exception e) {
                 System.out.println("⚠️ [Auto-Sync] Modo offline detectado, reintentando en 5 min.");
@@ -71,10 +69,13 @@ public class App {
                     ConexionSQLite.subirAuditoriaPendiente();
                     ServicioNube.sincronizarImagenesPendientes();
                     ConexionSQLite.actualizarCacheCompleta();
-                    HashMap<String, Insumo> stockRealNube = InsumoDAO.obtenerInventarioActivo();
-                    if (stockRealNube != null) {
+
+                    ArrayList<Insumo> stockRealNube = ApiClient.obtenerInsumoDelServidor();
+                    if (stockRealNube != null && !stockRealNube.isEmpty()) {
                         attizos.getInventario().getInventarioInsumos().clear();
-                        attizos.getInventario().getInventarioInsumos().putAll(stockRealNube);
+                        for (Insumo ins : stockRealNube) {
+                            attizos.getInventario().getInventarioInsumos().put(ins.getCodigo(), ins);
+                        }
                         System.out.println("✅ RAM actualizada con el stock real de la nube.");
                     }
                     ArrayList<Producto> menuActualizado = ConexionSQLite.obtenerMenuLocal();
@@ -119,7 +120,6 @@ public class App {
             for (Producto p : menuDB) {
                 attizos.getMenu().add(p);
             }
-            RecetaDAO.cargarRecetas();
             ArrayList<Promocion> promocionDB = ConexionSQLite.obtenerPromocionesLocal(menuDB);
             attizos.setPromocionesActivas(promocionDB);
             System.out.println("Promociones cargados. ");
@@ -134,7 +134,7 @@ public class App {
             usuarioLogueado = user;
             return true;
         } else if(!modoOffline){
-            user = LoginDAO.autenticarUsuario(username, pass);
+            user = ApiClient.autenticarUsuarioEnServidor(username, pass);
             if(user != null){
                 usuarioLogueado = user;
                 return  true;
@@ -147,7 +147,7 @@ public class App {
         if(modoOffline){
             ConexionSQLite.guardarAuditoriaOffline(operador,tipoArea,nombreItem,accion,cantidad,motivo);
         }else {
-            boolean guardadoDB = ReportesDAO.registrarAuditoria(operador, tipoArea, nombreItem, accion, cantidad, motivo);
+            boolean guardadoDB = ApiClient.registrarAuditoriaEnServidor(operador, tipoArea, nombreItem, accion, cantidad, motivo);
 
             if (!guardadoDB) {
                 ConexionSQLite.guardarAuditoriaOffline(operador, tipoArea, nombreItem, accion, cantidad, motivo);

@@ -1,7 +1,7 @@
 package Attizos.Frontend;
 
+import Attizos.Backend.Api.ApiClient;
 import Attizos.Backend.Attizos.*;
-import Attizos.Backend.Database.RecetaDAO;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
@@ -161,7 +161,7 @@ public class EditarRecetaController {
                 nuevaReceta.agregarIngrediente(det.getInsumo().getCodigo(), det.getCantidad());
             }
 
-            boolean exito = RecetaDAO.guardarReceta(productoEdicion.getId(), nuevaReceta);
+            boolean exito = ApiClient.guardarRecetaEnServidor(productoEdicion.getId(), nuevaReceta);
 
             if (exito) {
                 productoEdicion.setReceta(nuevaReceta);

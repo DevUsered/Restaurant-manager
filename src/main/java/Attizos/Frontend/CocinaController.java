@@ -1,5 +1,6 @@
 package Attizos.Frontend;
 
+import Attizos.Backend.Api.ApiClient;
 import Attizos.Backend.Attizos.*;
 import Attizos.Backend.Database.*;
 import Attizos.Backend.Listas.ListaDE;
@@ -80,7 +81,7 @@ public class CocinaController {
 
     private void cargarColaDesdeBackend() {
         listaColaPedidos.clear();
-        listaColaPedidos.addAll(PedidoDAO.obtenerPedidosPendientes());
+        listaColaPedidos.addAll(ApiClient.obtenerPedidosPendientes());
     }
 
     private void mostrarDetallesPedido(Pedido pedido) {
@@ -92,7 +93,7 @@ public class CocinaController {
 
         lblPedidoActual.setText("Ticket #" + pedido.getNumeroTicket() + " - " + pedido.getCliente());
         
-        listaDetallesCocina.getItems().addAll(PedidoDAO.obtenerDetallesParaCocina(pedido.getIdPedido()));
+        listaDetallesCocina.getItems().addAll(ApiClient.obtenerDetallesParaCocina(pedido.getIdPedido()));
     }
 
     @FXML
@@ -104,7 +105,7 @@ public class CocinaController {
             pedidoAtendido = listaColaPedidos.get(0);
         }
         
-        boolean eliminado = PedidoDAO.eliminarPedidoDespachado(pedidoAtendido.getIdPedido());
+        boolean eliminado = ApiClient.eliminarPedidoDespachado(pedidoAtendido.getIdPedido());
 
         if(eliminado){
             mostrarExito("¡Plato Listo!", "El Ticket #" + pedidoAtendido.getIdPedido() + " ha sido despachado.");
@@ -125,7 +126,7 @@ public class CocinaController {
             return;
         }
 
-        boolean cancelado = FacturaDAO.anularVenta(seleccionado.getIdPedido());
+        boolean cancelado = ApiClient.cancelarPedidoEnServidor(seleccionado.getIdPedido())    ;
 
         if (cancelado) {
             actualizarDespuesDeCancelar();
@@ -140,7 +141,7 @@ public class CocinaController {
     @FXML
     void cerrarVentana(ActionEvent event) {
         try{
-            if(radarDePedidos != null) radarDePedidos.stop(); // Apagamos el reloj antes de irnos
+            if(radarDePedidos != null) radarDePedidos.stop();
 
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Home.fxml"));
             Parent root = loader.load();
@@ -165,10 +166,9 @@ public class CocinaController {
         AlertaPersonalizada.mostrarAlerta(titulo, mensaje, Alert.AlertType.INFORMATION);
     }
     private void actualizarDespuesDeCancelar(){
-        //Insumos
         App.attizos.getInventario().getInventarioInsumos().clear();
-        App.attizos.getInventario().getInventarioInsumos().putAll(InsumoDAO.obtenerInventarioActivo());
-        //Productos fijos
+        App.attizos.getInventario().getInventarioInsumos().putAll(ConexionSQLite.obtenerInventarioLocal());
+
         App.attizos.getMenu().clear();
         ArrayList<Producto> menuAct = ConexionSQLite.obtenerMenuLocal();
 

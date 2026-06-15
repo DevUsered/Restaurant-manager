@@ -13,6 +13,8 @@ public class Reserva {
     private int numeroMesa;
     private String estado;
 
+    public Reserva() {}
+
     public Reserva(String id, String nombreCliente, String telefono, int cantidadPersonas, LocalDateTime fechaHora, String observaciones) {
         this.id = id;
         this.nombreCliente = nombreCliente;

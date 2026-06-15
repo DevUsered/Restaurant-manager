@@ -7,6 +7,15 @@ public class Egreso {
     private double totalAmount;
     private LocalDate date;
 
+    public Egreso(){}
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public void setTotalAmount(double totalAmount) {
+        this.totalAmount = totalAmount;
+    }
+
     public void setDate(LocalDate date) {
         this.date = date;
     }
@@ -28,4 +37,5 @@ public class Egreso {
     public LocalDate getDate() {
         return date;
     }
+
 }

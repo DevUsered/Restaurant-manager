@@ -1,21 +1,15 @@
 package Attizos.Frontend;
 
+import Attizos.Backend.Api.ApiClient;
 import Attizos.Backend.Attizos.App;
 import Attizos.Backend.Attizos.Reserva;
-import Attizos.Backend.Database.ReservasDAO;
-import Attizos.Backend.Listas.NodoDE;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Node;
-import javafx.scene.Parent;
-import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
-import javafx.stage.Stage;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -72,7 +66,7 @@ public class ReservasController {
 
     private void cargarReservas() {
         new Thread(() ->{
-            var reservasDB = ReservasDAO.obtenerReservasPendientesYLimpiar();
+            var reservasDB = ApiClient.obtenerReservasPendientes();
 
             javafx.application.Platform.runLater(() ->{
                 listaVisible.clear();
@@ -99,13 +93,14 @@ public class ReservasController {
             LocalDateTime fechaHora = LocalDateTime.of(f, LocalTime.parse(h));
             if(fechaHora.isBefore(LocalDateTime.now())){
                 mostrarAlerta("Error","No se puede reservar en el pasado");
+                return;
             }
             int pax = Integer.parseInt(txtPersonas.getText());
 
             String id = App.attizos.generarIdReserva(fechaHora);
             Reserva nueva = new Reserva(id, cliente, telf, pax, fechaHora, obs);
 
-            boolean guardado = ReservasDAO.insertarReserva(nueva);
+            boolean guardado = ApiClient.guardarReservaEnServidor(nueva);
 
             if(guardado){
                 String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
@@ -126,7 +121,7 @@ public class ReservasController {
         Reserva sel = tablaReservas.getSelectionModel().getSelectedItem();
         if (sel == null) return;
 
-        boolean actualizado = ReservasDAO.actualizarEstadoReserva(sel.getId(), "Atendida");
+        boolean actualizado = ApiClient.actualizarEstadoReservaEnServidor(sel.getId(), "Atendida");
         if(actualizado){
             String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
             App.registrarAuditoria(operador, "Reservas", sel.getNombreCliente(), "Atención", 0, "Reserva finalizada/atendida");
@@ -144,8 +139,7 @@ public class ReservasController {
             DialogoPersonalizado.mostrarDialogo("Confirmar Cancelación", "Va a cancelar la reserva de: " + sel.getNombreCliente(), "¿Está seguro de cancelar?", "")
                     .ifPresent(respuesta -> {
                         if (!respuesta.trim().isEmpty()) {
-                            // 🔥 Actualiza a "Cancelada" en la BD
-                            boolean cancelado = ReservasDAO.actualizarEstadoReserva(sel.getId(), "Cancelada");
+                            boolean cancelado = ApiClient.actualizarEstadoReservaEnServidor(sel.getId(), "Cancelada");
                             if (cancelado) {
                                 String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
                                 App.registrarAuditoria(operador, "Reservas", sel.getNombreCliente(), "Cancelación", 0, "Reserva cancelada manualmente");

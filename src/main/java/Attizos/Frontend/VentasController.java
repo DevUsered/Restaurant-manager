@@ -1,10 +1,8 @@
 package Attizos.Frontend;
 
+import Attizos.Backend.Api.ApiClient;
 import Attizos.Backend.Attizos.*;
 import Attizos.Backend.Database.ConexionSQLite;
-import Attizos.Backend.Database.FacturaDAO;
-import Attizos.Backend.Listas.ListaDE;
-import Attizos.Backend.Listas.NodoDE;
 import Attizos.Frontend.Cobros.CobroQRController;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -275,7 +273,7 @@ public class VentasController {
         }
 
         if (!App.modoOffline) {
-            int[] resultados = FacturaDAO.registrarVenta(nombreCli, facturaActual.getTotal(), carritoDB, facturaActual.getEstado());
+            int[] resultados = ApiClient.registrarVenta(nombreCli, facturaActual.getTotal(), carritoDB, facturaActual.getEstado());
             if (resultados != null) {
                 numeroFacturaGlobal = resultados[0];
                 numeroTicketDiario = resultados[1];
@@ -323,6 +321,12 @@ public class VentasController {
             } catch (Exception e) {
                 e.printStackTrace();
                 mostrarAlerta("Error", "La venta se registró pero no se pudo mandar al ticket.", Alert.AlertType.ERROR);
+            }
+            if(!App.modoOffline){
+                new Thread(() ->{
+                    ConexionSQLite.sincronizarInsumos();
+                    ConexionSQLite.sincronizarProductos();
+                }).start();
             }
             iniciarNuevaVenta();
         }

@@ -4,6 +4,7 @@ public class DetalleCombo {
     private Producto producto;
     private int cantidad;
 
+    public DetalleCombo(){}
     public DetalleCombo(Producto p, int cant){
         this.producto = p;
         this.cantidad = cant;

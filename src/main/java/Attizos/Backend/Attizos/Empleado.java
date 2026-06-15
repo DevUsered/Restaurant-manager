@@ -12,6 +12,7 @@ public class Empleado {
     private String username;
     private String passwordHash;
     private LocalDate fechaUltimoPago;
+    private LocalDate fechaContrato;
 
     // Constructor
     public Empleado(){}
@@ -45,6 +46,14 @@ public class Empleado {
     }
     public String getPasswordHash() {
         return passwordHash;
+    }
+
+    public LocalDate getFechaContrato() {
+        return fechaContrato;
+    }
+
+    public void setFechaContrato(LocalDate fechaContrato) {
+        this.fechaContrato = fechaContrato;
     }
 
     //SETERS

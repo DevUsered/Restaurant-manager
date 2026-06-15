@@ -5,6 +5,9 @@ public class DetalleFactura {
     private int cantidad;
     private double subtotal;
 
+    public DetalleFactura() {
+    }
+
     public DetalleFactura(Producto producto, int cantidad ){
         this.producto = producto;
         this.cantidad = cantidad;
