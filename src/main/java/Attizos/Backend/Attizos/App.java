@@ -53,7 +53,7 @@ public class App {
 
     public static void iniciarSistema() {
         attizos = new Restaurante("Pizzería Attizos");
-
+        ApiClient.cargarCredencialesDelServidor();
         ConexionSQLite.inicializarTablasLocales();
         System.out.println("Cargando datos locales...");
         cargarEmpleados();

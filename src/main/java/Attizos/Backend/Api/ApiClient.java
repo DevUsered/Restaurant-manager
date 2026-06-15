@@ -18,12 +18,30 @@ import java.util.Map;
 
 public class ApiClient {
     private static final String BASE_URL = "http://localhost:8080/api";
+    public static java.util.Map<String, String> credenciales = new java.util.HashMap<>();
     private static final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
             .build();
     private static final ObjectMapper mapper = new ObjectMapper()
             .registerModule(new JavaTimeModule())
             .configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    public static void cargarCredencialesDelServidor() {
+        try {
+            java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
+                    .uri(java.net.URI.create(BASE_URL + "/config/credenciales"))
+                    .GET()
+                    .build();
+
+            java.net.http.HttpResponse<String> response = httpClient.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 200) {
+                credenciales = mapper.readValue(response.body(), new com.fasterxml.jackson.core.type.TypeReference<java.util.Map<String, String>>() {});
+                System.out.println("✅ Credenciales cargadas desde el servidor de forma segura.");
+            }
+        } catch (Exception e) {
+            System.err.println("❌ Error al descargar credenciales: " + e.getMessage());
+        }
+    }
     public static ArrayList<Empleado> obtenerEmpleadosDelServidor(){
         try {
             HttpRequest request = HttpRequest.newBuilder()

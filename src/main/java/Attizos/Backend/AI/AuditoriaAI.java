@@ -1,6 +1,6 @@
 package Attizos.Backend.AI;
 
-import Attizos.Backend.Database.ConexionBD;
+import Attizos.Backend.Api.ApiClient;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -12,7 +12,7 @@ public class AuditoriaAI {
     public static final String urlAPI = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=";
 
     public static String analizarIngresoGeneral(String nombreInsumo, String categoria, double cantidad, String unidad, long diasVencimiento) {
-        String apiKey = ConexionBD.geminiKey;
+        String apiKey = ApiClient.credenciales.get("GEMINI_API_KEY");
 
         if (apiKey == null || apiKey.equals("PON_TU_API_KEY_AQUI") || apiKey.trim().isEmpty()) {
             return "OMITIR";
@@ -54,8 +54,9 @@ public class AuditoriaAI {
             return "OMITIR";
         }
     }
+
     public static String analizarCreacionInsumo(String nombre, String categoria, String unidad, double stockMin, double stockMax, long diasVencimiento) {
-        String apiKey = ConexionBD.geminiKey;
+        String apiKey = ApiClient.credenciales.get("GEMINI_API_KEY");
 
         if (apiKey == null || apiKey.equals("PON_TU_API_KEY_AQUI") || apiKey.trim().isEmpty()) {
             return "OMITIR";

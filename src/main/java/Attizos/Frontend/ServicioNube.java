@@ -1,55 +1,49 @@
 package Attizos.Frontend;
 
+import Attizos.Backend.Api.ApiClient;
 import Attizos.Backend.Attizos.Producto;
 import Attizos.Backend.Database.ConexionSQLite;
 import Attizos.Backend.Database.ProductoDAO;
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
 
+import java.io.File;
 import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.Properties;
-
-import java.io.File;
-import java.io.InputStream;
 import java.util.Map;
 
 public class ServicioNube {
-    private static  Cloudinary CLOUDINARY;
+    private static Cloudinary CLOUDINARY;
     private static final String DEFAULT_IMAGE = "default.png";
-    static {
-        File archivoConfigAppData = new File(System.getenv("APPDATA") + File.separator + "Attizos" + File.separator + "config.properties");
-        Properties prop = new Properties();
 
-        try (java.io.FileInputStream input = new java.io.FileInputStream(archivoConfigAppData)) {
-            prop.load(input);
-
-            String cloudName = prop.getProperty("CLOUDINARY_CLOUD_NAME");
-
+    private static Cloudinary getCloudinary() {
+        if (CLOUDINARY == null && ApiClient.credenciales != null && ApiClient.credenciales.containsKey("CLOUDINARY_CLOUD_NAME")) {
+            String cloudName = ApiClient.credenciales.get("CLOUDINARY_CLOUD_NAME");
             if (cloudName != null && !cloudName.equals("PON_TU_CLOUD_NAME_AQUI")) {
                 CLOUDINARY = new Cloudinary(ObjectUtils.asMap(
                         "cloud_name", cloudName,
-                        "api_key", prop.getProperty("CLOUDINARY_API_KEY"),
-                        "api_secret", prop.getProperty("CLOUDINARY_API_SECRET")
+                        "api_key", ApiClient.credenciales.get("CLOUDINARY_API_KEY"),
+                        "api_secret", ApiClient.credenciales.get("CLOUDINARY_API_SECRET")
                 ));
             } else {
-                System.out.println("⚠️ Cloudinary inactivo: Faltan las credenciales reales en config.properties");
+                System.out.println("⚠️ Cloudinary inactivo: Faltan credenciales desde el servidor.");
             }
-        } catch (Exception e) {
-            System.err.println("❌ Error al cargar llaves de Cloudinary: " + e.getMessage());
         }
+        return CLOUDINARY;
     }
 
     public static String subirImagen(File archivoFisico){
-        if(CLOUDINARY == null){
+        Cloudinary cloud = getCloudinary();
+        if(cloud == null){
             return DEFAULT_IMAGE;
         }
         if(archivoFisico == null || !archivoFisico.exists()){
             return DEFAULT_IMAGE;
         }
         try{
-            Map respuesta = CLOUDINARY.uploader().upload(archivoFisico, ObjectUtils.asMap(
+            Map respuesta = cloud.uploader().upload(archivoFisico, ObjectUtils.asMap(
                     "folder","menu",
                     "use_filename", true,
                     "unique_filename",true
@@ -60,6 +54,7 @@ public class ServicioNube {
             return DEFAULT_IMAGE;
         }
     }
+
     public static String descargarImagen(String urlImagen, int idProducto){
         if (urlImagen == null || !urlImagen.startsWith("http")) return urlImagen;
         String extension = urlImagen.contains(".png") ? ".png" : ".jpg";
@@ -82,13 +77,15 @@ public class ServicioNube {
             return urlImagen;
         }
     }
+
     public static void sincronizarImagenesPendientes(){
-        if(CLOUDINARY == null){
-            System.out.println("Cloudinary inactivo: no se sincronizaron las imánes.");
+        Cloudinary cloud = getCloudinary();
+        if(cloud == null){
+            System.out.println("Cloudinary inactivo: no se sincronizaron las imágenes.");
             return;
         }
         try {
-            ArrayList<Producto> productos = ProductoDAO.obtenerMenuCompleto();
+            ArrayList<Producto> productos = ApiClient.obtenerProductosDelServidor();
             for(Producto p : productos){
                 String imagenActual = p.getImagenURL();
                 if(imagenActual != null && !imagenActual.startsWith("http")) {
@@ -106,7 +103,7 @@ public class ServicioNube {
                     if(archivoLocal.exists()){
                         String urlNube = subirImagen(archivoLocal);
                         if(urlNube != null && urlNube.startsWith("http")){
-                            ProductoDAO.actualizarImagenProducto(p.getId(), urlNube);
+                            ApiClient.actualizarProductoEnServidor(p);
                             ConexionSQLite.actualizarImagenProductoLocal(p.getId(), urlNube);
                             System.out.println("Imagen sincronizada para producto ID " + p.getId() + ": " + urlNube);
                         }
