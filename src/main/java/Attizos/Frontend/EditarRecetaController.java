@@ -59,7 +59,6 @@ public class EditarRecetaController {
         });
         cmbInsumos.getEditor().textProperty().addListener((obs, oldValue, newValue) -> {
             Insumo seleccionado = cmbInsumos.getSelectionModel().getSelectedItem();
-            // Evitar conflictos cuando el sistema autocompleta el nombre
             if (seleccionado != null && seleccionado.getNombre().equals(newValue)) return;
 
             filteredInsumos.setPredicate(insumo -> {
@@ -131,12 +130,30 @@ public class EditarRecetaController {
 
         try {
             double cant = Double.parseDouble(txtCantidad.getText().replace(",", "."));
-            if (cant > 0) {
-                listaReceta.add(new ProductosController.DetalleRecetaUI(insumoSel, cant));
-                cmbInsumos.getSelectionModel().clearSelection();
-                txtCantidad.clear();
-                javafx.application.Platform.runLater(() -> cmbInsumos.requestFocus());
+
+            if (cant < 0.001) {
+                AlertaPersonalizada.mostrarAlerta("Error", "La cantidad es demasiado pequeña (Mínimo 0.001).", Alert.AlertType.WARNING);
+                return;
             }
+            String uni = insumoSel.getUnidad().toLowerCase();
+            if ((uni.equals("kg") || uni.equals("lt")) && cant > 10) {
+                AlertaPersonalizada.mostrarAlerta("Exageración", "No puedes usar más de 10 " + uni + " en una sola porción/plato.", Alert.AlertType.WARNING);
+                return;
+            }
+            if ((uni.equals("g") || uni.equals("ml")) && cant > 10000) {
+                AlertaPersonalizada.mostrarAlerta("Exageración", "No puedes usar más de 10,000 " + uni + " en una sola porción.", Alert.AlertType.WARNING);
+                return;
+            }
+            if ((uni.equals("und") || uni.equals("paquete")) && cant > 50) {
+                AlertaPersonalizada.mostrarAlerta("Exageración", "No puedes usar más de 50 " + uni + " en una receta individual.", Alert.AlertType.WARNING);
+                return;
+            }
+
+            listaReceta.add(new ProductosController.DetalleRecetaUI(insumoSel, cant));
+            cmbInsumos.getSelectionModel().clearSelection();
+            txtCantidad.clear();
+            javafx.application.Platform.runLater(() -> cmbInsumos.requestFocus());
+
         } catch (NumberFormatException e) {
             AlertaPersonalizada.mostrarAlerta("Error", "Cantidad inválida.", Alert.AlertType.ERROR);
         }
@@ -165,6 +182,10 @@ public class EditarRecetaController {
 
             if (exito) {
                 productoEdicion.setReceta(nuevaReceta);
+
+                // CORRECCIÓN BUG 2: Forzamos la actualización de la bandera 'tiene_receta' en el servidor
+                ApiClient.actualizarProductoEnServidor(productoEdicion);
+
                 String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
                 App.registrarAuditoria(operador, "Receta", productoEdicion.getNombre(), "Actualización", 0, "Receta modificada vía Modal");
 
@@ -197,12 +218,31 @@ public class EditarRecetaController {
                 DialogoPersonalizado.mostrarDialogo("Modificar", "Nueva cantidad de: " + sel.getNombreInsumo(), "Cantidad:", String.valueOf(sel.getCantidad()))
                         .ifPresent(val -> {
                             try {
-                                double nuevaCant = Double.parseDouble(val.replace(",", "."));
-                                if (nuevaCant > 0) {
-                                    sel.setCantidad(nuevaCant);
-                                    tablaReceta.refresh();
+                                double cant = Double.parseDouble(val.replace(",", "."));
+
+                                String uni = sel.getInsumo().getUnidad().toLowerCase();
+                                if (cant < 0.001) {
+                                    mostrarAlerta("Error", "Mínimo 0.001");
+                                    return;
                                 }
-                            } catch (NumberFormatException ex) {}
+                                if ((uni.equals("kg") || uni.equals("lt")) && cant > 10) {
+                                    mostrarAlerta("Exageración", "Máximo 10 " + uni);
+                                    return;
+                                }
+                                if ((uni.equals("g") || uni.equals("ml")) && cant > 10000) {
+                                    mostrarAlerta("Exageración", "Máximo 10,000 " + uni);
+                                    return;
+                                }
+                                if ((uni.equals("und") || uni.equals("paquete")) && cant > 50) {
+                                    mostrarAlerta("Exageración", "Máximo 50 " + uni);
+                                    return;
+                                }
+
+                                sel.setCantidad(cant);
+                                tablaReceta.refresh();
+                            } catch (NumberFormatException ex) {
+                                mostrarAlerta("Error", "Ingrese un número válido");
+                            }
                         });
             }
         });
@@ -213,6 +253,21 @@ public class EditarRecetaController {
         });
 
         contextMenu.getItems().addAll(itemModificar, itemEliminar);
-        tablaReceta.setContextMenu(contextMenu);
+        tablaReceta.setRowFactory(tv -> {
+            TableRow<ProductosController.DetalleRecetaUI> row = new TableRow<>();
+            row.setOnContextMenuRequested(event -> {
+                if (!row.isEmpty()) {
+                    tablaReceta.getSelectionModel().select(row.getItem());
+                    contextMenu.show(row, event.getScreenX(), event.getScreenY());
+                } else {
+                    contextMenu.hide();
+                }
+            });
+            return row;
+        });
+    }
+
+    private static void mostrarAlerta(String titulo, String mensaje) {
+        AlertaPersonalizada.mostrarAlerta(titulo,mensaje,Alert.AlertType.WARNING);
     }
 }

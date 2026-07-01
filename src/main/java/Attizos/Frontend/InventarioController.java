@@ -1,8 +1,10 @@
 package Attizos.Frontend;
 
 import Attizos.Backend.AI.AuditoriaAI;
+import Attizos.Backend.AI.AuditoriaLocal;
 import Attizos.Backend.Api.ApiClient;
 import Attizos.Backend.Attizos.*;
+import Attizos.Frontend.Network.WebSocketManager;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
@@ -103,6 +105,11 @@ public class InventarioController {
         UtilidadesUI.formatearDatePicker(dpFechaVencimiento);
 
         cargarDatos();
+        WebSocketManager.setAccionVentasYStock(() ->{
+            System.out.println("Movimiento de inventario: Actualizando tabla de inventario.");
+            App.sincronizarDatosDesdeServidor();
+            cargarDatos();
+        });
     }
 
     private void aplicarFiltros(){
@@ -214,60 +221,47 @@ public class InventarioController {
 
             if (insumoBase != null) {
                 long diasFaltantes = ChronoUnit.DAYS.between(LocalDate.now(), nuevaFecha);
-               UtilidadesUI.ejecutarTareaAsincrona(
-                       panelNotificaciones.getParent(),
-                       () -> AuditoriaAI.analizarIngresoGeneral(
-                               insumoBase.getNombre(),
-                               insumoBase.getCategoria(),
-                               cantidad,
-                               insumoBase.getUnidad(),
-                               diasFaltantes
-                       ),
-                       veredictoIA -> {
-                           if (veredictoIA.startsWith("ALERTA:")) {
-                               boolean forzarGuardado = AlertaPersonalizada.mostrarConfirmacion(
-                                       "Auditoría de IA",
-                                       veredictoIA + "\n\n¿Estás seguro de registrar este lote?"
-                               );
-                               if (!forzarGuardado) return;
-                           }
-                           DialogoPersonalizado.mostrarDialogo("Costo de Compra", "Registro de Gasto: " + cantidad + " " + insumoBase.getUnidad() + " de " + insumoBase.getNombre(), "Ingrese el costo total pagado en Bs:", "0.00")
-                                   .ifPresent(costoStr -> {
-                                       try {
-                                           double costo = Double.parseDouble(costoStr.replace(",", "."));
-                                           if (costo < 0) {
-                                               mostrarAlerta("Error", "El costo no puede ser negativo");
-                                               return;
-                                           }
-                                           boolean exitoDB = ApiClient.registrarLoteEnServidor(codigoBase, cantidad, costo, nuevaFecha);
-                                           if (exitoDB) {
-                                               App.attizos.getInventario().getInventarioInsumos().clear();
-                                               for (Insumo ins : ApiClient.obtenerInsumoDelServidor()) {
-                                                   App.attizos.getInventario().getInventarioInsumos().put(ins.getCodigo(), ins);
-                                               }
-                                               ApiClient.registrarEgresoEnServidor("Registrar insumo",costo);
+                String veredictoLocal = AuditoriaLocal.auditarIngreso(insumoBase.getNombre(), insumoBase.getCategoria(), cantidad, insumoBase.getUnidad(), diasFaltantes
+                );
+                if (veredictoLocal.startsWith("ALERTA:")) {
+                    boolean forzarGuardado = AlertaPersonalizada.mostrarConfirmacion("Auditoría de Inventario", veredictoLocal + "\n\n¿Estás seguro de registrar este lote?");
+                    if (!forzarGuardado) return;
+                }
+                DialogoPersonalizado.mostrarDialogo("Costo de Compra", "Registro de Gasto: " + cantidad + " " + insumoBase.getUnidad() + " de " + insumoBase.getNombre(), "Ingrese el costo total pagado en Bs:", "0.00")
+                        .ifPresent(costoStr -> {
+                            try {
+                                double costo = Double.parseDouble(costoStr.replace(",", "."));
+                                if (costo < 0) {
+                                    mostrarAlerta("Error", "El costo no puede ser negativo");
+                                    return;
+                                }
+                                boolean exitoDB = ApiClient.registrarLoteEnServidor(codigoBase, cantidad, costo, nuevaFecha);
+                                if (exitoDB) {
+                                    App.attizos.getInventario().getInventarioInsumos().clear();
+                                    for (Insumo ins : ApiClient.obtenerInsumoDelServidor()) {
+                                        App.attizos.getInventario().getInventarioInsumos().put(ins.getCodigo(), ins);
+                                    }
+                                    ApiClient.registrarEgresoEnServidor("Registrar insumo", costo);
 
-                                               String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
-                                               App.registrarAuditoria(operador, "Insumo", insumoBase.getNombre(), "Ingreso Lote", cantidad, "Ingreso de nuevo lote. Costo: " + costo);
-                                               txtCodigoInsumo.clear();
-                                               txtCantidad.clear();
-                                               dpFechaVencimiento.setValue(null);
-                                               cargarDatos();
-                                               mostrarExito("Lote Registrado", "El stock ha sido sumado correctamente en la Base de Datos.");
-                                           } else {
-                                               mostrarAlerta("Error", "No se pudo registrar el lote. ");
-                                           }
-                                       } catch (NumberFormatException e) {
-                                           mostrarAlerta("Error de Costo", "El costo ingresado no es un número válido.");
-                                       }
-                                   });
-                       }
-               );
-            } else {
-                mostrarAlerta("Insumo no encontrado", "❌ El código base '" + codigoBase + "' no existe en el catálogo.");
+                                    String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
+                                    App.registrarAuditoria(operador, "Insumo", insumoBase.getNombre(), "Ingreso Lote", cantidad, "Ingreso de nuevo lote. Costo: " + costo);
+                                    txtCodigoInsumo.clear();
+                                    txtCantidad.clear();
+                                    dpFechaVencimiento.setValue(null);
+                                    cargarDatos();
+                                    mostrarExito("Lote Registrado", "El stock ha sido sumado correctamente en la Base de Datos.");
+                                } else {
+                                    mostrarAlerta("Error", "No se pudo registrar el lote. ");
+                                }
+                            } catch (NumberFormatException e) {
+                                mostrarAlerta("Error de Costo", "El costo ingresado no es un número válido.");
+                            }
+                        });
+            }else{
+                mostrarAlerta("Insumo no encontrado", "El código base ' "+codigoBase + " ' no existe en el catalogo.");
             }
-        } catch (NumberFormatException e) {
-            mostrarAlerta("Error de formato", "La cantidad debe ser un número válido.");
+        }catch (Exception e){
+            mostrarAlerta("Error", "Error al procesar la solicitud. " + e.getMessage());
         }
     }
 

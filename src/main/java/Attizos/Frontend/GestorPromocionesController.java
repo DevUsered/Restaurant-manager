@@ -5,6 +5,7 @@ import Attizos.Backend.Attizos.App;
 import Attizos.Backend.Attizos.DetalleCombo;
 import Attizos.Backend.Attizos.Producto;
 import Attizos.Backend.Attizos.Promocion;
+import Attizos.Frontend.Network.WebSocketManager;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -28,23 +29,37 @@ import java.time.LocalDate;
 
 public class GestorPromocionesController {
 
-    @FXML private AnchorPane rootPane;
+    @FXML
+    private AnchorPane rootPane;
 
-    @FXML private TableView<Promocion> tablaPromos;
-    @FXML private TableColumn<Promocion, Integer> colId;
-    @FXML private TableColumn<Promocion, String> colNombrePromo, colInicio, colFin, colEstado;
-    @FXML private TableColumn<Promocion, Double> colPrecio;
+    @FXML
+    private TableView<Promocion> tablaPromos;
+    @FXML
+    private TableColumn<Promocion, Integer> colId;
+    @FXML
+    private TableColumn<Promocion, String> colNombrePromo, colInicio, colFin, colEstado;
+    @FXML
+    private TableColumn<Promocion, Double> colPrecio;
 
-    @FXML private Label lblTituloFormulario;
-    @FXML private TextField txtNombre, txtPrecio, txtCantidad;
-    @FXML private DatePicker dpInicio, dpFin;
-    @FXML private ComboBox<Producto> cmbProductosMenu;
-    @FXML private ImageView imgPreview;
-    @FXML private Button btnAgregarAlCombo;
+    @FXML
+    private Label lblTituloFormulario;
+    @FXML
+    private TextField txtNombre, txtPrecio, txtCantidad;
+    @FXML
+    private DatePicker dpInicio, dpFin;
+    @FXML
+    private ComboBox<Producto> cmbProductosMenu;
+    @FXML
+    private ImageView imgPreview;
+    @FXML
+    private Button btnAgregarAlCombo;
 
-    @FXML private TableView<DetalleCombo> tablaContenido;
-    @FXML private TableColumn<DetalleCombo, String> colCProducto;
-    @FXML private TableColumn<DetalleCombo, Integer> colCCantidad;
+    @FXML
+    private TableView<DetalleCombo> tablaContenido;
+    @FXML
+    private TableColumn<DetalleCombo, String> colCProducto;
+    @FXML
+    private TableColumn<DetalleCombo, Integer> colCCantidad;
 
     private ObservableList<Promocion> listaPromosVisibles = FXCollections.observableArrayList();
     private ObservableList<DetalleCombo> detallesTemporales = FXCollections.observableArrayList();
@@ -64,7 +79,11 @@ public class GestorPromocionesController {
         cargarDatos();
         configurarBuscadorInteligente();
         configurarMenuContextualContenido();
-
+        WebSocketManager.setAccionMenu(() ->{
+            App.sincronizarDatosDesdeServidor();
+            cargarDatos();
+            tablaPromos.refresh();
+        });
     }
 
     private void estilizarControles() {
@@ -79,7 +98,6 @@ public class GestorPromocionesController {
     }
 
     private void configurarBuscadorInteligente() {
-        // Permitir que el ComboBox convierta el texto escrito al Objeto Producto real
         cmbProductosMenu.setConverter(new StringConverter<Producto>() {
             @Override
             public String toString(Producto p) {
@@ -87,7 +105,9 @@ public class GestorPromocionesController {
             }
             @Override
             public Producto fromString(String string) {
-                return masterMenu.stream().filter(p -> p.getNombre().equals(string)).findFirst().orElse(null);
+                return masterMenu.stream()
+                        .filter(p -> p.getNombre().equalsIgnoreCase(string))
+                        .findFirst().orElse(null);
             }
         });
 
@@ -105,14 +125,21 @@ public class GestorPromocionesController {
             }
         });
 
-        // Control de teclado avanzado en el ComboBox
         cmbProductosMenu.getEditor().setOnKeyPressed(e -> {
-            if (e.getCode() == KeyCode.ENTER) {
+            if (e.getCode() == KeyCode.DOWN || e.getCode() == KeyCode.UP) {
+                if (!cmbProductosMenu.isShowing()) cmbProductosMenu.show();
+            } else if (e.getCode() == KeyCode.ENTER) {
+                if (cmbProductosMenu.getValue() == null && !filteredMenu.isEmpty()) {
+                    cmbProductosMenu.getSelectionModel().select(filteredMenu.get(0));
+                }
                 if (cmbProductosMenu.getValue() != null) {
                     txtCantidad.requestFocus();
                 }
-            } else if (e.getCode() == KeyCode.DOWN || e.getCode() == KeyCode.UP) {
-                if (!cmbProductosMenu.isShowing()) cmbProductosMenu.show();
+            }
+        });
+        cmbProductosMenu.setOnAction(e -> {
+            if (cmbProductosMenu.getValue() != null) {
+                txtCantidad.requestFocus();
             }
         });
 
@@ -275,6 +302,10 @@ public class GestorPromocionesController {
 
             LocalDate inicio = dpInicio.getValue();
             LocalDate fin = dpFin.getValue();
+            if(inicio != null && fin != null && inicio.isAfter(fin)) {
+                AlertaPersonalizada.mostrarAlerta("Error", "La fecha de inicio debe ser anterior a la fecha de fin.", Alert.AlertType.WARNING);
+                return;
+            }
 
             Promocion promoAGuardar = new Promocion(promoEnEdicion == null ? 0 : promoEnEdicion.getId(), nombre, precio, nombreImg, inicio, fin);
             for (DetalleCombo dc : detallesTemporales) {
@@ -401,4 +432,5 @@ public class GestorPromocionesController {
         Stage stage = (Stage) rootPane.getScene().getWindow();
         stage.close();
     }
+
 }

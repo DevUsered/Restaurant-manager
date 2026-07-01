@@ -2,6 +2,7 @@
 
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
 <?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ScrollPane?>
@@ -25,7 +26,7 @@
                             <font><Font name="System Bold" size="24.0" /></font>
                         </Label>
                         <Region HBox.hgrow="ALWAYS" />
-                        <Button mnemonicParsing="false" onAction="#abrirVentanaPromocion" prefHeight="40.0" style="-fx-background-color: linear-gradient(to right, #ff9966, #ff5e62); -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8; -fx-cursor:                         hand; -fx-padding: 0 20; -fx-effect: dropshadow(gaussian, rgba(255, 94, 98, 0.4), 10, 0, 0, 3);" text="🎁 Promociones" />
+                        <Button mnemonicParsing="false" onAction="#abrirVentanaPromocion" prefHeight="40.0" style="-fx-background-color: linear-gradient(to right, #ff9966, #ff5e62); -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8; -fx-cursor: hand; -fx-padding: 0 20; -fx-effect: dropshadow(gaussian, rgba(255, 94, 98, 0.4), 10, 0, 0, 3);" text="🎁 Promociones" />
                     </children>
                 </HBox>
 
@@ -82,9 +83,6 @@
                                     <content>
                                         <VBox spacing="10.0" style="-fx-padding: 0 10 0 0;">
                                             <children>
-                                                <Label text="Tipo de Clase:" textFill="#218c4e" />
-                                                <ComboBox fx:id="cmbTipoClase" maxWidth="Infinity" promptText="Seleccione tipo..." style="-fx-base: #FFFFFF; -fx-background-color: #F5F5F5; -fx-border-color: #DDDDDD; -fx-border-radius: 5;" />
-
                                                 <HBox alignment="CENTER_LEFT" spacing="15.0">
                                                     <children>
                                                         <ImageView fx:id="imgPreview" fitHeight="60.0" fitWidth="60.0" style="-fx-background-color: #F5F5F5;" />
@@ -100,10 +98,12 @@
 
                                                 <VBox fx:id="vboxCategoria" spacing="5.0">
                                                     <children>
-                                                        <Label text="Categoría Personalizada:" textFill="#555555" />
-                                                        <ComboBox fx:id="cmbCategoria" editable="true" maxWidth="Infinity" promptText="Escriba la categoría..." />
+                                                        <Label text="Categoría (Escriba o seleccione):" textFill="#555555" />
+                                                        <ComboBox fx:id="cmbCategoria" editable="true" maxWidth="Infinity" promptText="Ej: Bebidas, Postres..." style="-fx-base: #FFFFFF; -fx-background-color: #F5F5F5; -fx-border-color: #DDDDDD; -fx-border-radius: 5;" />
                                                     </children>
                                                 </VBox>
+
+                                                <CheckBox fx:id="chkTieneReceta" text="¿Se prepara en cocina? (Usa receta)" wrapText="true" />
 
                                                 <VBox fx:id="vboxStock" spacing="5.0">
                                                     <children>
@@ -111,8 +111,6 @@
                                                         <TextField fx:id="txtStock" promptText="Cantidad actual" style="-fx-background-color: #F5F5F5; -fx-text-fill: #111111; -fx-border-color: #DDDDDD; -fx-border-radius: 5;" />
                                                     </children>
                                                 </VBox>
-
-                                                <VBox fx:id="panelAtributosDinamicos" spacing="8.0" style="-fx-background-color: #FDF6E3; -fx-border-color: #DDDDDD; -fx-padding: 10; -fx-background-radius: 5; -fx-border-radius: 5;" />
 
                                                 <VBox fx:id="vboxReceta" spacing="5.0">
                                                     <children>

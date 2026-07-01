@@ -17,7 +17,8 @@ import java.util.List;
 import java.util.Map;
 
 public class ApiClient {
-    private static final String BASE_URL = "http://localhost:8080/api";
+    private static String ipServidor = "localhost";
+    private static  String BASE_URL = "http://" + ipServidor + ":8080/api";
     public static java.util.Map<String, String> credenciales = new java.util.HashMap<>();
     private static final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
@@ -25,6 +26,16 @@ public class ApiClient {
     private static final ObjectMapper mapper = new ObjectMapper()
             .registerModule(new JavaTimeModule())
             .configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    public static String getIpServidor(){
+        return ipServidor;
+    }
+    public static void configurarIpServidor(String nuevaIp) {
+        if (nuevaIp != null && !nuevaIp.trim().isEmpty()) {
+            ipServidor = nuevaIp.trim();
+            BASE_URL = "http://" + ipServidor + ":8080/api";
+            System.out.println("🌐 Apuntando a nuevo servidor: " + BASE_URL);
+        }
+    }
     public static void cargarCredencialesDelServidor() {
         try {
             java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
@@ -409,12 +420,13 @@ public class ApiClient {
     }
 
     //Facturacion
-    public static int[] registrarVenta(String nombreCliente, double total, Map<Producto, Integer> carrito, String estadoFactura){
+    public static int[] registrarVenta(String nombreCliente, double total, Map<Producto, Integer> carrito, String estadoFactura, String metodoPago){
         try {
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("nombreCliente", nombreCliente);
             requestBody.put("total", total);
             requestBody.put("estado", estadoFactura);
+            requestBody.put("metodoPago", metodoPago);
 
             java.util.List<java.util.Map<String, Object>> itemsList = new java.util.ArrayList<>();
             for (java.util.Map.Entry<Producto, Integer> item : carrito.entrySet()) {

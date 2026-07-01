@@ -10,6 +10,8 @@ import java.util.Optional;
 import Attizos.Backend.Api.ApiClient;
 import Attizos.Backend.Attizos.*;
 import Attizos.Backend.Database.ConexionSQLite;
+import Attizos.Frontend.Network.WebSocketManager;
+import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -146,6 +148,14 @@ public class EmpleadosController {
         });
 
         cargarEmpleados();
+        WebSocketManager.setAccionMenu(() ->{
+            System.out.println("Hubo modificacion en la tabla de empleados. Actualizando la tabla...");
+            Platform.runLater(() -> {
+                App.attizos.getEmpleados().clear();
+                App.cargarEmpleados();
+                cargarEmpleados();
+            });
+        });
     }
 
     @FXML

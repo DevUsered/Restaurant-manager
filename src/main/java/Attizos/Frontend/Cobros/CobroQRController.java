@@ -1,5 +1,6 @@
 package Attizos.Frontend.Cobros;
 
+import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
@@ -110,14 +111,10 @@ public class CobroQRController {
         progressIndicador.setVisible(false);
         lblEstado.setText("¡Pago Confirmado!");
         lblEstado.setStyle("-fx-text-fill: #218c4e; -fx-font-size: 16px;"); // Verde éxito
-        javafx.application.Platform.runLater(() -> {
-            try {
-                Thread.sleep(1000);
-                cerrarVentana();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        });
+        new Thread(() ->{
+            try{ Thread.sleep(1000);}catch (Exception e){}
+            Platform.runLater(this::cerrarVentana);
+        }).start();
     }
 
     @FXML

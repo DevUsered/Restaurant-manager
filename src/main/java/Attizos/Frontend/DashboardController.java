@@ -28,17 +28,33 @@ import javafx.stage.StageStyle;
 import javafx.util.Duration;
 
 import java.io.IOException;
+import java.net.InetAddress;
 
 public class DashboardController {
-    @FXML private AnchorPane rootPane;
-    @FXML private VBox sidebar;
-    @FXML private Button btnToggle;
-    @FXML private Label lblName;
-    @FXML private Label lblCargo;
-    @FXML private VBox vBCajero;
-    @FXML private VBox vBAdmin;
-    @FXML private Label lblAdmin;
-    @FXML private StackPane contentArea;
+    @FXML
+    private AnchorPane rootPane;
+    @FXML
+    private VBox sidebar;
+    @FXML
+    private Button btnToggle;
+    @FXML
+    private Label lblName;
+    @FXML
+    private Label lblCargo;
+    @FXML
+    private VBox vBCajero;
+    @FXML
+    private VBox vBAdmin;
+    @FXML
+    private Label lblAdmin;
+    @FXML
+    private StackPane contentArea;
+    @FXML
+    private Button btnReservas;
+    @FXML
+    private Button btnCocina;
+    @FXML
+    private Label indicadorInternet;
 
     private boolean menuAbierto = true;
     private double xOffset = 0;
@@ -66,14 +82,15 @@ public class DashboardController {
             stage.centerOnScreen();
         });
 
-        if(App.usuarioLogueado != null){
+        if (App.usuarioLogueado != null) {
             lblName.setText(App.usuarioLogueado.getNombre());
             lblCargo.setText(App.usuarioLogueado.getCargo());
-            restriccion();
+            aplicarRestricciones();
         } else {
             lblName.setText("Modo Prueba");
             lblCargo.setText("Desarrollador");
         }
+        iniciarMonitoreoInternet();
     }
 
     private void configurarVentana() {
@@ -83,7 +100,7 @@ public class DashboardController {
         });
         sidebar.setOnMouseDragged(event -> {
             Stage stage = (Stage) rootPane.getScene().getWindow();
-            if(!stage.isMaximized()) {
+            if (!stage.isMaximized()) {
                 stage.setX(event.getScreenX() - xOffset);
                 stage.setY(event.getScreenY() - yOffset);
             }
@@ -97,7 +114,7 @@ public class DashboardController {
         });
         rootPane.setOnMouseDragged(event -> {
             Stage stage = (Stage) rootPane.getScene().getWindow();
-            if(!stage.isMaximized() && (event.getTarget() == rootPane || event.getTarget().getClass().getSimpleName().equals("AnchorPane"))) {
+            if (!stage.isMaximized() && (event.getTarget() == rootPane || event.getTarget().getClass().getSimpleName().equals("AnchorPane"))) {
                 stage.setX(event.getScreenX() - xOffset);
                 stage.setY(event.getScreenY() - yOffset);
             }
@@ -125,12 +142,12 @@ public class DashboardController {
     }
 
     @FXML
-    void cerrarVentana(ActionEvent event){
+    void cerrarVentana(ActionEvent event) {
         System.exit(0);
     }
 
     @FXML
-    void minimizarVentana(ActionEvent event){
+    void minimizarVentana(ActionEvent event) {
         Stage stage = (Stage) rootPane.getScene().getWindow();
         stage.setIconified(true);
     }
@@ -157,77 +174,93 @@ public class DashboardController {
         }
     }
 
-    @FXML void openSales(ActionEvent event) { cargarPVentas(); }
+    @FXML
+    void openSales(ActionEvent event) {
+        cargarPVentas();
+    }
 
-    private void cargarPVentas(){
-        try{
+    private void cargarPVentas() {
+        try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Sales.fxml"));
             Parent view = loader.load();
             contentArea.getChildren().setAll(view);
-        } catch (Exception e){ e.printStackTrace(); }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     @FXML
-    void openOrders(ActionEvent event){
-        try{
+    void openOrders(ActionEvent event) {
+        try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Cocina.fxml"));
             Parent view = loader.load();
             contentArea.getChildren().setAll(view);
-        } catch (Exception e){ e.printStackTrace(); }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     @FXML
-    void openReservations(ActionEvent event){
-        try{
+    void openReservations(ActionEvent event) {
+        try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Reservas.fxml"));
             Parent view = loader.load();
             contentArea.getChildren().setAll(view);
-        } catch (Exception e){ e.printStackTrace(); }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     @FXML
-    void openProducts(ActionEvent event){
-        try{
+    void openProducts(ActionEvent event) {
+        try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Productos.fxml"));
             Parent view = loader.load();
             contentArea.getChildren().setAll(view);
             Stage stage = (Stage) rootPane.getScene().getWindow();
-            if(!stage.isMaximized()) {
+            if (!stage.isMaximized()) {
                 stage.sizeToScene();
                 stage.centerOnScreen();
             }
-        } catch (Exception e){ e.printStackTrace(); }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
-    @FXML void openInventory(ActionEvent event) {
-        try{
+    @FXML
+    void openInventory(ActionEvent event) {
+        try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Inventario.fxml"));
             Parent view = loader.load();
             contentArea.getChildren().setAll(view);
             Stage stage = (Stage) rootPane.getScene().getWindow();
-            if(!stage.isMaximized()){
+            if (!stage.isMaximized()) {
                 stage.sizeToScene();
                 stage.centerOnScreen();
             }
-        }catch (Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
-    @FXML void openEmploys(ActionEvent event) {
-        try{
+
+    @FXML
+    void openEmploys(ActionEvent event) {
+        try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Empleados.fxml"));
             Parent view = loader.load();
             contentArea.getChildren().setAll(view);
             Stage stage = (Stage) rootPane.getScene().getWindow();
-            if(!stage.isMaximized()){
+            if (!stage.isMaximized()) {
                 stage.sizeToScene();
                 stage.centerOnScreen();
             }
-        }catch (Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
-    @FXML void openReports(ActionEvent event) {
+
+    @FXML
+    void openReports(ActionEvent event) {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Reportes.fxml"));
             Parent view = loader.load();
@@ -242,18 +275,8 @@ public class DashboardController {
         }
     }
 
-    private void restriccion(){
-        if(App.usuarioLogueado != null && !App.usuarioLogueado.getCargo().equalsIgnoreCase("Administrador") && !App.usuarioLogueado.getCargo().equalsIgnoreCase("Admin"))
-        {
-            vBAdmin.setVisible(false);
-            vBAdmin.setManaged(false);
-            lblAdmin.setVisible(false);
-            lblAdmin.setManaged(false);
-        }
-    }
-
     @FXML
-    void logout(ActionEvent event){
+    void logout(ActionEvent event) {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Home.fxml"));
             Stage stage = new Stage();
@@ -267,8 +290,60 @@ public class DashboardController {
 
             Stage vAc = (Stage) ((Node) event.getSource()).getScene().getWindow();
             vAc.close();
-        } catch(IOException e ){
+        } catch (IOException e) {
             e.printStackTrace();
+        }
+    }
+
+    private void aplicarRestricciones() {
+        if (App.usuarioLogueado != null && !App.usuarioLogueado.getCargo().equalsIgnoreCase("Administrador") && !App.usuarioLogueado.getCargo().equalsIgnoreCase("Admin")) {
+            vBAdmin.setVisible(false);
+            vBAdmin.setManaged(false);
+            lblAdmin.setVisible(false);
+            lblAdmin.setManaged(false);
+        }
+
+        if (App.attizos != null && App.attizos.getModalidadActual() != null) {
+            String modalidad = App.attizos.getModalidadActual();
+
+            if (modalidad.equalsIgnoreCase("FAST_FOOD") || modalidad.equalsIgnoreCase("MOSTRADOR")) {
+                if (btnReservas != null) {
+                    btnReservas.setVisible(false);
+                    btnReservas.setManaged(false);
+                }
+            }
+        }
+    }
+    @FXML
+    void openConfiguration(ActionEvent event){
+        System.out.println("Función en desarrollo... ");
+    }
+    private void iniciarMonitoreoInternet() {
+        Timeline timeline = new Timeline(
+                new KeyFrame(Duration.seconds(0), e -> actualizarIndicadorInternet()),
+                new KeyFrame(Duration.seconds(5))
+        );
+        timeline.setCycleCount(Timeline.INDEFINITE);
+        timeline.play();
+    }
+    private void actualizarIndicadorInternet() {
+        new Thread( () ->{
+            boolean conectado = verificarConexion();
+            Platform.runLater(() ->{
+                if(conectado){
+                    indicadorInternet.setStyle("-fx-font-size: 20px; -fx-text-fill: #2ecc71; -fx-font-weight: bold;");
+                }else{
+                    indicadorInternet.setStyle("-fx-font-size: 20px; -fx-text-fill: #e74c3c; -fx-font-weight: bold;");
+                }
+            });
+        }).start();
+    }
+    private boolean verificarConexion() {
+        try{
+            InetAddress ip = InetAddress.getByName("8.8.8.8");
+            return ip.isReachable(2000);
+        }catch (Exception e){
+            return false;
         }
     }
 }

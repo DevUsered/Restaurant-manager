@@ -71,12 +71,28 @@
                                                             <rowConstraints>
                                                                 <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                                                                 <RowConstraints minHeight="10.0" prefHeight="60.0" vgrow="SOMETIMES" />
+                                                                <!-- 🔥 Aumentamos la altura de esta fila de 20 a 30 para que respire -->
+                                                                <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                                                             </rowConstraints>
                                                             <children>
                                                                 <Label style="-fx-font-weight: bold; -fx-font-size: 14px;" text="Ventas Totales (Ingresos)" textFill="#555555" />
                                                                 <Label fx:id="lblIngresos" text="Bs. 0.00" textFill="#218c4e" GridPane.rowIndex="1">
                                                                     <font><Font name="System Bold" size="38.0" /></font>
                                                                 </Label>
+
+                                                                <!-- 🔥 LA SOLUCIÓN: Agregamos GridPane.columnSpan="2" para que ocupe el doble de espacio hacia la derecha -->
+                                                                <HBox spacing="20.0" GridPane.rowIndex="2" GridPane.columnSpan="2" alignment="CENTER_LEFT">
+                                                                    <children>
+                                                                        <Label text="💵 Efectivo:" textFill="#555555" style="-fx-font-weight: bold; -fx-font-size: 15px;"/>
+                                                                        <Label fx:id="lblIngresoEfectivo" text="Bs. 0.00" textFill="#218c4e" style="-fx-font-weight: bold; -fx-font-size: 15px;"/>
+
+                                                                        <!-- Separador visual -->
+                                                                        <Label text="|" textFill="#DDDDDD" style="-fx-font-weight: bold; -fx-font-size: 15px;"/>
+
+                                                                        <Label text="📱 QR:" textFill="#555555" style="-fx-font-weight: bold; -fx-font-size: 15px;"/>
+                                                                        <Label fx:id="lblIngresoQR" text="Bs. 0.00" textFill="#6a1b9a" style="-fx-font-weight: bold; -fx-font-size: 15px;"/>
+                                                                    </children>
+                                                                </HBox>
 
                                                                 <Label style="-fx-font-weight: bold; -fx-font-size: 14px;" text="Gastos Totales (Egresos)" textFill="#555555" GridPane.columnIndex="1" />
                                                                 <Label fx:id="lblEgresos" text="Bs. 0.00" textFill="#ff4c4c" GridPane.columnIndex="1" GridPane.rowIndex="1">

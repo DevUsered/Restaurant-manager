@@ -1,6 +1,8 @@
 package Attizos.Frontend;
 
+import Attizos.Backend.Attizos.App;
 import Attizos.Backend.Database.ConexionSQLite;
+import Attizos.Frontend.Network.WebSocketManager;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -12,12 +14,10 @@ import javafx.stage.StageStyle;
 public class MainGUI extends Application {
     @Override
     public void start(Stage ventanaPrincipal){
-        ConexionSQLite.inicializarTablasLocales();
-        ConexionSQLite.actualizarCacheCompleta();
         try {
-            Attizos.Backend.Attizos.App.iniciarSistema();
             Application.setUserAgentStylesheet(new atlantafx.base.theme.PrimerDark().getUserAgentStylesheet());
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Principal.fxml"));
+            App.iniciarSistema();
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Home.fxml"));
             Parent root = loader.load();
             ventanaPrincipal.initStyle(StageStyle.TRANSPARENT);
             Scene scene = new Scene(root);
@@ -30,6 +30,7 @@ public class MainGUI extends Application {
             });
             ventanaPrincipal.show();
         }catch (Exception e){
+            System.out.println("Error crítico al arrancar el sistema. ");
             e.printStackTrace();
         }
 

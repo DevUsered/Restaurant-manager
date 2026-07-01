@@ -3,7 +3,9 @@ package Attizos.Backend.Attizos;
 import Attizos.Backend.Api.ApiClient;
 import Attizos.Backend.Database.*;
 import Attizos.Backend.Listas.*;
+import Attizos.Frontend.Network.WebSocketManager;
 import Attizos.Frontend.ServicioNube;
+import javafx.application.Platform;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -18,43 +20,12 @@ public class App {
     public static Restaurante attizos;
     public static Empleado usuarioLogueado;
     public static boolean modoOffline = true;
-    private static ScheduledExecutorService temporizadorSincronizacion;
-
-    public static void iniciarSincronizacionAutomatica() {
-        temporizadorSincronizacion = Executors.newScheduledThreadPool(1, r -> {
-            Thread t = Executors.defaultThreadFactory().newThread(r);
-            t.setDaemon(true);
-            return t;
-        });
-
-        temporizadorSincronizacion.scheduleAtFixedRate(() -> {
-            try {
-                if(ApiClient.isServidorDisponible()){
-                        System.out.println("⏳ [Auto-Sync] Buscando actualizaciones en la red...");
-                        modoOffline = false;
-
-                        ConexionSQLite.subirAuditoriaPendiente();
-                        ServicioNube.sincronizarImagenesPendientes();
-                        ConexionSQLite.actualizarCacheCompleta();
-                        ArrayList<Producto> menuActualizado = ConexionSQLite.obtenerMenuLocal();
-                        attizos.setMenu(menuActualizado);
-                        ArrayList<Promocion> promocionDB = ConexionSQLite.obtenerPromocionesLocal(menuActualizado);
-                        attizos.setPromocionesActivas(promocionDB);
-                        System.out.println("✅ [Auto-Sync] Sistema actualizado con éxito.");
-                    }else{
-                    throw new RuntimeException("Servidor inalcanzable");
-                }
-            } catch (Exception e) {
-                System.out.println("⚠️ [Auto-Sync] Modo offline detectado, reintentando en 5 min.");
-                modoOffline = true;
-            }
-        }, 5, 5, TimeUnit.MINUTES);
-    }
 
     public static void iniciarSistema() {
-        attizos = new Restaurante("Pizzería Attizos");
+        attizos = new Restaurante("Pollos CRX", "FAST_FOOD");
         ApiClient.cargarCredencialesDelServidor();
         ConexionSQLite.inicializarTablasLocales();
+
         System.out.println("Cargando datos locales...");
         cargarEmpleados();
         cargarInventario();
@@ -62,40 +33,51 @@ public class App {
         System.out.println("✅ Datos locales cargados.");
 
         Thread hiloInicial = new Thread(() ->{
-            try(Connection con = ConexionBD.getConexion()){
-                if(con != null && !con.isClosed()){
+            if(ApiClient.isServidorDisponible()){
                     System.out.println("🔄 Sincronizando datos con la Base de Datos...");
                     modoOffline = false;
                     ConexionSQLite.subirAuditoriaPendiente();
                     ServicioNube.sincronizarImagenesPendientes();
-                    ConexionSQLite.actualizarCacheCompleta();
+                    sincronizarDatosDesdeServidor();
 
-                    ArrayList<Insumo> stockRealNube = ApiClient.obtenerInsumoDelServidor();
-                    if (stockRealNube != null && !stockRealNube.isEmpty()) {
-                        attizos.getInventario().getInventarioInsumos().clear();
-                        for (Insumo ins : stockRealNube) {
-                            attizos.getInventario().getInventarioInsumos().put(ins.getCodigo(), ins);
-                        }
-                        System.out.println("✅ RAM actualizada con el stock real de la nube.");
-                    }
-                    ArrayList<Producto> menuActualizado = ConexionSQLite.obtenerMenuLocal();
-                    attizos.setMenu(menuActualizado);
-                    RecetaDAO.cargarRecetas();
-                    ArrayList<Promocion> promocionDB = ConexionSQLite.obtenerPromocionesLocal(menuActualizado);
-                    attizos.setPromocionesActivas(promocionDB);
-                }
-            }catch (SQLException e){
+                    String ipServidor = ApiClient.getIpServidor();
+                   WebSocketManager.conectarAlServidor(ipServidor);
+            }else{
                 System.err.println("[Segundo Plano] Sin internet. Attizos sigue funcionando al 100% en modo local.");
+                modoOffline = true;
             }
         });
         hiloInicial.setDaemon(true);
         hiloInicial.start();
-        iniciarSincronizacionAutomatica();
+    }
+    public static void sincronizarDatosDesdeServidor() {
+        try {
+            ConexionSQLite.actualizarCacheCompleta();
+
+            ArrayList<Insumo> stockRealNube = ApiClient.obtenerInsumoDelServidor();
+            ArrayList<Producto> menuActualizado = ConexionSQLite.obtenerMenuLocal();
+            ArrayList<Promocion> promocionDB = ConexionSQLite.obtenerPromocionesLocal(menuActualizado);
+
+            Platform.runLater(() -> {
+                if (stockRealNube != null && !stockRealNube.isEmpty()) {
+                    attizos.getInventario().getInventarioInsumos().clear();
+                    for (Insumo ins : stockRealNube) {
+                        attizos.getInventario().getInventarioInsumos().put(ins.getCodigo(), ins);
+                    }
+                }
+                attizos.setMenu(menuActualizado);
+                attizos.setPromocionesActivas(promocionDB);
+                System.out.println("✅ RAM actualizada con los datos frescos del servidor.");
+            });
+        } catch (Exception e) {
+            System.err.println("❌ Error al sincronizar datos desde el servidor: " + e.getMessage());
+        }
     }
     public static void cargarInventario() {
         HashMap<String, Insumo> inventario = ConexionSQLite.obtenerInventarioLocal();
         if (inventario != null && !inventario.isEmpty()) {
             for (Insumo i : inventario.values()) {
+                System.out.println("DEBUG: Cargando insumo " + i.getNombre() + " con stock: " + i.getStockActual());
                 attizos.getInventario().agregarInsumo(i);
             }
             System.out.println("✅ Inventario cargado en RAM con " + inventario.size() + " insumos.");

@@ -21,10 +21,18 @@ public class DetalleFactura {
     public int getCantidad() {
         return cantidad;
     }
+
     public void setCantidad(int nuevaCantidad) {
         this.cantidad = nuevaCantidad;
         this.subtotal = this.producto.getPrecio() * nuevaCantidad;
     }
+
+
+    public boolean requiereCocina() {
+        if (this.producto == null) return false;
+        return this.producto.tieneReceta() || this.producto.isPromocion();
+    }
+
     public double getSubtotal(){
         return subtotal;
     }

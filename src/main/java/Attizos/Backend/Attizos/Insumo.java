@@ -58,24 +58,6 @@ public class Insumo {
         this.fechaVencimiento = fechaVencimiento;
     }
 
-    public void mostrarInfo() {
-        System.out.println("Insumo: " + nombre + " (" + categoria + ")");
-        System.out.println("Código: " + codigo);
-        System.out.println("Stock actual: " + stockActual + " " + unidad);
-        System.out.println("Stock mínimo: " + stockMinimo + " " + unidad);
-        System.out.println("Stock máximo: " + stockMaximo + " " + unidad);
-
-        if(fechaVencimiento != null){
-            System.out.println("Vencimiento: " + fechaVencimiento);
-            if (isVencido()) {
-                System.out.println("⚠️ ESTADO: ¡VENCIDO!");
-            } else if (isPorVencer()) {
-                System.out.println("⚠️ ESTADO: ¡Próximo a vencer!");
-            }
-        } else {
-            System.out.println("Vencimiento: No perecedero");
-        }
-    }
 
     public void setCodigo(String codigo) {
         this.codigo = codigo;

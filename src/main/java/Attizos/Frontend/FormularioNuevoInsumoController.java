@@ -1,6 +1,7 @@
 package Attizos.Frontend;
 
 import Attizos.Backend.AI.AuditoriaAI;
+import Attizos.Backend.AI.AuditoriaLocal;
 import Attizos.Backend.Api.ApiClient;
 import Attizos.Backend.Attizos.App;
 import Attizos.Backend.Attizos.Insumo;
@@ -170,14 +171,12 @@ public class FormularioNuevoInsumoController {
             }
             final LocalDate vencimientoFinal = vencimientoTemp;
             long diasFaltantes = ChronoUnit.DAYS.between(LocalDate.now(), vencimientoFinal);
-            UtilidadesUI.ejecutarTareaAsincrona(rootPane,
-                    () -> AuditoriaAI.analizarCreacionInsumo(nombre, categoria, unidad, min, max, diasFaltantes),
-                    veredictoIA -> {
-                        if (veredictoIA.startsWith("ALERTA:")) {
-                            boolean forzarGuardado = AlertaPersonalizada.mostrarConfirmacion(
-                                    " Auditoría de IA: Catálogo",
-                                    veredictoIA + "\n\n¿Deseas ignorar la advertencia y crear el insumo en el catálogo?"
-                            );
+            String veredictoLocal = AuditoriaLocal.auditarCreacion(nombre, categoria, unidad, min, max, diasFaltantes);
+            if (veredictoLocal.startsWith("ALERTA:")) {
+                boolean forzarGuardado = AlertaPersonalizada.mostrarConfirmacion(
+                        "Auditoría Local: Catálogo",
+                        veredictoLocal + "\n\n¿Deseas ignorar la advertencia y crear el insumo en el catálogo?"
+                );
                             if (!forzarGuardado) {
                                 return;
                             }
@@ -204,8 +203,6 @@ public class FormularioNuevoInsumoController {
                         } else {
                             ejecutarGuardado(cod, nombre, categoria, unidad, inicial, min, max, vencimientoFinal, 0.0, event);
                         }
-                    }
-            );
         } catch (NumberFormatException e) {
             mostrarError("Los campos de stock deben ser números válidos (Ej: 1.5).");
         }
@@ -213,6 +210,28 @@ public class FormularioNuevoInsumoController {
 
     private void ejecutarGuardado(String cod, String nom, String cat, String uni, double inicial, double min, double max, LocalDate ven,double costo, ActionEvent event) {
         try {
+            double multiplicador = 1;
+            String unidadFinal = uni;
+            switch (uni.toLowerCase()){
+                case "kg":
+                    multiplicador = 1000;
+                    unidadFinal = "g";
+                    break;
+                case "lt":
+                    multiplicador = 1000;
+                    unidadFinal = "ml";
+                    break;
+                case "lb":
+                    multiplicador = 453.592;
+                    unidadFinal = "g";
+                case "oz":
+                    multiplicador = 28.3495;
+                    unidadFinal = "g";
+                    break;
+            }
+            double stockInicial = inicial * multiplicador;
+            double stockMinimo = min * multiplicador;
+            double stockMaximo = max * multiplicador;
             Insumo nuevo = new Insumo(cod, nom, cat, uni, inicial, min, max, ven);
             boolean guardado = ApiClient.guardarInsumoEnServidor(nuevo, costo);
             if(guardado) {

@@ -10,6 +10,7 @@ import javafx.collections.transformation.FilteredList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.chart.LineChart;
@@ -17,11 +18,16 @@ import javafx.scene.chart.XYChart;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.input.KeyCode;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -35,6 +41,8 @@ public class ReportesController {
     @FXML private Label lblEgresos;
     @FXML private Label lblBalance;
     @FXML private Label lblTicketProm;
+    @FXML private Label lblIngresoEfectivo;
+    @FXML private Label lblIngresoQR;
 
     @FXML private TableView<Factura> tablaVentas;
     @FXML private TableColumn<Factura, Integer> colNroFac;
@@ -267,6 +275,13 @@ public class ReportesController {
         lblTicketProm.setText(String.valueOf(ventas));
         lblBalance.setText(String.format("Bs. %.2f", balance));
         lblBalance.setStyle(balance >= 0 ? "-fx-text-fill: #218c4e;" : "-fx-text-fill: #ff4c4c;");
+        double totalEfectivo = r.containsKey("totalEfectivo") ? ((Number) r.get("totalEfectivo")).doubleValue() : 0.0;
+        double totalQR = r.containsKey("totalQR") ? ((Number) r.get("totalQR")).doubleValue() : 0.0;
+
+        if (lblIngresoEfectivo != null && lblIngresoQR != null) {
+            lblIngresoEfectivo.setText(String.format("Bs. %.2f", totalEfectivo));
+            lblIngresoQR.setText(String.format("Bs. %.2f", totalQR));
+        }
 
         listaFacturas.clear();
         List<Map<String, Object>> facturasDB = (List<Map<String, Object>>) r.get("facturas");
@@ -397,50 +412,281 @@ public class ReportesController {
     }
 
     private void verDetalleFacturaTicket(Factura seleccionada) {
+        if(App.modoOffline){
+            AlertaPersonalizada.mostrarAlerta("Sin Conexión", "El desglose exacto de los productos de este ticket se encuentra en el servidor. Reconecte el sistema para visualizarlo.", Alert.AlertType.WARNING);
+            return;
+        }
         try {
             Factura facDetalles = ApiClient.obtenerFacturaConDetalles(seleccionada.getNumeroFactura());
 
-            if (facDetalles == null) {
+            if (facDetalles == null || facDetalles.getDetalles().isEmpty()) {
                 AlertaPersonalizada.mostrarAlerta("Error", "No se pudo obtener el detalle de la factura desde el servidor.", Alert.AlertType.ERROR);
                 return;
             }
-
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Ticket.fxml"));
-            Parent root = loader.load();
-
-            TicketController controller = loader.getController();
-            controller.inicializarTicket(seleccionada, "Copia - Sistema", facDetalles.getNumeroTicket());
-
-            Stage dialogStage = new Stage();
-            dialogStage.initStyle(StageStyle.TRANSPARENT);
-            dialogStage.initModality(Modality.APPLICATION_MODAL);
-
-            Scene scene = new Scene(root);
-            scene.setFill(Color.TRANSPARENT);
-            dialogStage.setScene(scene);
-            scene.setOnKeyPressed(event -> {
-                if((event.getCode() == KeyCode.ESCAPE) || event.getCode() == KeyCode.ENTER){
-                    dialogStage.close();
-                }
-            });
-
-            final double[] xOffset = {0};
-            final double[] yOffset = {0};
-            root.setOnMousePressed(event -> {
-                xOffset[0] = event.getSceneX();
-                yOffset[0] = event.getSceneY();
-            });
-            root.setOnMouseDragged(event -> {
-                dialogStage.setX(event.getScreenX() - xOffset[0]);
-                dialogStage.setY(event.getScreenY() - yOffset[0]);
-            });
-
-            dialogStage.showAndWait();
+            mostrarVisorDigitalDeFactura(facDetalles);
         } catch (Exception e) {
             AlertaPersonalizada.mostrarAlerta("Error", "No se pudo cargar el Ticket.", Alert.AlertType.ERROR);
         }
     }
+    private void mostrarVisorDigitalDeFactura(Factura fac) {
+        Stage dialogStage = new Stage();
+        dialogStage.initStyle(StageStyle.TRANSPARENT);
+        dialogStage.initModality(Modality.APPLICATION_MODAL);
 
+        // Contenedor raíz (fondo completamente transparente para mostrar solo la tarjeta)
+        StackPane root = new StackPane();
+        root.setStyle("-fx-background-color: transparent; -fx-padding: 20;");
+
+        // Tarjeta principal (toda la UI vive aquí)
+        VBox tarjeta = new VBox(15);
+        tarjeta.setAlignment(Pos.TOP_CENTER);
+        tarjeta.getStyleClass().add("tarjeta-dialogo");   // clase CSS
+
+        // Cabecera
+        Label lblIcono = new Label("🧾");
+        lblIcono.getStyleClass().add("icono-titulo");
+        Label lblTitulo = new Label("Detalle de Venta");
+        lblTitulo.getStyleClass().add("titulo-dialogo");
+
+        // Grid de información (ya no oscuro)
+        GridPane infoGrid = new GridPane();
+        infoGrid.setHgap(20); infoGrid.setVgap(10);
+        infoGrid.getStyleClass().add("grid-info");
+
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+        String fecha = fac.getFecha() != null ? fac.getFecha().format(fmt) : "N/A";
+
+        Label l1 = new Label("N° Ticket:"); l1.getStyleClass().add("etiqueta");
+        Label l2 = new Label(String.valueOf(fac.getNumeroTicket())); l2.getStyleClass().add("valor");
+        Label l3 = new Label("Fecha:"); l3.getStyleClass().add("etiqueta");
+        Label l4 = new Label(fecha); l4.getStyleClass().add("valor");
+        Label l5 = new Label("Cliente:"); l5.getStyleClass().add("etiqueta");
+        Label l6 = new Label(fac.getNombreCliente()); l6.getStyleClass().add("valor");
+        Label l7 = new Label("Estado:"); l7.getStyleClass().add("etiqueta");
+
+        infoGrid.add(l1, 0, 0); infoGrid.add(l2, 1, 0);
+        infoGrid.add(l3, 0, 1); infoGrid.add(l4, 1, 1);
+        infoGrid.add(l5, 0, 2); infoGrid.add(l6, 1, 2);
+        infoGrid.add(l7, 0, 3);
+
+        Label lblEst = new Label(fac.getEstado());
+        lblEst.getStyleClass().add("valor-estado");
+        if (fac.getEstado().equals("Anulada")) {
+            lblEst.getStyleClass().add("estado-anulada");
+        } else {
+            lblEst.getStyleClass().add("estado-activa");
+        }
+        infoGrid.add(lblEst, 1, 3);
+
+        // Tabla de productos
+        TableView<DetalleFactura> tablaDetalles = new TableView<>();
+        tablaDetalles.setPrefHeight(200);
+        tablaDetalles.getStyleClass().add("tabla-productos");
+
+        TableColumn<DetalleFactura, Integer> colCant = new TableColumn<>("Cant.");
+        colCant.setCellValueFactory(new PropertyValueFactory<>("cantidad"));
+        colCant.setPrefWidth(50);
+
+        TableColumn<DetalleFactura, String> colProd = new TableColumn<>("Producto");
+        colProd.setCellValueFactory(cell -> new SimpleStringProperty(cell.getValue().getProducto().getNombre()));
+        colProd.setPrefWidth(210);
+
+        TableColumn<DetalleFactura, Double> colSub = new TableColumn<>("Subtotal (Bs)");
+        colSub.setCellValueFactory(new PropertyValueFactory<>("subtotal"));
+        colSub.setPrefWidth(100);
+
+        tablaDetalles.getColumns().addAll(colCant, colProd, colSub);
+        tablaDetalles.setItems(FXCollections.observableArrayList(fac.getDetalles()));
+
+        // Footer Total
+        HBox boxTotal = new HBox(10);
+        boxTotal.setAlignment(Pos.CENTER_RIGHT);
+        Label lblTextoTotal = new Label("TOTAL COBRADO:");
+        lblTextoTotal.getStyleClass().add("etiqueta-total");
+        Label lblMontoTotal = new Label(String.format("Bs. %.2f", fac.getTotal()));
+        lblMontoTotal.getStyleClass().add("monto-total");
+        boxTotal.getChildren().addAll(lblTextoTotal, lblMontoTotal);
+
+        // Botón Cerrar
+        Button btnOk = new Button("Cerrar Visor");
+        btnOk.getStyleClass().add("boton-cerrar");
+        btnOk.setOnAction(e -> dialogStage.close());
+
+        tarjeta.getChildren().addAll(lblIcono, lblTitulo, infoGrid, tablaDetalles, boxTotal, btnOk);
+        root.getChildren().add(tarjeta);
+
+        Scene scene = new Scene(root);
+        scene.setFill(Color.TRANSPARENT);
+        scene.getStylesheets().add(crearEstiloCremaModerno()); // método que genera el CSS en línea
+        dialogStage.setScene(scene);
+
+        scene.setOnKeyPressed(e -> { if (e.getCode() == KeyCode.ESCAPE) dialogStage.close(); });
+
+
+        final double[] xOffset = {0}; final double[] yOffset = {0};
+        root.setOnMousePressed(evt -> { xOffset[0] = evt.getSceneX(); yOffset[0] = evt.getSceneY(); });
+        root.setOnMouseDragged(evt -> {
+            dialogStage.setX(evt.getScreenX() - xOffset[0]);
+            dialogStage.setY(evt.getScreenY() - yOffset[0]);
+        });
+
+        dialogStage.showAndWait();
+    }
+    private String crearEstiloCremaModerno() {
+        String css = """
+        /* === Tema crema moderno con bordes extra redondeados y texto oscuro === */
+        .root {
+            -fx-background-color: transparent;
+        }
+
+        .tarjeta-dialogo {
+            -fx-background-color: #FDF6EC;
+            -fx-background-radius: 30px;
+            -fx-border-radius: 30px;
+            -fx-border-color: #EED9C4;
+            -fx-border-width: 1.5px;
+            -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 20, 0, 0, 6);
+            -fx-padding: 25px;
+        }
+
+        .icono-titulo {
+            -fx-font-size: 35px;
+            -fx-padding: 0 0 5 0;
+        }
+
+        .titulo-dialogo {
+            -fx-font-size: 22px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #3A2E27;
+            -fx-padding: 0 0 15 0;
+        }
+
+        /* Grid de información */
+        .grid-info {
+            -fx-background-color: #F8EDE0;
+            -fx-background-radius: 24px;
+            -fx-padding: 18px;
+            -fx-hgap: 20px;
+            -fx-vgap: 12px;
+        }
+
+        .etiqueta {
+            -fx-text-fill: #5A5046;
+            -fx-font-size: 13px;
+        }
+
+        .valor {
+            -fx-text-fill: #1E1E1E;
+            -fx-font-weight: bold;
+            -fx-font-size: 13px;
+        }
+
+        .valor-estado {
+            -fx-font-weight: bold;
+            -fx-font-size: 13px;
+        }
+
+        .estado-anulada {
+            -fx-text-fill: #C0392B;
+        }
+
+        .estado-activa {
+            -fx-text-fill: #2C5F2D;
+        }
+
+        /* Tabla */
+        .tabla-productos {
+            -fx-background-color: #FDF6EC;
+            -fx-table-cell-border-color: transparent;
+            -fx-table-header-border-color: transparent;
+            -fx-padding: 0;
+            -fx-background-radius: 24px;
+            -fx-border-radius: 24px;
+            -fx-border-color: #EED9C4;
+            -fx-border-width: 1px;
+        }
+
+        .tabla-productos .column-header-background {
+            -fx-background-color: #EED9C4;
+            -fx-background-radius: 24px 24px 0 0;
+        }
+
+        .tabla-productos .column-header {
+            -fx-background-color: transparent;
+            -fx-text-fill: #000000;          /* ← NEGRO PURO */
+            -fx-font-weight: bold;
+            -fx-font-size: 13px;
+            -fx-padding: 10 5 10 5;
+        }
+        .tabla-productos .column-header .label {
+            -fx-text-fill: #000000;
+            -fx-font-weight: bold;
+        }
+
+        .tabla-productos .table-row-cell {
+            -fx-background-color: #FDF6EC;
+            -fx-text-fill: #1E1E1E;
+            -fx-cell-size: 35px;
+        }
+
+        .tabla-productos .table-row-cell:odd {
+            -fx-background-color: #F8EDE0;
+            -fx-text-fill: #1E1E1E;
+        }
+
+        .tabla-productos .table-row-cell:selected {
+            -fx-background-color: #D6B9A0;
+            -fx-text-fill: white;
+        }
+
+        .tabla-productos .table-cell {
+            -fx-border-color: transparent;
+            -fx-padding: 0 8 0 8;
+            -fx-text-fill: #1E1E1E;
+        }
+
+        /* Footer total */
+        .etiqueta-total {
+            -fx-font-size: 16px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #1E1E1E;
+        }
+
+        .monto-total {
+            -fx-font-size: 22px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #8B5E3C;
+        }
+
+        /* Botón */
+        .boton-cerrar {
+            -fx-background-color: #EED9C4;
+            -fx-text-fill: #1E1E1E;
+            -fx-font-weight: bold;
+            -fx-font-size: 14px;
+            -fx-background-radius: 16px;
+            -fx-padding: 10 30 10 30;
+            -fx-cursor: hand;
+            -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 8, 0, 0, 2);
+        }
+
+        .boton-cerrar:hover {
+            -fx-background-color: #E1C7AE;
+        }
+
+        .boton-cerrar:pressed {
+            -fx-background-color: #D4B49B;
+        }
+    """;
+
+        try {
+            return "data:text/css;base64," +
+                    Base64.getEncoder().encodeToString(css.getBytes(StandardCharsets.UTF_8));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
     @FXML
     void verDetalleEmpleado(ActionEvent event) {
         Empleado seleccionado = tablaEmpleadosReporte.getSelectionModel().getSelectedItem();
@@ -504,10 +750,17 @@ public class ReportesController {
         }
 
         double sueldoBase = seleccionado.getSueldo();
-        double liquidoNeto = Math.max(0, sueldoBase - totalAdelantos); // Evita números negativos por si se sobregira
-        double costoAnualProyectado = (sueldoBase * 12) + sueldoBase; // 12 sueldos + 1 Aguinaldo
+        double liquidoNeto = Math.max(0, sueldoBase - totalAdelantos);
+        double costoAnualProyectado = (sueldoBase * 12) + sueldoBase;
 
         StringBuilder sb = new StringBuilder();
+
+        String nombreNegocio = (App.attizos != null && App.attizos.getNombre() != null)
+                ? App.attizos.getNombre().toUpperCase() : "REPORTE OFICIAL";
+
+        sb.append("🏢 ").append(nombreNegocio).append("\n");
+        sb.append("=== REPORTE FINANCIERO Y LABORAL ===\n\n");
+
         sb.append("👤 PERFIL DEL EMPLEADO\n");
         sb.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
         sb.append("Nombre: ").append(seleccionado.getNombre()).append("\n");
@@ -520,7 +773,7 @@ public class ReportesController {
         sb.append("Fecha Ingreso: ").append(fechaContratoStr).append("\n");
         sb.append("Antigüedad: ").append(antiguedad).append("\n\n");
 
-        sb.append("📉 HISTORIAL DE ADELANTOS (Filtro de Fechas Actual)\n");
+        sb.append("📉 HISTORIAL DE ADELANTOS (Filtro Actual)\n");
         sb.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
         sb.append(desgloseAdelantos.toString());
         sb.append("Total Retirado: Bs. ").append(String.format("%.2f", totalAdelantos)).append("\n\n");
@@ -541,18 +794,56 @@ public class ReportesController {
         } else {
             sb.append("Estado: Sin acceso al sistema (Solo operativo)\n");
         }
-        Alert ficha = new Alert(Alert.AlertType.INFORMATION);
-        ficha.setTitle("Ficha Técnica");
-        ficha.setHeaderText("Reporte Financiero y Laboral: " + seleccionado.getNombre());
+        Stage dialogStage = new Stage();
+        dialogStage.initStyle(StageStyle.TRANSPARENT);
+        dialogStage.initModality(Modality.APPLICATION_MODAL);
+
+        // Usaremos el color verde (Information) de tu diseño
+        String colorAcento = "#218c4e";
+
+        javafx.scene.layout.VBox cajaDialogo = new javafx.scene.layout.VBox(15);
+        cajaDialogo.setAlignment(javafx.geometry.Pos.CENTER);
+        cajaDialogo.setStyle("-fx-background-color: #FFFFFF; -fx-background-radius: 20; -fx-border-color: " + colorAcento + "; -fx-border-width: 2; -fx-border-radius: 20; -fx-padding: 30; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 20, 0, 0, 5);");
+
+        Label lblIcono = new Label("📋");
+        lblIcono.setStyle("-fx-font-size: 40px; -fx-text-fill: " + colorAcento + ";");
+
+        Label lblTitulo = new Label("Ficha Técnica: " + seleccionado.getNombre());
+        lblTitulo.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #111111;");
 
         TextArea txtReporte = new TextArea(sb.toString());
         txtReporte.setEditable(false);
         txtReporte.setWrapText(true);
-        txtReporte.setPrefWidth(600);
+        txtReporte.setPrefWidth(550);
         txtReporte.setPrefHeight(350);
-        txtReporte.setStyle("-fx-font-size: 14px; -fx-font-family: 'Segoe UI', Helvetica, Arial, sans-serif;");
+        // Se estiliza el TextArea para que combine con el fondo blanco redondeado
+        txtReporte.setStyle("-fx-font-size: 14px; -fx-font-family: 'Segoe UI', Helvetica, Arial, sans-serif; -fx-control-inner-background: #F9F9F9; -fx-background-color: transparent; -fx-border-color: #DDDDDD; -fx-border-radius: 8; -fx-padding: 5;");
 
-        ficha.getDialogPane().setContent(txtReporte);
-        ficha.showAndWait();
+        Button btnOk = new Button("Cerrar Ficha");
+        btnOk.setStyle("-fx-background-color: " + colorAcento + "; -fx-text-fill: #FFFFFF; -fx-font-weight: bold; -fx-font-size: 14px; -fx-background-radius: 10; -fx-padding: 10 25; -fx-cursor: hand;");
+        btnOk.setOnAction(e -> dialogStage.close());
+
+        cajaDialogo.getChildren().addAll(lblIcono, lblTitulo, txtReporte, btnOk);
+
+        javafx.scene.layout.StackPane root = new javafx.scene.layout.StackPane(cajaDialogo);
+        root.setStyle("-fx-background-color: transparent; -fx-padding: 20;");
+
+        Scene scene = new Scene(root);
+        scene.setFill(Color.TRANSPARENT);
+        dialogStage.setScene(scene);
+
+        // Movimiento de la ventana
+        final double[] xOffset = {0};
+        final double[] yOffset = {0};
+        root.setOnMousePressed(eventClick -> {
+            xOffset[0] = eventClick.getSceneX();
+            yOffset[0] = eventClick.getSceneY();
+        });
+        root.setOnMouseDragged(eventDrag -> {
+            dialogStage.setX(eventDrag.getScreenX() - xOffset[0]);
+            dialogStage.setY(eventDrag.getScreenY() - yOffset[0]);
+        });
+
+        dialogStage.showAndWait();
     }
 }

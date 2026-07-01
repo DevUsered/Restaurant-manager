@@ -43,15 +43,5 @@ public class Reserva {
 
     public void setEstado(String estado) { this.estado = estado; }
     public void setNumeroMesa(int numeroMesa) { this.numeroMesa = numeroMesa; }
-    @Override
-    public String toString() {
-
-        String alerta = toleranciaExcedida() ? " ⏰ (RETRASADO)" : "";
-        String mesaAsignada = numeroMesa > 0 ? String.valueOf(numeroMesa) : "Sin asignar";
-
-        return String.format("ID: %-7s | Fecha: %02d/%02d %02d:%02d | Cliente: %-15s | Tel: %-8s | Pax: %d | Mesa: %-10s | Estado: %s%s\n   📌 Obs: %s",
-                id, fecha.getDayOfMonth(), fecha.getMonthValue(), fecha.getHour(), fecha.getMinute(),
-                nombreCliente, telefono, cantidadPersonas, mesaAsignada, estado, alerta, observaciones);
-    }
 }
 

@@ -34,53 +34,67 @@ public class Pedido {
         this.fechaHora = LocalDateTime.now().format(formato);
     }
 
-    // ============================================================================
-    // GETTERS
-    // ============================================================================
-    public int getIdPedido() { return idPedido; }
-    public int getNumeroTicket() { return numeroTicket; }
-    public String getDescripcionBreve() { return descripcionBreve; }
-    public String getFechaHora() { return fechaHora; }
-    public ArrayList<DetalleFactura> getProductos() { return productos; }
-    public double getTotal() { return total; }
-    public String getEstado() { return estado; }
-    public String getCliente() { return cliente; }
-
-    // ============================================================================
-    // SETTERS 
-    // ============================================================================
-    public void setIdPedido(int idPedido) { this.idPedido = idPedido; }
-    public void setNumeroTicket(int numeroTicket) { this.numeroTicket = numeroTicket; }
-    public void setDescripcionBreve(String descripcionBreve) { this.descripcionBreve = descripcionBreve; }
-    public void setEstado(String estado) { this.estado = estado; }
-    public void setCliente(String cliente) { this.cliente = cliente; }
-    public void setProductos(ArrayList<DetalleFactura> productos) { this.productos = productos; }
-    public void setTotal(double total) { this.total = total; }
-    public void setFechaHora(String fechaHora) { this.fechaHora = fechaHora; }
-
-    public void mostrarPedido() {
-        System.out.println(this.toString());
+    public int getIdPedido() {
+        return idPedido;
     }
 
-    @Override
-    public String toString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append(String.format("📋 Ticket Nro: %-3d (ID BD: %d) | Hora: %s | Cliente: %-15s | Estado: [%s]\n",
-                numeroTicket, idPedido, fechaHora, cliente, estado));
-        sb.append("   🍳 A PREPARAR:\n");
-        
-        // Si viene de la BD con descripción breve, la mostramos
-        if (descripcionBreve != null && !descripcionBreve.isEmpty()) {
-            sb.append("      👉 ").append(descripcionBreve).append("\n");
-        } 
-        // Si viene de la memoria RAM con la lista, iteramos (compatibilidad antigua)
-        else if (productos != null) {
-            for(DetalleFactura df : productos){
-                sb.append(String.format("      👉 %d x %s\n", df.getCantidad(), df.getProducto().getNombre()));
-            }
-        }
-        sb.append("----------------------------------------------------------------");
+    public void setIdPedido(int idPedido) {
+        this.idPedido = idPedido;
+    }
 
-        return sb.toString();
+    public int getNumeroTicket() {
+        return numeroTicket;
+    }
+
+    public void setNumeroTicket(int numeroTicket) {
+        this.numeroTicket = numeroTicket;
+    }
+
+    public String getDescripcionBreve() {
+        return descripcionBreve;
+    }
+
+    public void setDescripcionBreve(String descripcionBreve) {
+        this.descripcionBreve = descripcionBreve;
+    }
+
+    public String getFechaHora() {
+        return fechaHora;
+    }
+
+    public void setFechaHora(String fechaHora) {
+        this.fechaHora = fechaHora;
+    }
+
+    public ArrayList<DetalleFactura> getProductos() {
+        return productos;
+    }
+
+    public void setProductos(ArrayList<DetalleFactura> productos) {
+        this.productos = productos;
+    }
+
+    public double getTotal() {
+        return total;
+    }
+
+    public void setTotal(double total) {
+        this.total = total;
+    }
+
+    public String getEstado() {
+        return estado;
+    }
+
+    public void setEstado(String estado) {
+        this.estado = estado;
+    }
+
+    public String getCliente() {
+        return cliente;
+    }
+
+    public void setCliente(String cliente) {
+        this.cliente = cliente;
     }
 }

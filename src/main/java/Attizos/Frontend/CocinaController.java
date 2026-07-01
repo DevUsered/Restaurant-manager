@@ -5,8 +5,10 @@ import Attizos.Backend.Attizos.*;
 import Attizos.Backend.Database.*;
 import Attizos.Backend.Listas.ListaDE;
 import Attizos.Backend.Listas.NodoDE;
+import Attizos.Frontend.Network.WebSocketManager;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
@@ -38,7 +40,6 @@ public class CocinaController {
     @FXML private Button btnConfirmar;
 
     private ObservableList<Pedido> listaColaPedidos = FXCollections.observableArrayList();
-    private Timeline radarDePedidos;
 
     @FXML
     public void initialize() {
@@ -59,24 +60,19 @@ public class CocinaController {
         tablaPedidos.getSelectionModel().selectedItemProperty().addListener((obs, viejo, nuevo) -> {
             mostrarDetallesPedido(nuevo);
         });
+        cargarColaDesdeBackend();
+        WebSocketManager.setAccionCocina(() ->{
+            System.out.println("Pedido recibido en la cocina. Actualizando la tabla...");
+            Platform.runLater(() -> {
+                int indiceSeleccionado = tablaPedidos.getSelectionModel().getSelectedIndex();
+                cargarColaDesdeBackend();
 
-        iniciarRadarDePedidos();
-    }
+                if(indiceSeleccionado >= 0 && indiceSeleccionado < listaColaPedidos.size()){
+                    tablaPedidos.getSelectionModel().select(indiceSeleccionado);
+                }
+            });
+        });
 
-    private void iniciarRadarDePedidos() {
-        cargarColaDesdeBackend(); // Primera carga inmediata
-
-        radarDePedidos = new Timeline(new KeyFrame(Duration.seconds(4), evento -> {
-            int indiceSeleccionado = tablaPedidos.getSelectionModel().getSelectedIndex();
-            
-            cargarColaDesdeBackend();
-            
-            if(indiceSeleccionado >= 0 && indiceSeleccionado < listaColaPedidos.size()){
-                tablaPedidos.getSelectionModel().select(indiceSeleccionado);
-            }
-        }));
-        radarDePedidos.setCycleCount(Timeline.INDEFINITE);
-        radarDePedidos.play();
     }
 
     private void cargarColaDesdeBackend() {
@@ -141,8 +137,6 @@ public class CocinaController {
     @FXML
     void cerrarVentana(ActionEvent event) {
         try{
-            if(radarDePedidos != null) radarDePedidos.stop();
-
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Home.fxml"));
             Parent root = loader.load();
             Stage stage = new Stage();

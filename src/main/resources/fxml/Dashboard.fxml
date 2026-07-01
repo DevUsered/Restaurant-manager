@@ -21,6 +21,11 @@
                 <padding>
                     <Insets bottom="15" left="20" right="20" top="20" />
                 </padding>
+                <Label fx:id="indicadorInternet" alignment="CENTER" maxWidth="Infinity" prefHeight="42.0" prefWidth="242.0" style="-fx-font-size: 20px; -fx-text-fill: #95a5a6;" text="📶">
+                    <VBox.margin>
+                        <Insets bottom="5.0" />
+                    </VBox.margin>
+                </Label>
 
                 <HBox alignment="CENTER_LEFT" spacing="10">
                     <Label styleClass="logo-icon" text="🍕" />
@@ -67,12 +72,13 @@
                         <Label fx:id="lblName" styleClass="profile-name" text="Nombre" />
                     </VBox>
                 </HBox>
-
-                <Button fx:id="btnLogout" onAction="#logout" styleClass="menu-button-active" text="🏠  Cerrar Sesión">
+                <VBox spacing="8">
+                    <Button fx:id="btnLogout" maxWidth="Infinity" onAction="#logout" styleClass="menu-button-active" text="🏠  Cerrar Sesión" />
+                    <Button fx:id="btnConfiguration" maxWidth="Infinity" onAction="#openConfiguration" style="-fx-background-color: transparent;" styleClass="menu-button-active" text="⚙ Configuración" />
                     <VBox.margin>
                         <Insets top="10.0" />
                     </VBox.margin>
-                </Button>
+                </VBox>
 
             </VBox>
 

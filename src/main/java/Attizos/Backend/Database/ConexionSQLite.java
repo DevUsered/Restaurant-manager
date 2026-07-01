@@ -13,6 +13,7 @@ import java.sql.*;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Map;
 
 public class ConexionSQLite {
     private static String urlSQLite;
@@ -59,6 +60,7 @@ public class ConexionSQLite {
                 + "unidad_medida TEXT, "
                 + "stock_minimo REAL DEFAULT 0, "
                 + "stock_maximo REAL DEFAULT 0, "
+                + "stock_actual REAL DEFAULT 0,"
                 + "estado TEXT DEFAULT 'Activo'"
                 + ");";
         String sqlProductos = "CREATE TABLE IF NOT EXISTS productos ("
@@ -101,7 +103,11 @@ public class ConexionSQLite {
                 + "fecha TEXT, "
                 + "ultimo_numero INTEGER"
                 + ");";
-
+        String sqlRecetasLocal = "CREATE TABLE IF NOT EXISTS recetas_local ("
+                + "id_producto INTEGER NOT NULL, "
+                + "codigo_insumo TEXT NOT NULL, "
+                + "cantidad REAL NOT NULL"
+                + ");";
 
         try (Connection conn = getConexion();
              Statement stmt = conn.createStatement()) {
@@ -112,6 +118,7 @@ public class ConexionSQLite {
             stmt.execute(sqlVentasPendientes);
             stmt.execute(sqlAuditoria);
             stmt.execute(sqlSecuencia);
+            stmt.execute(sqlRecetasLocal);
             stmt.execute("INSERT OR IGNORE INTO secuencia_tickets (id, fecha, ultimo_numero) VALUES (1, '2000-01-01', 0);");
 
             System.out.println("Caché SQLite inicializada correctamente. ");
@@ -167,7 +174,7 @@ public class ConexionSQLite {
     public static void sincronizarInsumos() {
         System.out.println("Sincronizando insumos...");
         String sqlLimpiarSQLite = "DELETE FROM insumos_catalogo";
-        String sqlInsertarSQLite = "INSERT INTO insumos_catalogo (codigo, nombre, categoria, unidad_medida, stock_minimo, stock_maximo, estado) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        String sqlInsertarSQLite = "INSERT INTO insumos_catalogo (codigo, nombre, categoria, unidad_medida, stock_minimo, stock_maximo, stock_actual, estado) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection connSQL = getConexion();
              Statement stmtLimpiar = connSQL.createStatement();
@@ -184,7 +191,8 @@ public class ConexionSQLite {
                 stmtInsertar.setString(4, ins.getUnidad());
                 stmtInsertar.setDouble(5, ins.getStockMinimo());
                 stmtInsertar.setDouble(6, ins.getStockMaximo());
-                stmtInsertar.setString(7, ins.getEstado());
+                stmtInsertar.setDouble(7, ins.getStockActual());
+                stmtInsertar.setString(8, ins.getEstado());
 
                 stmtInsertar.executeUpdate();
                 contador++;
@@ -198,16 +206,20 @@ public class ConexionSQLite {
     public static void sincronizarProductos() {
         System.out.println("Sincronizando productos...");
         String sqlLimpiarSQLite = "DELETE FROM productos";
+        String sqlLimpiarRecetas = "DELETE FROM recetas_local";
         
         String sqlInsertarSQLite = "INSERT OR REPLACE INTO productos " +
                 "(id_producto, nombre, precio, categoria, tipo_clase, stock_directo, tiene_receta, imagen_base64, atributos_extra, fecha_inicio, fecha_fin, estado) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sqlInsertarReceta = "INSERT INTO recetas_local (id_producto, codigo_insumo, cantidad) VALUES (?, ?, ?)";
 
         try (Connection connSQL = getConexion();
              Statement stmtLimpiar = connSQL.createStatement();
-             PreparedStatement stmtInsertar = connSQL.prepareStatement(sqlInsertarSQLite)) {
+             PreparedStatement stmtInsertar = connSQL.prepareStatement(sqlInsertarSQLite);
+             PreparedStatement stmtReceta = connSQL.prepareStatement(sqlInsertarReceta)) {
 
             stmtLimpiar.executeUpdate(sqlLimpiarSQLite);
+            stmtLimpiar.executeUpdate(sqlLimpiarRecetas);
             ArrayList<Producto> productosDelServidor = ApiClient.obtenerProductosDelServidor();
             int contador = 0;
             
@@ -236,6 +248,14 @@ public class ConexionSQLite {
                 stmtInsertar.setString(12, p.getEstado());
 
                 stmtInsertar.executeUpdate();
+                if (p.tieneReceta() && p.getReceta() != null) {
+                    for (Map.Entry<String, Double> ingrediente : p.getReceta().getIngredientes().entrySet()) {
+                        stmtReceta.setInt(1, p.getId());
+                        stmtReceta.setString(2, ingrediente.getKey());
+                        stmtReceta.setDouble(3, ingrediente.getValue());
+                        stmtReceta.executeUpdate();
+                    }
+                }
                 contador++;
             }
             System.out.println("Productos sincronizados desde la nube: " + contador);
@@ -343,7 +363,7 @@ public class ConexionSQLite {
 
     public static HashMap<String, Insumo> obtenerInventarioLocal() {
         HashMap<String, Insumo> inventario = new HashMap<>();
-        String sql = "SELECT codigo, nombre, categoria, unidad_medida, stock_minimo, stock_maximo, estado FROM insumos_catalogo WHERE estado = 'Activo'";
+        String sql = "SELECT codigo, nombre, categoria, unidad_medida, stock_minimo, stock_maximo, stock_actual, estado FROM insumos_catalogo WHERE estado = 'Activo'";
 
         try (Connection conn = getConexion();
              PreparedStatement ps = conn.prepareStatement(sql);
@@ -356,8 +376,9 @@ public class ConexionSQLite {
                 String unidad = rs.getString("unidad_medida");
                 double min = rs.getDouble("stock_minimo");
                 double max = rs.getDouble("stock_maximo");
+                double actual = rs.getDouble("stock_actual");
 
-                Insumo i = new Insumo(codigo, nombre, categoria, unidad, 0.0, min, max, LocalDate.now().plusYears(1));
+                Insumo i = new Insumo(codigo, nombre, categoria, unidad, actual, min, max, LocalDate.now().plusYears(1));
                 inventario.put(codigo, i);
             }
         } catch (SQLException e) {
@@ -369,6 +390,7 @@ public class ConexionSQLite {
     public static ArrayList<Producto> obtenerMenuLocal() {
         ArrayList<Producto> menu = new ArrayList<>();
         String sql = "SELECT id_producto, nombre, precio, categoria, stock_directo, tiene_receta, imagen_base64, atributos_extra, estado FROM productos WHERE estado = 'Activo' ORDER BY id_producto";
+        String sqlReceta = "SELECT codigo_insumo, cantidad FROM recetas_local WHERE id_producto = ?";
 
         try (Connection conn = getConexion();
              PreparedStatement ps = conn.prepareStatement(sql);
@@ -389,6 +411,19 @@ public class ConexionSQLite {
                 }
 
                 Producto nuevoProducto = new Producto(id, nombre, precio, categoria, stockDirecto, imagenBase64, rs.getString("estado"));
+                nuevoProducto.setTieneReceta(tieneReceta);
+                if(tieneReceta){
+                    Receta receta = new Receta();
+                    try (PreparedStatement psReceta = conn.prepareStatement(sqlReceta)) {
+                        psReceta.setInt(1, id);
+                        try (ResultSet rsReceta = psReceta.executeQuery()) {
+                            while (rsReceta.next()) {
+                                receta.agregarIngrediente(rsReceta.getString("codigo_insumo"), rsReceta.getDouble("cantidad"));
+                            }
+                        }
+                    }
+                    nuevoProducto.setReceta(receta);
+                }
 
                 if (jsonStr != null && jsonStr.length() > 2) {
                     String contenido = jsonStr.substring(1, jsonStr.length() - 1);
@@ -466,7 +501,7 @@ public class ConexionSQLite {
             int sincronizadas = 0;
             while (rs.next()) {
                 int idLocal = rs.getInt("id_local");
-                boolean exito = ReportesDAO.registrarAuditoria(
+                boolean exito = ApiClient.registrarAuditoriaEnServidor(
                         rs.getString("operador"), rs.getString("tipo_area"),
                         rs.getString("nombre_item"), rs.getString("accion"),
                         rs.getDouble("cantidad"), rs.getString("motivo")

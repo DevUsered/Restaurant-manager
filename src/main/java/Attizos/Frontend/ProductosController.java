@@ -1,8 +1,11 @@
 package Attizos.Frontend;
 
+import Attizos.Backend.AI.AuditoriaLocal;
 import Attizos.Backend.Api.ApiClient;
 import Attizos.Backend.Attizos.*;
 import Attizos.Backend.Database.*;
+import Attizos.Frontend.Network.WebSocketManager;
+import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -17,11 +20,7 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-
+import java.util.*;
 import java.io.File;
 
 public class ProductosController {
@@ -32,19 +31,19 @@ public class ProductosController {
     @FXML private TableColumn<Producto, Double> colPrecio;
 
     @FXML private Button btnAgregarIngrediente;
-    @FXML private TextField txtBuscador, txtNombre, txtPrecio, txtStock, txtCantidadReceta;
-    @FXML private ComboBox<String> cmbCategoria, cmbTipoClase;
+    @FXML private TextField txtBuscador, txtNombre, txtPrecio, txtStock, txtCantidadReceta, txtBuscarInsumo;
+    @FXML private ComboBox<String> cmbCategoria;
     @FXML private ComboBox<Insumo> cmbInsumos;
 
-    @FXML private VBox panelAtributosDinamicos;
     @FXML private VBox vboxCategoria;
     @FXML private VBox vboxStock;
-    @FXML private VBox vboxReceta; 
+    @FXML private VBox vboxReceta;
 
     @FXML private ImageView imgPreview;
     @FXML private TableView<DetalleRecetaUI> tablaRecetaFila;
     @FXML private TableColumn<DetalleRecetaUI, String> colRecetaInsumo;
     @FXML private TableColumn<DetalleRecetaUI, Double> colRecetaCant;
+    @FXML private CheckBox chkTieneReceta;
 
     private ObservableList<Producto> masterData = FXCollections.observableArrayList();
     private FilteredList<Producto> filteredData;
@@ -54,28 +53,18 @@ public class ProductosController {
     private ObservableList<Insumo> masterInsumos = FXCollections.observableArrayList();
     private FilteredList<Insumo> filteredInsumos;
 
-    @FXML private TextField txtBuscarInsumo;
-
-    // Campos dinámicos
-    private ComboBox<String> cmbTamanoPizza = new ComboBox<>(FXCollections.observableArrayList("Personal", "Mediana", "Familiar", "Gigante"));
-    private CheckBox chkExtraQueso = new CheckBox("¿Lleva Extra Queso?");
-    private TextField txtTipoBebida = new TextField();
-    private TextField txtSalsaPasta = new TextField();
-    private ComboBox<String> cmbTamanoBebida = new ComboBox<>(FXCollections.observableArrayList("Personal", "Medio litro", "1 Litro", "2 Litros", "3 Litros"));
-
-    private CheckBox chkTieneRecetaOtro = new CheckBox("¿Se prepara en cocina (Tiene ingredientes)?");
 
     @FXML
     public void initialize() {
         configurarTabla();
-        estilizarControlesDinamicos();
-
-        cmbTipoClase.setItems(FXCollections.observableArrayList("Pizza", "Bebida", "Pasta", "Calzone", "Postre", "Otro"));
-        cmbTipoClase.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> actualizarCamposDinamicos(newVal));
-
-        vboxCategoria.setVisible(false); vboxCategoria.setManaged(false);
-        vboxStock.setVisible(false); vboxStock.setManaged(false);
-        vboxReceta.setVisible(false); vboxReceta.setManaged(false);
+        if (chkTieneReceta != null) {
+            chkTieneReceta.setStyle("-fx-text-fill: #111111; -fx-font-weight: bold;");
+            chkTieneReceta.selectedProperty().addListener((obs, oldVal, isChecked) -> {
+                mostrarOcultarCamposRecetaStock(isChecked);
+            });
+        }
+        if (vboxCategoria != null) { vboxCategoria.setVisible(true); vboxCategoria.setManaged(true); }
+        mostrarOcultarCamposRecetaStock(false);
 
         colRecetaInsumo.setCellValueFactory(new PropertyValueFactory<>("nombreInsumo"));
         colRecetaCant.setCellValueFactory(new PropertyValueFactory<>("cantidad"));
@@ -87,15 +76,29 @@ public class ProductosController {
         filteredInsumos = new FilteredList<>(masterInsumos, p -> true);
         cmbInsumos.setItems(filteredInsumos);
         cargarMenu();
+        cargarCategoriasUnicas();
         cargarInsumos();
-        
+
+        cmbInsumos.setStyle("-fx-base: #FFFFFF; -fx-background-color: #F5F5F5; -fx-border-color: #DDDDDD; -fx-border-radius: 5;");
+        cmbInsumos.setButtonCell(new ListCell<Insumo>() {
+            @Override
+            protected void updateItem(Insumo item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText("Insumo...");
+                    setStyle("-fx-text-fill: #555555; -fx-background-color: transparent;");
+                } else {
+                    setText(item.getNombre());
+                    setStyle("-fx-text-fill: #111111; -fx-font-weight: bold; -fx-background-color: transparent;");
+                }
+            }
+        });
+
         if(txtBuscarInsumo != null){
             txtBuscarInsumo.textProperty().addListener((observable, oldValue, newValue) ->{
                 filteredInsumos.setPredicate(insumo ->{
                     if(newValue == null || newValue.isEmpty()) return true;
-
                     String filtro = newValue.toLowerCase();
-
                     return insumo.getNombre().toLowerCase().contains(filtro);
                 });
                 if(newValue != null && !newValue.isEmpty()){
@@ -144,46 +147,27 @@ public class ProductosController {
                 });
             });
         }
-    }
-
-    private void estilizarControlesDinamicos() {
-        String estiloCombo = "-fx-base: #FFFFFF; -fx-background-color: #F5F5F5; -fx-border-color: #DDDDDD; -fx-border-radius: 5;";
-        String estiloTexto = "-fx-background-color: #F5F5F5; -fx-text-fill: #111111; -fx-border-color: #DDDDDD; -fx-border-radius: 5;";
-        String estiloCheck = "-fx-text-fill: #111111; -fx-font-weight: bold;";
-        cmbInsumos.setStyle(estiloCombo);
-        cmbInsumos.setButtonCell(new ListCell<Insumo>() {
-            @Override
-            protected void updateItem(Insumo item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText("Insumo...");
-                    setStyle("-fx-text-fill: #555555; -fx-background-color: transparent;"); // Gris cuando está vacío
-                } else {
-                    setText(item.getNombre()); // Extraemos el nombre del insumo
-                    setStyle("-fx-text-fill: #111111; -fx-font-weight: bold; -fx-background-color: transparent;"); // NEGRO ABSOLUTO
-                }
-            }
-        });
-
-        cmbTamanoPizza.setStyle(estiloCombo);
-        cmbTamanoPizza.setMaxWidth(Double.MAX_VALUE);
-        chkExtraQueso.setStyle(estiloCheck);
-        cmbTamanoBebida.setStyle(estiloCombo);
-        cmbTamanoBebida.setMaxWidth(Double.MAX_VALUE);
-        txtTipoBebida.setStyle(estiloTexto);
-        txtTipoBebida.setPromptText("Tipo (Gaseosa, Jugo...)");
-        txtSalsaPasta.setStyle(estiloTexto);
-        txtSalsaPasta.setPromptText("Salsa (Boloñesa, Alfredo...)");
-
-        // Estilo y Escuchador del CheckBox para "Otro"
-        chkTieneRecetaOtro.setStyle(estiloCheck);
-        chkTieneRecetaOtro.selectedProperty().addListener((obs, oldVal, isChecked) -> {
-            if ("Otro".equals(cmbTipoClase.getValue())) {
-                mostrarOcultarCamposRecetaStock(isChecked);
-            }
+        WebSocketManager.setAccionMenu(() ->{
+            System.out.println("Actualizando menu...");
+            Platform.runLater( () ->{
+                cargarMenu();
+                cargarCategoriasUnicas();
+                tablaMenu.refresh();
+            });
         });
     }
-
+    private void mostrarOcultarCamposRecetaStock(boolean esCocina) {
+        if (vboxStock != null) {
+            vboxStock.setVisible(!esCocina);
+            vboxStock.setManaged(!esCocina);
+            if (esCocina) txtStock.clear();
+        }
+        if (vboxReceta != null) {
+            vboxReceta.setVisible(esCocina);
+            vboxReceta.setManaged(esCocina);
+            tablaRecetaFila.setPrefHeight(esCocina ? 280 : 120);
+        }
+    }
     private void configurarMenuContextualReceta() {
         ContextMenu contextMenu = new ContextMenu();
         MenuItem itemModificar = new MenuItem("✏ Modificar cantidad");
@@ -196,12 +180,15 @@ public class ProductosController {
                         .ifPresent(nuevaCant -> {
                             try {
                                 double cant = Double.parseDouble(nuevaCant.replace(",", "."));
-                                if (cant > 0) {
-                                    seleccionado.setCantidad(cant);
-                                    tablaRecetaFila.refresh();
-                                } else {
-                                    mostrarAlerta("Error", "La cantidad debe ser mayor a 0");
-                                }
+
+                                if (cant < 0.001) { mostrarAlerta("Error", "La cantidad debe ser mayor a 0.001"); return; }
+                                String uni = seleccionado.getInsumo().getUnidad().toLowerCase();
+                                if ((uni.equals("kg") || uni.equals("lt")) && cant > 10) { mostrarAlerta("Exageración", "No puedes usar más de 10 " + uni + " en un plato."); return; }
+                                if ((uni.equals("g") || uni.equals("ml")) && cant > 10000) { mostrarAlerta("Exageración", "No puedes usar más de 10,000 " + uni + " en un plato."); return; }
+                                if ((uni.equals("und") || uni.equals("paquete")) && cant > 50) { mostrarAlerta("Exageración", "No puedes usar más de 50 " + uni + " en un plato."); return; }
+
+                                seleccionado.setCantidad(cant);
+                                tablaRecetaFila.refresh();
                             } catch (NumberFormatException ex) {
                                 mostrarAlerta("Error", "Ingrese un número válido");
                             }
@@ -211,9 +198,7 @@ public class ProductosController {
 
         itemEliminar.setOnAction(e -> {
             DetalleRecetaUI seleccionado = tablaRecetaFila.getSelectionModel().getSelectedItem();
-            if (seleccionado != null) {
-                recetaTemporal.remove(seleccionado);
-            }
+            if (seleccionado != null) recetaTemporal.remove(seleccionado);
         });
 
         contextMenu.getItems().addAll(itemModificar, itemEliminar);
@@ -231,7 +216,6 @@ public class ProductosController {
             return row;
         });
     }
-
     private void configurarTabla() {
         colId.setCellValueFactory(new PropertyValueFactory<>("id"));
         colNombre.setCellValueFactory(new PropertyValueFactory<>("nombre"));
@@ -239,77 +223,13 @@ public class ProductosController {
         colPrecio.setCellValueFactory(new PropertyValueFactory<>("precio"));
         colStock.setCellValueFactory(cellData -> {
             Producto p = cellData.getValue();
-            if(p.tieneReceta()){
-                return new SimpleStringProperty("Cocina");
-            }else{
-                return new SimpleStringProperty(String.valueOf((int) p.getStock()));
-            }
+            return new SimpleStringProperty(p.tieneReceta() ? "Cocina" : String.valueOf((int) p.getStock()));
         });
         colTipo.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().getCategoria()));
 
         filteredData = new FilteredList<>(masterData, p -> true);
         tablaMenu.setItems(filteredData);
     }
-
-    private boolean esDeCocina(String tipoClase) {
-        if (tipoClase.equalsIgnoreCase("Otro")) {
-            return chkTieneRecetaOtro.isSelected();
-        }
-        return !tipoClase.equalsIgnoreCase("Bebida");
-    }
-    private void mostrarOcultarCamposRecetaStock(boolean esCocina) {
-        vboxStock.setVisible(!esCocina);
-        vboxStock.setManaged(!esCocina);
-        if (esCocina) txtStock.clear();
-
-        vboxReceta.setVisible(esCocina);
-        vboxReceta.setManaged(esCocina);
-        if(esCocina){
-            tablaRecetaFila.setPrefHeight(280);
-        }else{
-            tablaRecetaFila.setPrefHeight(129);
-        }
-    }
-
-    private void actualizarCamposDinamicos(String tipo) {
-        panelAtributosDinamicos.getChildren().clear();
-        if (tipo == null) return;
-
-        boolean esOtro = tipo.equals("Otro");
-        vboxCategoria.setVisible(esOtro);
-        vboxCategoria.setManaged(esOtro);
-
-        mostrarOcultarCamposRecetaStock(esDeCocina(tipo));
-
-        Label lbl = new Label("Configuración de " + tipo + ":");
-        lbl.setStyle("-fx-text-fill: #111111; -fx-font-weight: bold;");
-        panelAtributosDinamicos.getChildren().add(lbl);
-
-        String estiloEtiquetasGris = "-fx-text-fill: #555555;";
-
-        switch (tipo) {
-            case "Pizza" -> {
-                Label lblTamano = new Label("Tamaño:");
-                lblTamano.setStyle(estiloEtiquetasGris);
-                panelAtributosDinamicos.getChildren().addAll(lblTamano, cmbTamanoPizza, chkExtraQueso);
-            }
-            case "Bebida" -> {
-                Label lblTamano = new Label("Tamaño:");
-                lblTamano.setStyle(estiloEtiquetasGris);
-                panelAtributosDinamicos.getChildren().addAll(lblTamano, cmbTamanoBebida, txtTipoBebida);
-            }
-            case "Pasta" -> {
-                Label lblSalsa = new Label("Salsa:");
-                lblSalsa.setStyle(estiloEtiquetasGris);
-                panelAtributosDinamicos.getChildren().addAll(lblSalsa, txtSalsaPasta);
-            }
-            case "Calzone", "Postre" -> {}
-            case "Otro" -> {
-                panelAtributosDinamicos.getChildren().add(chkTieneRecetaOtro);
-            }
-        }
-    }
-
     @FXML
     void seleccionarImagen(ActionEvent event) {
         FileChooser fc = new FileChooser();
@@ -319,7 +239,6 @@ public class ProductosController {
             imgPreview.setImage(new Image(archivoImagenSeleccionada.toURI().toString()));
         }
     }
-
     @FXML
     void agregarIngredienteVisual(ActionEvent event) {
         Insumo insumoSeleccionado = cmbInsumos.getSelectionModel().getSelectedItem();
@@ -331,21 +250,32 @@ public class ProductosController {
         }
         for (DetalleRecetaUI detalle : recetaTemporal) {
             if (detalle.getInsumo().getCodigo().equals(insumoSeleccionado.getCodigo())) {
-                mostrarAlerta("Ingrediente Duplicado",
-                        "El insumo '" + insumoSeleccionado.getNombre() + "' ya está agregado en la receta.\n\n" +
-                                "💡 Tip: Si deseas cambiar la cantidad, haz clic derecho sobre el ingrediente en la tabla y selecciona 'Modificar cantidad'.");
-
+                mostrarAlerta("Ingrediente Duplicado", "El insumo ya está agregado. Haga clic derecho en la tabla para modificarlo.");
                 txtCantidadReceta.clear();
                 return;
             }
         }
         try {
-            cantTexto = cantTexto.replace(",", ".");
-            double cantidad = Double.parseDouble(cantTexto);
-            if (cantidad <= 0) {
-                mostrarAlerta("Error", "La cantidad debe ser mayor a 0.");
+            double cantidad = Double.parseDouble(cantTexto.replace(",", "."));
+
+            if (cantidad < 0.001) {
+                mostrarAlerta("Error", "La cantidad es demasiado pequeña (Mínimo 0.001).");
                 return;
             }
+            String uni = insumoSeleccionado.getUnidad().toLowerCase();
+            if ((uni.equals("kg") || uni.equals("lt")) && cantidad > 10) {
+                mostrarAlerta("Exageración", "No puedes usar más de 10 " + uni + " en una sola porción/plato.");
+                return;
+            }
+            if ((uni.equals("g") || uni.equals("ml")) && cantidad > 10000) {
+                mostrarAlerta("Exageración", "No puedes usar más de 10,000 " + uni + " en una sola porción.");
+                return;
+            }
+            if ((uni.equals("und") || uni.equals("paquete")) && cantidad > 50) {
+                mostrarAlerta("Exageración", "No puedes usar más de 50 " + uni + " en una receta individual.");
+                return;
+            }
+
             recetaTemporal.add(new DetalleRecetaUI(insumoSeleccionado, cantidad));
             cmbInsumos.getSelectionModel().clearSelection();
             txtCantidadReceta.clear();
@@ -357,7 +287,6 @@ public class ProductosController {
             mostrarAlerta("Error", "Cantidad inválida. Ingrese un número válido (Ej: 1.5).");
         }
     }
-
     @FXML
     void guardarNuevoProducto(ActionEvent event) {
         try {
@@ -366,85 +295,58 @@ public class ProductosController {
 
             String precioTxt = txtPrecio.getText().replace(",", ".");
             double precio = Double.parseDouble(precioTxt);
-            if(precio < 0){
-                mostrarAlerta("Error", "El precio no puede ser negativo."); return;
-            }
+            if(precio < 0){ mostrarAlerta("Error", "El precio no puede ser negativo."); return; }
+
+            // Usamos el valor del editor para permitir texto libre
+            String cat = cmbCategoria.getEditor().getText().trim();
+            if (cat.isEmpty()) { mostrarAlerta("Error", "Debe escribir o seleccionar una categoría."); return; }
+
             if(archivoImagenSeleccionada == null){
                 java.util.Optional<String> resultado = DialogoPersonalizado.mostrarDialogo(
-                    "Confirmar Imagen",
-                    "No se ha seleccionado ninguna imagen",
-                    "¿Está seguro de que desea guardar el producto con la imagen por defecto?",
-                    "Sí, usar por defecto"
+                        "Confirmar Imagen", "No se ha seleccionado ninguna imagen",
+                        "¿Está seguro de que desea guardar el producto con la imagen por defecto?", "Sí, usar por defecto"
                 );
-                if(resultado.isEmpty()){
-                    return;
-                }
+                if(resultado.isEmpty()) return;
             }
 
-            String tipoVisual = cmbTipoClase.getValue();
-            if (tipoVisual == null) { mostrarAlerta("Error", "Debe seleccionar un tipo de producto."); return; }
+            boolean usaReceta = (chkTieneReceta != null && chkTieneReceta.isSelected());
 
             int stock = 0;
-            if (vboxStock.isVisible() && !txtStock.getText().isEmpty()) {
+            if (!usaReceta && vboxStock != null && vboxStock.isVisible() && !txtStock.getText().isEmpty()) {
                 stock = Integer.parseInt(txtStock.getText());
-                if(stock < 0){
-                    mostrarAlerta("Error", "El stock no puede ser negativo."); return;
-                }
-            }
-            String cat = tipoVisual.equals("Otro") && cmbCategoria.getValue() != null ? cmbCategoria.getValue() : tipoVisual;
-            String nombreArchivoImagen = "default.png";
-            if (archivoImagenSeleccionada != null) {
-                nombreArchivoImagen = UtilidadesImagen.guardarImagenLocal(archivoImagenSeleccionada, txtNombre.getText());
+                if(stock < 0){ mostrarAlerta("Error", "El stock no puede ser negativo."); return; }
             }
 
-            boolean usaReceta = vboxReceta.isVisible();
-            if (!usaReceta) {
-                recetaTemporal.clear();
+            String nombreArchivoImagen = "default.png";
+            if (archivoImagenSeleccionada != null) {
+                nombreArchivoImagen = UtilidadesImagen.guardarImagenLocal(archivoImagenSeleccionada, nombre);
             }
 
             Producto nuevo = new Producto(0, nombre, precio, cat, stock, nombreArchivoImagen,"Activo");
-            switch (tipoVisual) {
-                case "Pizza" -> {
-                    if (cmbTamanoPizza.getValue() != null) nuevo.agregarAtributo("tamano", cmbTamanoPizza.getValue());
-                    nuevo.agregarAtributo("extra_queso", String.valueOf(chkExtraQueso.isSelected()));
-                }
-                case "Bebida" -> {
-                    if (cmbTamanoBebida.getValue() != null) nuevo.agregarAtributo("tamano", cmbTamanoBebida.getValue());
-                    if (!txtTipoBebida.getText().isEmpty()) nuevo.agregarAtributo("tipo", txtTipoBebida.getText());
-                }
-                case "Pasta" -> {
-                    if (!txtSalsaPasta.getText().isEmpty()) nuevo.agregarAtributo("salsa", txtSalsaPasta.getText());
-                }
-                case "Postre" -> {
-                    nuevo.agregarAtributo("tipo", "Postre Dulce"); // Ejemplo
-                }
-            }
 
             if (usaReceta) {
+                if(recetaTemporal.isEmpty()){ mostrarAlerta("Error", "La receta no puede estar vacía."); return; }
                 Receta r = new Receta();
                 for (DetalleRecetaUI det : recetaTemporal) {
                     r.agregarIngrediente(det.getInsumo().getCodigo(), det.getCantidad());
                 }
                 nuevo.setReceta(r);
             }
+
             int cant = stock;
-            if(stock > 0 ){
+            if(stock > 0 && !usaReceta){
                 DialogoPersonalizado.mostrarDialogo("Registrar Compra", "Registrando compra inicial para: " + nuevo.getNombre(), "¿Cuánto costó esta compra? (Bs):", "0")
                         .ifPresent(costoStr -> {
                             try {
                                 double costoTotal = Double.parseDouble(costoStr.replace(",", "."));
-                                if(costoTotal < 0){
-                                    mostrarAlerta("Error", "El costo no puede ser negativo.");
-                                    return;
-                                }
+                                if(costoTotal < 0){ mostrarAlerta("Error", "El costo no puede ser negativo."); return; }
+
                                 boolean guardadoDB = ApiClient.guardarProductoEnServidor(nuevo);
                                 if(guardadoDB) {
-                                    if(nuevo.tieneReceta()){
-                                        ApiClient.guardarRecetaEnServidor(nuevo.getId(), nuevo.getReceta());
-                                    }
                                     ApiClient.registrarEgresoEnServidor("Compra Inicial: "+nuevo.getNombre(), costoTotal);
                                     App.attizos.getMenu().add(nuevo);
                                     ConexionSQLite.sincronizarProductos();
+
                                     String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
                                     App.registrarAuditoria(operador, "Producto", nuevo.getNombre(), "Creación", cant, "Nuevo producto con stock inicial");
                                     cargarMenu();
@@ -460,19 +362,17 @@ public class ProductosController {
             }else {
                 boolean guardadoDB = ApiClient.guardarProductoEnServidor(nuevo);
                 if(guardadoDB) {
-                    if(nuevo.tieneReceta()){
+                    if(usaReceta && nuevo.getReceta() != null){
                         ApiClient.guardarRecetaEnServidor(nuevo.getId(), nuevo.getReceta());
                     }
                     App.attizos.getMenu().add(nuevo);
                     String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
-                    App.registrarAuditoria(operador, "Producto", nuevo.getNombre(), "Creación", 0, "Nuevo producto de preparación");
+                    App.registrarAuditoria(operador, "Producto", nuevo.getNombre(), "Creación", 0, usaReceta ? "Nuevo producto de preparación" : "Producto sin stock inicial");
                     cargarMenu();
                     mostrarExito("Éxito", "Producto guardado correctamente.");
                     limpiarFormulario();
                     if (!App.modoOffline) {
-                        new Thread(() -> {
-                            ServicioNube.sincronizarImagenesPendientes();
-                        }).start();
+                        new Thread(() -> ServicioNube.sincronizarImagenesPendientes()).start();
                     }
                 }else{
                     mostrarAlerta("Error", "No se pudo guardar el producto. ");
@@ -485,7 +385,6 @@ public class ProductosController {
             mostrarAlerta("Error", "Ocurrió un error al guardar: " + e.getMessage());
         }
     }
-
     @FXML
     void sumarStockExistente(ActionEvent event) {
         Producto sel = tablaMenu.getSelectionModel().getSelectedItem();
@@ -502,10 +401,7 @@ public class ProductosController {
                                 .ifPresent(costoStr -> {
                                     try {
                                         double costoTotal = Double.parseDouble(costoStr.replace(",", "."));
-                                        if(costoTotal < 0){
-                                            mostrarAlerta("Error", "El costo no puede ser negativo.");
-                                            return;
-                                        }
+                                        if(costoTotal < 0){ mostrarAlerta("Error", "El costo no puede ser negativo."); return; }
                                         sel.aumentarStock(cantidad);
                                         boolean actualizado = ApiClient.actualizarProductoEnServidor(sel);
                                         if(actualizado){
@@ -537,10 +433,7 @@ public class ProductosController {
                 .ifPresent(cantStr -> {
                     try {
                         int cantidad = Integer.parseInt(cantStr);
-                        if (cantidad <= 0) {
-                            mostrarAlerta("Error","Ingrese cantidad válida. ");
-                            return;
-                        }
+                        if (cantidad <= 0) { mostrarAlerta("Error","Ingrese cantidad válida. "); return; }
 
                         DialogoPersonalizado.mostrarDialogo("Justificación", "Motivo de la baja:", "Describa por qué (Ej: Caducado, Merma):", "")
                                 .ifPresent(motivo -> {
@@ -554,7 +447,7 @@ public class ProductosController {
                                             tablaMenu.refresh();
                                             mostrarExito("Baja Exitosa", "Se restaron " + cantidad + " unidades.\nMotivo: " + motivo);
                                         }else{
-                                            sel.aumentarStock(cantidad); //Revertir si esque falla
+                                            sel.aumentarStock(cantidad);
                                             mostrarAlerta("Error", "No se puedo restar el stock. ");
                                         }
                                     } else {
@@ -588,6 +481,7 @@ public class ProductosController {
                     }
                 });
     }
+
     private void cargarMenu() {
         masterData.clear();
         ArrayList<Producto> menuDB = App.attizos.getMenu();
@@ -611,31 +505,37 @@ public class ProductosController {
         }
     }
 
+    private void cargarCategoriasUnicas() {
+        Set<String> categorias = new HashSet<>();
+        if (App.attizos.getMenu() != null) {
+            for (Producto p : App.attizos.getMenu()) {
+                if (p.getCategoria() != null && !p.getCategoria().equalsIgnoreCase("Promocion")) {
+                    categorias.add(p.getCategoria());
+                }
+            }
+        }
+        cmbCategoria.setItems(FXCollections.observableArrayList(categorias));
+    }
+
     private void limpiarFormulario() {
-        txtNombre.clear(); txtPrecio.clear(); txtStock.clear();
+        txtNombre.clear(); txtPrecio.clear();
+        if (txtStock != null) txtStock.clear();
         txtCantidadReceta.clear();
-        txtTipoBebida.clear(); txtSalsaPasta.clear();
         if (txtBuscador != null) txtBuscador.clear();
         if(txtBuscarInsumo != null) txtBuscarInsumo.clear();
 
         imgPreview.setImage(null);
         archivoImagenSeleccionada = null;
         recetaTemporal.clear();
-        panelAtributosDinamicos.getChildren().clear();
-        chkTieneRecetaOtro.setSelected(false);
 
-        vboxCategoria.setVisible(false); vboxCategoria.setManaged(false);
-        vboxStock.setVisible(false); vboxStock.setManaged(false);
-        vboxReceta.setVisible(false); vboxReceta.setManaged(false);
+        if (chkTieneReceta != null) chkTieneReceta.setSelected(false);
 
-        cmbTipoClase.getSelectionModel().clearSelection();
+        if (vboxCategoria != null) { vboxCategoria.setVisible(true); vboxCategoria.setManaged(true); }
+        mostrarOcultarCamposRecetaStock(false);
+
         cmbInsumos.getSelectionModel().clearSelection();
-        cmbTamanoPizza.getSelectionModel().clearSelection();
-        cmbTamanoBebida.getSelectionModel().clearSelection();
+        if(cmbCategoria != null){ cmbCategoria.getEditor().clear(); } // Limpiamos el texto editable
 
-        if(cmbCategoria != null){
-            cmbCategoria.getSelectionModel().clearSelection();
-        }
         tablaRecetaFila.setPrefHeight(120);
     }
 
@@ -652,11 +552,9 @@ public class ProductosController {
         public Insumo getInsumo() { return insumo; }
         public double getCantidad() { return cantidad; }
         public String getNombreInsumo() { return insumo.getNombre(); }
-
-        public void setCantidad(double cant) {
-            cantidad = cant;
-        }
+        public void setCantidad(double cant) { cantidad = cant; }
     }
+
     private void configurarMenuContextualTablaMenu(){
         ContextMenu contextMenu = new ContextMenu();
         MenuItem itemModificarPrecio = new MenuItem(" $ Modificar precio");
@@ -675,10 +573,8 @@ public class ProductosController {
                                     boolean actualizado = ApiClient.actualizarProductoEnServidor(seleccionado);
                                     if(actualizado) {
                                         tablaMenu.refresh();
-
                                         String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
                                         App.registrarAuditoria(operador, "Producto", seleccionado.getNombre(), "Modificación Precio", 0, "Precio actualizado a Bs. " + nuevoPrecio);
-
                                         mostrarExito("Precio Actualizado", "El precio se actualizó correctamente.");
                                     }else{
                                         mostrarAlerta("Error", "No se pudo actualizar el precio. ");
@@ -717,21 +613,14 @@ public class ProductosController {
             return row;
         });
     }
+
     @FXML
     void actualizarRecetaExistente(ActionEvent event){
         Producto sel = tablaMenu.getSelectionModel().getSelectedItem();
-        if(sel == null){
-            mostrarAlerta("Atención", "Seleccione un producto primero.");
-            return;
-        }
-        if(!sel.tieneReceta()){
-            mostrarAlerta("Inválido", "El producto no tiene una receta.");
-            return;
-        }
-        if(recetaTemporal.isEmpty()){
-            mostrarAlerta("Inválido", "La receta del producto está vacía.");
-            return;
-        }
+        if(sel == null){ mostrarAlerta("Atención", "Seleccione un producto primero."); return; }
+        if(!sel.tieneReceta()){ mostrarAlerta("Inválido", "El producto no tiene una receta."); return; }
+        if(recetaTemporal.isEmpty()){ mostrarAlerta("Inválido", "La receta del producto está vacía."); return; }
+
         Receta receta = new Receta();
         for(DetalleRecetaUI det : recetaTemporal){
             receta.agregarIngrediente(det.getInsumo().getCodigo(), det.getCantidad());
@@ -747,21 +636,22 @@ public class ProductosController {
             mostrarAlerta("Error", "No se pudo actualizar la receta.");
         }
     }
+
     private void abrirVentanaEdicionReceta(Producto producto){
         try{
             javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(getClass().getResource("/fxml/EditarReceta.fxml"));
             javafx.scene.Parent root = loader.load();
-            
+
             EditarRecetaController controller = loader.getController();
-            controller.inicializarDatos(producto); // Le pasamos la pizza seleccionada
-            
+            controller.inicializarDatos(producto);
+
             javafx.stage.Stage stage = new javafx.stage.Stage();
             stage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
-            stage.initStyle(javafx.stage.StageStyle.TRANSPARENT); 
-            
+            stage.initStyle(javafx.stage.StageStyle.TRANSPARENT);
+
             javafx.scene.Scene scene = new javafx.scene.Scene(root);
-            scene.setFill(javafx.scene.paint.Color.TRANSPARENT); 
-            
+            scene.setFill(javafx.scene.paint.Color.TRANSPARENT);
+
             stage.setScene(scene);
             stage.showAndWait();
         }catch(Exception e){
@@ -769,6 +659,7 @@ public class ProductosController {
             mostrarAlerta("Error", "No se pudo abrir la ventana de edición de recetas.");
         }
     }
+
     @FXML
     void abrirVentanaPromocion(ActionEvent event) {
         try {

@@ -4,6 +4,8 @@ import Attizos.Backend.Api.ApiClient;
 import Attizos.Backend.Attizos.*;
 import Attizos.Backend.Database.ConexionSQLite;
 import Attizos.Frontend.Cobros.CobroQRController;
+import Attizos.Frontend.Network.WebSocketManager;
+import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -20,6 +22,7 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 
+import java.awt.print.PrinterJob;
 import java.util.*;
 
 public class VentasController {
@@ -60,6 +63,17 @@ public class VentasController {
                 mostrarProductosPorCategoria(categoriaActiva);
             });
         }
+        WebSocketManager.setAccionVentasYStock(() ->{
+            System.out.println("Actualizando ventas...");
+            Platform.runLater(() ->{
+                inventarioFrescoBD = App.attizos.getInventario().getInventarioInsumos();
+                menuRAM = App.attizos.getMenu();
+                cargarCategorias();
+                mostrarProductosPorCategoria(categoriaActiva);
+                cargarPromocionesActivas();
+                actualizarVistaCarrito();
+            });
+        });
     }
 
     private void iniciarNuevaVenta() {
@@ -80,7 +94,7 @@ public class VentasController {
     private void cargarCategorias() {
         hBCategoria.getChildren().clear();
 
-        Button btnAll = crearBotonCategoria("Todos");
+        Button btnAll = crearBotonCategoria("Todo");
         hBCategoria.getChildren().add(btnAll);
 
         Set<String> cats = new HashSet<>();
@@ -239,6 +253,43 @@ public class VentasController {
 
     @FXML
     void finalizarVenta() {
+        procesarVentaFinal("Efectivo");
+    }
+    @FXML
+   void  cobrarConQR(ActionEvent event){
+        if(facturaActual.getTotal() <= 0){
+            mostrarAlerta("Carrito Vacío","⚠ Agregue productos antes de cobrar.",Alert.AlertType.WARNING);
+            return;
+        }
+        try{
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/ModalCobroQR.fxml"));
+            Parent root = loader.load();
+
+            CobroQRController controller = loader.getController();
+            controller.inicializarCobro(facturaActual.getTotal());
+
+            Stage stage = new Stage();
+            stage.initModality(Modality.APPLICATION_MODAL);
+            stage.initStyle(StageStyle.TRANSPARENT);
+
+            Scene scene = new Scene(root);
+            scene.setFill(Color.TRANSPARENT);
+            stage.setScene(scene);
+
+            stage.showAndWait();
+
+            if(controller.isPagoCompletado()){
+                procesarVentaFinal("QR");
+                mostrarAlerta("¡Pago Exitoso!", "El pago QR se validó con éxito.", Alert.AlertType.INFORMATION);
+            }else{
+                mostrarAlerta("Operación Cancelada", "El cobro QR fue cancelado. ", Alert.AlertType.WARNING);
+            }
+        }catch (Exception e){
+            e.printStackTrace();
+            mostrarAlerta("Error","No se pudo mostrar el QR por el momento.", Alert.AlertType.ERROR);
+        }
+    }
+    private void procesarVentaFinal(String metodoPago) {
         String nombreCli = tfNombreCli.getText().trim();
         if (nombreCli.isEmpty()) nombreCli = "Sin Nombre";
 
@@ -252,12 +303,13 @@ public class VentasController {
         StringBuilder jsonVenta = new StringBuilder();
         jsonVenta.append("{\"cliente\": \"").append(nombreCli).append("\", ");
         jsonVenta.append("\"total\": ").append(facturaActual.getTotal()).append(", ");
+        jsonVenta.append("\"metodo_pago\": \"").append(metodoPago).append("\", ");
         jsonVenta.append("\"detalles\": [");
 
         boolean primero = true;
         for(DetalleFactura df : facturaActual.getDetalles()){
             carritoDB.put(df.getProducto(), df.getCantidad());
-            if (primero) jsonVenta.append(", ");
+            if (!primero) jsonVenta.append(", ");
             jsonVenta.append("{\"id_producto\": ").append(df.getProducto().getId())
                     .append(", \"cantidad\": ").append(df.getCantidad()).append("}");
             primero = false;
@@ -266,20 +318,22 @@ public class VentasController {
 
         int numeroTicketDiario = -1;
         int numeroFacturaGlobal = -1;
-        if(facturaActual.requiereCocina()){
+
+        if(facturaActual.requierePreparacion()){
             facturaActual.setEstado("En cocina");
         }else{
             facturaActual.setEstado("Finalizada");
         }
 
         if (!App.modoOffline) {
-            int[] resultados = ApiClient.registrarVenta(nombreCli, facturaActual.getTotal(), carritoDB, facturaActual.getEstado());
+            int[] resultados = ApiClient.registrarVenta(nombreCli, facturaActual.getTotal(), carritoDB, facturaActual.getEstado(), metodoPago);
             if (resultados != null) {
                 numeroFacturaGlobal = resultados[0];
                 numeroTicketDiario = resultados[1];
                 ConexionSQLite.actualizarSecuenciaLocal(numeroTicketDiario);
             }
         }
+
         if (numeroTicketDiario <= 0) {
             numeroTicketDiario = ConexionSQLite.obtenerSiguienteTicketOffline();
             numeroFacturaGlobal = 0;
@@ -289,6 +343,7 @@ public class VentasController {
                 return;
             }
         }
+
         if (numeroTicketDiario > 0) {
             facturaActual.setNumeroFactura(numeroFacturaGlobal);
             facturaActual.setNombreCliente(nombreCli);
@@ -310,14 +365,39 @@ public class VentasController {
 
             try {
                 FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Ticket.fxml"));
-                Parent nodoTicket = loader.load();
+                Parent rootCompleto = loader.load();
 
                 TicketController controller = loader.getController();
                 String nombreCajero = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Caja Principal";
 
                 controller.inicializarTicket(facturaActual, nombreCajero, numeroTicketDiario);
-                imprimirEnImpresoraTermica(nodoTicket);
 
+                rootCompleto.applyCss();
+                rootCompleto.layout();
+
+                if(facturaActual.requierePreparacion()){
+                    javafx.print.PrinterJob printerJob = javafx.print.PrinterJob.createPrinterJob();
+                    if(printerJob != null){
+                        printerJob.printPage(controller.getContenedorTicketCliente());
+                        printerJob.printPage(controller.getContenedorTicketCocina());
+                        printerJob.endJob();
+                    }else{
+                        mostrarAlerta("Error", "No se detectó impresora.", Alert.AlertType.ERROR);
+                    }
+                } else {
+                    // MODO AHORRO DE PAPEL
+                    boolean imprimir = AlertaPersonalizada.mostrarConfirmacion(
+                            "Ahorro de Papel",
+                            "Venta registrada con éxito (" + metodoPago + ").\n\n¿El cliente solicita su comprobante impreso?"
+                    );
+                    if (imprimir) {
+                        javafx.print.PrinterJob printerJob = javafx.print.PrinterJob.createPrinterJob();
+                        if (printerJob != null) {
+                            printerJob.printPage(controller.getContenedorTicketCliente());
+                            printerJob.endJob();
+                        }
+                    }
+                }
             } catch (Exception e) {
                 e.printStackTrace();
                 mostrarAlerta("Error", "La venta se registró pero no se pudo mandar al ticket.", Alert.AlertType.ERROR);
@@ -497,41 +577,6 @@ public class VentasController {
             int reservado = prodDirectos.getOrDefault(p.getId(), 0);
             int libre = (int) p.getStock() - reservado;
             return Math.max(libre, 0);
-        }
-    }
-
-    @FXML
-    void cobrarConQR(ActionEvent event){
-        if(facturaActual.getTotal() <= 0){
-            mostrarAlerta("Carrito Vacío","⚠ Agregue productos antes de cobrar.",Alert.AlertType.WARNING);
-            return;
-        }
-        try{
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/ModalCobroQR.fxml"));
-            Parent root = loader.load();
-
-            CobroQRController controller = loader.getController();
-            controller.inicializarCobro(facturaActual.getTotal());
-
-            Stage stage = new Stage();
-            stage.initModality(Modality.APPLICATION_MODAL);
-            stage.initStyle(StageStyle.TRANSPARENT);
-
-            Scene scene = new Scene(root);
-            scene.setFill(Color.TRANSPARENT);
-            stage.setScene(scene);
-
-            stage.showAndWait();
-
-            if(controller.isPagoCompletado()){
-                finalizarVenta();
-                mostrarAlerta("¡Pago Exitoso!", "El pago Qr se realizó con éxito.", Alert.AlertType.INFORMATION);
-            }else{
-                mostrarAlerta("Operación Cancelada", "El cobro qr fue cancelado. ", Alert.AlertType.WARNING);
-            }
-        }catch (Exception e){
-            e.printStackTrace();
-            mostrarAlerta("Error","No se pudo mostrar el QR por el momento.", Alert.AlertType.ERROR);
         }
     }
 

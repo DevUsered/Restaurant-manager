@@ -3,7 +3,6 @@ package Attizos.Frontend;
 import Attizos.Backend.Attizos.App;
 import Attizos.Backend.Attizos.Insumo;
 import Attizos.Backend.Attizos.Producto;
-import Attizos.Backend.Listas.NodoDE;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
