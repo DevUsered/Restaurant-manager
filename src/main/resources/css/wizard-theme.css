@@ -1,0 +1,137 @@
+/* 1. RESET Y NEUTRALIZACIÓN DE MODENA (Mata el estilo viejo) */
+* {
+    -fx-focus-color: transparent;
+    -fx-faint-focus-color: transparent;
+    -fx-background-insets: 0;
+}
+
+/* 2. FONDOS Y ESTRUCTURA */
+.wizard-card {
+    -fx-background-color: #FFFFFF;
+    -fx-padding: 40;
+    -fx-background-radius: 15; /* <-- Más redondeado */
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.05), 20, 0, 0, 8);
+}
+
+.text-field, .password-field {
+    /* ... (resto igual) ... */
+    -fx-border-radius: 8; /* <-- Más redondeado */
+    -fx-background-radius: 8; /* <-- Más redondeado */
+}
+
+.btn-primary {
+    /* ... (resto igual) ... */
+    -fx-background-radius: 8; /* <-- Más redondeado */
+    -fx-border-radius: 8; /* <-- Más redondeado */
+}
+
+
+/* 3. TIPOGRAFÍA MINIMALISTA */
+.wizard-title {
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #111111;
+    -fx-font-family: "Segoe UI", Helvetica, Arial, sans-serif;
+}
+
+.wizard-subtitle {
+    -fx-font-size: 14px;
+    -fx-text-fill: #777777;
+    -fx-padding: 0 0 10 0;
+}
+
+.section-label {
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #333333;
+    -fx-padding: 10 0 5 0;
+    -fx-text-transform: uppercase;
+}
+
+/* 4. CAMPOS DE TEXTO MODERNOS (Flat Design) */
+.text-field, .password-field {
+    -fx-background-color: #F9F9F9;
+    -fx-border-color: #E2E2E2;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 12;
+    -fx-text-fill: #111111;
+    -fx-prompt-text-fill: #B0B0B0;
+    -fx-font-size: 13px;
+}
+
+.text-field:focused, .password-field:focused {
+    -fx-border-color: #111111;
+    -fx-background-color: #FFFFFF;
+}
+
+/* 5. RADIOS Y CHECKBOXES (Limpios) */
+.radio-button, .check-box {
+    -fx-text-fill: #333333;
+    -fx-font-size: 13px;
+    -fx-cursor: hand;
+}
+
+.radio-button .radio, .check-box .box {
+    -fx-background-color: #F9F9F9;
+    -fx-border-color: #CCCCCC;
+    -fx-border-radius: 3;
+    -fx-background-radius: 3;
+}
+
+.radio-button:selected .radio .dot, .check-box:selected .mark {
+    -fx-background-color: #111111; /* Marca negra en lugar de azul */
+}
+
+/* 6. BOTÓN PRINCIPAL (Sólido y elegante) */
+.btn-primary {
+    -fx-background-color: #111111;
+    -fx-text-fill: #FFFFFF;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-padding: 14;
+    -fx-background-radius: 6;
+    -fx-border-radius: 6;
+    -fx-cursor: hand;
+    -fx-border-width: 0;
+}
+
+.btn-primary:hover {
+    -fx-background-color: #333333;
+}
+
+.btn-primary:pressed {
+    -fx-background-color: #000000;
+}
+
+/* 7. OTROS ELEMENTOS */
+.separator *.line {
+    -fx-border-style: solid;
+    -fx-border-width: 1 0 0 0;
+    -fx-border-color: #EEEEEE;
+}
+
+.help-text {
+    -fx-font-size: 12px;
+    -fx-text-fill: #888888;
+}
+/* Botón secundario para subir archivos */
+.btn-secondary {
+    -fx-background-color: #E2E2E2;
+    -fx-text-fill: #111111;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-padding: 8 12;
+    -fx-background-radius: 4;
+    -fx-cursor: hand;
+    -fx-border-width: 0;
+}
+
+.btn-secondary:hover {
+    -fx-background-color: #CCCCCC;
+}
+
+/* Contenedor de la vista previa del logo (opcional, para darle un marco) */
+.logo-preview {
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.1), 5, 0, 0, 2);
+}

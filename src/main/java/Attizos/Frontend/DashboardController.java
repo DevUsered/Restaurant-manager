@@ -13,6 +13,7 @@ import javafx.geometry.Rectangle2D;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.image.Image;
@@ -55,6 +56,8 @@ public class DashboardController {
     private Button btnCocina;
     @FXML
     private Label indicadorInternet;
+    @FXML
+    private Label lblNombre;
 
     private boolean menuAbierto = true;
     private double xOffset = 0;
@@ -62,6 +65,7 @@ public class DashboardController {
 
     @FXML
     public void initialize() {
+        lblNombre.setText(App.getNombre());
         if (rootPane != null && !rootPane.getChildren().isEmpty()) {
             HBox contenedor = (HBox) rootPane.getChildren().get(0);
             contenedor.setStyle("-fx-background-color: #FFFFFF; -fx-background-radius: 25; -fx-border-color: rgba(218, 165, 32, 0.4); -fx-border-width: 1.5; -fx-border-radius: 25;");
@@ -316,7 +320,24 @@ public class DashboardController {
     }
     @FXML
     void openConfiguration(ActionEvent event){
-        System.out.println("Función en desarrollo... ");
+        if(App.usuarioLogueado != null && App.usuarioLogueado.getCargo().equalsIgnoreCase("Administrador")){
+            try{
+                FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/AjustesEmpresa.fxml"));
+                Parent root = loader.load();
+
+                Stage stage = new Stage();
+                stage.initStyle(StageStyle.TRANSPARENT);
+                Scene scene = new Scene(root);
+                scene.setFill(Color.TRANSPARENT);
+                stage.setScene(scene);
+                stage.centerOnScreen();
+                stage.show();
+            }catch (Exception e){
+                e.printStackTrace();
+            }
+        }else{
+            AlertaPersonalizada.mostrarAlerta("Acceso Denegado", "No tienes permisos para acceder a esta sección.", Alert.AlertType.ERROR);
+        }
     }
     private void iniciarMonitoreoInternet() {
         Timeline timeline = new Timeline(

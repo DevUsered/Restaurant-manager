@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Font?>
+<?import javafx.scene.image.ImageView?>
+
+<AnchorPane prefHeight="520.0" prefWidth="500.0" style="-fx-background-color: #FCFBF8; -fx-background-radius: 15; -fx-border-color: #E5B80B; -fx-border-radius: 13; -fx-border-width: 2; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 15, 0, 0, 5);" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="Attizos.Frontend.Config.AjustesEmpresaController">
+    <children>
+
+        <Button layoutX="460.0" layoutY="10.0" mnemonicParsing="false" onAction="#cerrarVentana" style="-fx-background-color: transparent; -fx-text-fill: #1A1A1A; -fx-font-size: 16px; -fx-cursor: hand;" text="✕" AnchorPane.rightAnchor="10.0" AnchorPane.topAnchor="10.0"/>
+
+        <VBox spacing="15" AnchorPane.topAnchor="25.0" AnchorPane.leftAnchor="30.0" AnchorPane.rightAnchor="30.0" AnchorPane.bottomAnchor="20.0">
+
+            <Label text="Ajustes del Sistema ⚙️" textFill="#1A1A1A">
+                <font><Font name="System Bold" size="22.0" /></font>
+            </Label>
+            <Separator style="-fx-background-color: #E8E2D5; -fx-border-width: 0;"/>
+
+            <VBox spacing="8">
+                <Label text="NOMBRE DE LA EMPRESA" textFill="#B89728" style="-fx-font-weight: bold; -fx-font-size: 11px;"/>
+                <TextField fx:id="txtNombreNegocio" style="-fx-background-color: #FFFFFF; -fx-border-color: #E8E2D5; -fx-border-radius: 6; -fx-background-radius: 6; -fx-text-fill: #000000;"/>
+            </VBox>
+
+            <VBox spacing="8">
+                <Label text="LOGOTIPO (Sincronizado en la Nube)" textFill="#B89728" style="-fx-font-weight: bold; -fx-font-size: 11px;"/>
+                <HBox spacing="15" alignment="CENTER_LEFT">
+                    <ImageView fx:id="imgLogoActual" fitWidth="60" fitHeight="60" preserveRatio="true"/>
+                    <VBox spacing="5" alignment="CENTER_LEFT">
+                        <Button text="Subir a Cloudinary" onAction="#cambiarLogo" style="-fx-background-color: #FFFFFF; -fx-text-fill: #000000; -fx-border-color: #E5B80B; -fx-border-radius: 6; -fx-background-radius: 6; -fx-cursor: hand; -fx-font-weight: bold;"/>
+                        <Label fx:id="lblRutaLogo" text="Sin cambios" textFill="#666666" style="-fx-font-size: 10px;"/>
+                    </VBox>
+                </HBox>
+            </VBox>
+
+            <VBox spacing="8">
+                <Label text="IP DEL SERVIDOR CENTRAL" textFill="#B89728" style="-fx-font-weight: bold; -fx-font-size: 11px;"/>
+                <TextField fx:id="txtIpServidor" promptText="ej. localhost o 192.168.1.50" style="-fx-background-color: #FFFFFF; -fx-border-color: #E8E2D5; -fx-border-radius: 6; -fx-background-radius: 6; -fx-text-fill: #000000;"/>
+            </VBox>
+
+            <VBox spacing="8">
+                <Label text="MÓDULOS ACTIVOS" textFill="#B89728" style="-fx-font-weight: bold; -fx-font-size: 11px;"/>
+                <CheckBox fx:id="chkTieneCocina" text="Habilitar Pantalla de Cocina en esta terminal" textFill="#1A1A1A"/>
+            </VBox>
+
+            <Region VBox.vgrow="ALWAYS" />
+
+            <Button text="Guardar Cambios" onAction="#confirmarYGuardar" maxWidth="Infinity" style="-fx-background-color: #E5B80B; -fx-text-fill: #000000; -fx-font-weight: bold; -fx-font-size: 14px; -fx-background-radius: 8; -fx-cursor: hand;" prefHeight="40.0"/>
+        </VBox>
+    </children>
+</AnchorPane>

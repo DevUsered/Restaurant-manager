@@ -1,19 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import java.net.URL?>
-<?import javafx.geometry.Insets?>
-<?import javafx.scene.control.Button?>
-<?import javafx.scene.control.Label?>
-<?import javafx.scene.control.ScrollPane?>
-<?import javafx.scene.control.Separator?>
-<?import javafx.scene.image.Image?>
-<?import javafx.scene.image.ImageView?>
-<?import javafx.scene.layout.AnchorPane?>
-<?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.StackPane?>
-<?import javafx.scene.layout.VBox?>
+<?import java.net.*?>
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.image.*?>
+<?import javafx.scene.layout.*?>
 
-<AnchorPane fx:id="rootPane" prefHeight="650.0" prefWidth="1100.0" style="-fx-background-color: transparent;" styleClass="dashboard" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="Attizos.Frontend.DashboardController">
+<AnchorPane fx:id="rootPane" prefHeight="650.0" prefWidth="1100.0" style="-fx-background-color: transparent;" styleClass="dashboard" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="Attizos.Frontend.DashboardController">
     <children>
         <HBox prefHeight="660.0" prefWidth="1060.0" styleClass="glass-container" AnchorPane.bottomAnchor="20.0" AnchorPane.leftAnchor="20.0" AnchorPane.rightAnchor="20.0" AnchorPane.topAnchor="20.0">
 
@@ -29,7 +22,7 @@
 
                 <HBox alignment="CENTER_LEFT" spacing="10">
                     <Label styleClass="logo-icon" text="🍕" />
-                    <Label styleClass="logo-text" text="Attizos" />
+                    <Label fx:id="lblNombre" styleClass="logo-text" text="Attizos" />
                 </HBox>
 
                 <ScrollPane fitToWidth="true" style="-fx-background: transparent; -fx-background-color: transparent; -fx-border-color: transparent;" VBox.vgrow="ALWAYS">

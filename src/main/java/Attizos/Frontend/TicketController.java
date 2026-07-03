@@ -4,12 +4,17 @@ import Attizos.Backend.Attizos.App;
 import Attizos.Backend.Attizos.DetalleFactura;
 import Attizos.Backend.Attizos.Factura;
 import Attizos.Backend.Listas.NodoDE;
+import Attizos.Frontend.Config.ConfigurationApp;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Label;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+
+import java.io.File;
 import java.time.format.DateTimeFormatter;
 import java.time.LocalDateTime;
 
@@ -21,6 +26,7 @@ public class TicketController {
     @FXML private Label lblClienteCaja;
     @FXML private VBox vboxProductosCaja;
     @FXML private Label lblTotalCaja;
+    @FXML private ImageView imgLogo;
 
     @FXML private Label lblTurnoCliente;
     @FXML private Label lblFechaCliente;
@@ -34,6 +40,7 @@ public class TicketController {
     public void inicializarTicket(Factura factura, String nombreCajero, int turno){
         System.out.println("-ID Global Factura: "+factura.getNumeroFactura());
         System.out.println("- Turno diario: "+turno);
+        cargarLogoEnTicket();
         if(lblNombreNegocio != null && App.attizos != null){
             lblNombreNegocio.setText(App.attizos.getNombre());
         }
@@ -130,6 +137,16 @@ public class TicketController {
         if (separadorTijera != null && ticketCocina.isVisible()) {
             separadorTijera.setVisible(true);
             separadorTijera.setManaged(true);
+        }
+    }
+    private void cargarLogoEnTicket(){
+        try{
+            Image logo = App.getLogoImageCache();
+            if(logo != null){
+                imgLogo.setImage(logo);
+            }
+        }catch (Exception e){
+            System.out.println("Error al cargar el logo en el ticket: " + e.getMessage());
         }
     }
 }

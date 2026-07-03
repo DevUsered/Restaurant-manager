@@ -4,6 +4,7 @@ import Attizos.Backend.Api.ApiClient;
 import Attizos.Backend.Attizos.*;
 import Attizos.Backend.Database.ConexionSQLite;
 import Attizos.Frontend.Cobros.CobroQRController;
+import Attizos.Frontend.Config.ConfigurationApp;
 import Attizos.Frontend.Network.WebSocketManager;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
@@ -320,7 +321,11 @@ public class VentasController {
         int numeroFacturaGlobal = -1;
 
         if(facturaActual.requierePreparacion()){
-            facturaActual.setEstado("En cocina");
+            if(ConfigurationApp.tieneCocina) {
+                facturaActual.setEstado("En cocina");
+            }else{
+                facturaActual.setEstado("Finalizada");
+            }
         }else{
             facturaActual.setEstado("Finalizada");
         }

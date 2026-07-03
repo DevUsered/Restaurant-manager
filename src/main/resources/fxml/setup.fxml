@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Font?>
+<?import javafx.scene.image.ImageView?>
+
+<StackPane style="-fx-background-color: transparent; -fx-padding: 20;" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="Attizos.Frontend.Config.SetupController">
+
+    <AnchorPane prefHeight="450.0" prefWidth="950.0" style="-fx-background-color: #FCFBF8; -fx-background-radius: 20; -fx-border-radius: 20; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.15), 25, 0, 0, 10); -fx-border-color: #F0E6D2; -fx-border-width: 2; -fx-border-radius: 18;">
+        <children>
+
+            <Button layoutX="890.0" layoutY="15.0" mnemonicParsing="false" onAction="#cerrarApp" style="-fx-background-color: transparent; -fx-text-fill: #000000; -fx-font-size: 18px; -fx-cursor: hand;" text="✕" AnchorPane.rightAnchor="20.0" AnchorPane.topAnchor="15.0"/>
+
+            <VBox spacing="15" AnchorPane.topAnchor="30.0" AnchorPane.leftAnchor="40.0" AnchorPane.rightAnchor="40.0" AnchorPane.bottomAnchor="30.0">
+
+                <VBox spacing="2">
+                    <Label text="¡Bienvenido! 🔥" style="-fx-text-fill: #000000; -fx-font-weight: bold; -fx-font-size: 26px;"/>
+                    <Label text="Configuración inicial del sistema" style="-fx-text-fill: #555555; -fx-font-size: 14px;"/>
+                </VBox>
+
+                <Separator style="-fx-background-color: #E8E2D5; -fx-border-width: 0;"/>
+
+                <HBox spacing="40" VBox.vgrow="ALWAYS">
+
+                    <VBox spacing="15" HBox.hgrow="ALWAYS">
+                        <Label text="1. MODO DE OPERACIÓN" style="-fx-text-fill: #B89728; -fx-font-weight: bold; -fx-font-size: 11px;"/>
+                        <HBox spacing="15">
+                            <RadioButton text="Servidor Principal" fx:id="rbServidorPrincipal" selected="true" style="-fx-text-fill: #000000; -fx-font-weight: bold; -fx-cursor: hand;">
+                                <toggleGroup><ToggleGroup fx:id="tgModoOperacion"/></toggleGroup>
+                            </RadioButton>
+                            <RadioButton text="Terminal Sucursal" fx:id="rbTerminalSucursal" toggleGroup="$tgModoOperacion" style="-fx-text-fill: #000000; -fx-font-weight: bold; -fx-cursor: hand;"/>
+                        </HBox>
+
+                        <Label text="2. BASE DE DATOS POSTGRESQL" style="-fx-text-fill: #B89728; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 10 0 0 0;"/>
+                        <TextField fx:id="txtDbUrl" promptText="URL (ej. localhost:5432)" style="-fx-background-color: #FFFFFF; -fx-border-color: #E8E2D5; -fx-border-radius: 6; -fx-background-radius: 6; -fx-text-fill: #000000; -fx-prompt-text-fill: #888888;"/>
+                        <HBox spacing="10">
+                            <TextField fx:id="txtDbUser" promptText="Usuario" HBox.hgrow="ALWAYS" style="-fx-background-color: #FFFFFF; -fx-border-color: #E8E2D5; -fx-border-radius: 6; -fx-background-radius: 6; -fx-text-fill: #000000; -fx-prompt-text-fill: #888888;"/>
+                            <PasswordField fx:id="txtDbPassword" promptText="Contraseña" HBox.hgrow="ALWAYS" style="-fx-background-color: #FFFFFF; -fx-border-color: #E8E2D5; -fx-border-radius: 6; -fx-background-radius: 6; -fx-text-fill: #000000; -fx-prompt-text-fill: #888888;"/>
+                        </HBox>
+                    </VBox>
+
+                    <VBox spacing="15" HBox.hgrow="ALWAYS">
+                        <Label text="3. PERFIL DEL NEGOCIO" style="-fx-text-fill: #B89728; -fx-font-weight: bold; -fx-font-size: 11px;"/>
+                        <TextField fx:id="txtNombreNegocio" promptText="Nombre del Negocio (ej. Pizzería Attizos)" style="-fx-background-color: #FFFFFF; -fx-border-color: #E8E2D5; -fx-border-radius: 6; -fx-background-radius: 6; -fx-text-fill: #000000; -fx-prompt-text-fill: #888888;"/>
+
+                        <HBox spacing="15" alignment="CENTER_LEFT" fx:id="boxLogo">
+                            <Button text="Subir Logo" fx:id="btnSeleccionarLogo" onAction="#seleccionarLogo" style="-fx-background-color: #FFFFFF; -fx-text-fill: #000000; -fx-border-color: #E5B80B; -fx-border-radius: 6; -fx-background-radius: 6; -fx-cursor: hand; -fx-font-weight: bold;"/>
+                            <Label fx:id="lblRutaLogo" text="Ningún archivo" style="-fx-text-fill: #000000;" maxWidth="140" wrapText="true"/>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <ImageView fx:id="imgLogoPreview" fitWidth="50" fitHeight="50" preserveRatio="true"/>
+                        </HBox>
+
+                        <VBox fx:id="boxModuloCocina" spacing="15">
+                            <Label text="4. MULTIMEDIA Y MÓDULOS" style="-fx-text-fill: #B89728; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 5 0 0 0;"/>
+                            <TextField fx:id="txtCloudinaryUrl" promptText="Cloudinary (cloudinary://...)" style="-fx-background-color: #FFFFFF; -fx-border-color: #E8E2D5; -fx-border-radius: 6; -fx-background-radius: 6; -fx-text-fill: #000000; -fx-prompt-text-fill: #888888;"/>
+                            <CheckBox fx:id="chkTieneCocina" text="Habilitar Pantalla de Cocina" selected="true" style="-fx-text-fill: #000000; -fx-font-weight: bold; -fx-cursor: hand;"/>
+                        </VBox>
+                    </VBox>
+                </HBox>
+
+                <Region VBox.vgrow="ALWAYS" />
+
+                <Button text="Guardar Configuración y Arrancar" fx:id="btnGuardar" onAction="#guardarConfiguracion" maxWidth="Infinity" style="-fx-background-color: #E5B80B; -fx-text-fill: #000000; -fx-font-weight: bold; -fx-font-size: 14px; -fx-background-radius: 8; -fx-cursor: hand;" prefHeight="42.0"/>
+            </VBox>
+        </children>
+    </AnchorPane>
+</StackPane>

@@ -28,11 +28,15 @@ import java.util.Set;
 public class HomeController {
     @FXML private FlowPane containerProducts;
     @FXML private FlowPane flowCategorias;
+    @FXML private ImageView imgLogo;
 
     private String categoriaActiva = "Todo";
 
     @FXML
     public void initialize(){
+        if(imgLogo != null && App.getLogoImageCache() != null){
+            imgLogo.setImage(App.getLogoImageCache());
+        }
         updateCategories();
         filterAndDisplay("Todo");
     }
