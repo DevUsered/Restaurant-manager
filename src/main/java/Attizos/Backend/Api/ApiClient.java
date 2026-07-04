@@ -750,5 +750,82 @@ public class ApiClient {
         }
         return null;
     }
+    public static boolean enviarVentaOfflineAServidor(String jsonVentaOffline) {
+        try {
+            // 1. Leemos el JSON offline desde SQLite y lo convertimos a un Mapa
+            java.util.Map<String, Object> mapaOffline = mapper.readValue(jsonVentaOffline, new com.fasterxml.jackson.core.type.TypeReference<java.util.Map<String, Object>>() {});
+
+            java.util.Map<String, Object> requestBody = new java.util.HashMap<>();
+
+            // 2. Mapeamos los nombres ("cliente" del offline hacia "nombreCliente" del backend)
+            String nombreCli = (String) mapaOffline.getOrDefault("nombreCliente", mapaOffline.get("cliente"));
+            requestBody.put("nombreCliente", nombreCli != null ? nombreCli : "Cliente Offline");
+
+            Number total = (Number) mapaOffline.get("total");
+            requestBody.put("total", total != null ? total.doubleValue() : 0.0);
+
+            String estado = (String) mapaOffline.getOrDefault("estado", "Finalizada");
+            requestBody.put("estado", estado);
+
+            String metodoPago = (String) mapaOffline.getOrDefault("metodoPago", mapaOffline.get("metodo_pago"));
+            requestBody.put("metodoPago", metodoPago != null ? metodoPago : "Efectivo");
+
+            // 3. Mapeamos la lista de productos ("detalles" del offline hacia "items" del backend)
+            java.util.List<java.util.Map<String, Object>> itemsLista = new java.util.ArrayList<>();
+            java.util.List<java.util.Map<String, Object>> detallesGuardados = (java.util.List<java.util.Map<String, Object>>) mapaOffline.getOrDefault("items", mapaOffline.get("detalles"));
+
+            if (detallesGuardados != null) {
+                for (java.util.Map<String, Object> det : detallesGuardados) {
+                    java.util.Map<String, Object> item = new java.util.HashMap<>();
+
+                    int idProd = ((Number) det.getOrDefault("idProducto", det.get("id_producto"))).intValue();
+                    int cant = ((Number) det.get("cantidad")).intValue();
+
+                    item.put("idProducto", idProd);
+                    item.put("cantidad", cant);
+
+                    // Buscamos el precio y si tiene receta en la memoria RAM para completar el DTO
+                    double precio = 0.0;
+                    boolean receta = false;
+                    if (Attizos.Backend.Attizos.App.attizos != null && Attizos.Backend.Attizos.App.attizos.getMenu() != null) {
+                        for (Attizos.Backend.Attizos.Producto p : Attizos.Backend.Attizos.App.attizos.getMenu()) {
+                            if (p.getId() == idProd) {
+                                precio = p.getPrecio();
+                                receta = p.tieneReceta();
+                                break;
+                            }
+                        }
+                    }
+                    item.put("precio", det.getOrDefault("precio", precio));
+                    item.put("tieneReceta", det.getOrDefault("tieneReceta", receta));
+
+                    itemsLista.add(item);
+                }
+            }
+            requestBody.put("items", itemsLista);
+
+            String jsonFinalParaServidor = mapper.writeValueAsString(requestBody);
+
+            // 5. Lo enviamos por POST a la ruta oficial /ventas de tu Spring Boot
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(BASE_URL + "/ventas"))
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(jsonFinalParaServidor))
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 200 || response.statusCode() == 201) {
+                System.out.println("☁️ ✅ ¡Venta offline rescatada y guardada en PostgreSQL exitosamente!");
+                return true;
+            } else {
+                System.err.println("❌ El servidor rechazó la venta offline. Código: " + response.statusCode() + " - " + response.body());
+                return false;
+            }
+        } catch (Exception e) {
+            System.err.println("❌ Error al intentar subir venta offline al servidor: " + e.getMessage());
+            return false;
+        }
+    }
 
 }

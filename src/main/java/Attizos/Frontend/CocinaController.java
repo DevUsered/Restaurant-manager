@@ -63,14 +63,22 @@ public class CocinaController {
         cargarColaDesdeBackend();
         WebSocketManager.setAccionCocina(() ->{
             System.out.println("Pedido recibido en la cocina. Actualizando la tabla...");
-            Platform.runLater(() -> {
-                int indiceSeleccionado = tablaPedidos.getSelectionModel().getSelectedIndex();
-                cargarColaDesdeBackend();
+            new Thread(() ->{
+                ArrayList<Pedido> pedidosFrescos = ApiClient.obtenerPedidosPendientes();
+                Platform.runLater(() ->{
+                    int indiceSeleccionado = tablaPedidos.getSelectionModel().getSelectedIndex();
 
-                if(indiceSeleccionado >= 0 && indiceSeleccionado < listaColaPedidos.size()){
-                    tablaPedidos.getSelectionModel().select(indiceSeleccionado);
-                }
-            });
+                    listaColaPedidos.clear();
+                    listaColaPedidos.addAll(pedidosFrescos);
+
+                    tablaPedidos.refresh();
+
+                    if (indiceSeleccionado >= 0 && indiceSeleccionado < listaColaPedidos.size()) {
+                        tablaPedidos.getSelectionModel().select(indiceSeleccionado);
+                    }
+                    System.out.println("Tabla actuaalizada...");
+                });
+            }).start();
         });
 
     }

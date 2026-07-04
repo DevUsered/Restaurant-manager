@@ -49,6 +49,7 @@ public class App {
                     System.out.println("🔄 Sincronizando datos con la Base de Datos...");
                     modoOffline = false;
                     ConexionSQLite.subirAuditoriaPendiente();
+                    ConexionSQLite.subirVentasPendientes();
                     ServicioNube.sincronizarImagenesPendientes();
                     sincronizarDatosDesdeServidor();
 

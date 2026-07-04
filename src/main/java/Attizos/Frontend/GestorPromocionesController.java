@@ -5,7 +5,9 @@ import Attizos.Backend.Attizos.App;
 import Attizos.Backend.Attizos.DetalleCombo;
 import Attizos.Backend.Attizos.Producto;
 import Attizos.Backend.Attizos.Promocion;
+import Attizos.Backend.Database.ConexionSQLite;
 import Attizos.Frontend.Network.WebSocketManager;
+import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -80,9 +82,14 @@ public class GestorPromocionesController {
         configurarBuscadorInteligente();
         configurarMenuContextualContenido();
         WebSocketManager.setAccionMenu(() ->{
-            App.sincronizarDatosDesdeServidor();
-            cargarDatos();
-            tablaPromos.refresh();
+            new Thread(() ->{
+                App.sincronizarDatosDesdeServidor();
+                Platform.runLater(() ->{
+                    cargarDatos();
+                    tablaPromos.refresh();
+                    System.out.println("Tabla actualizada...");
+                });
+            }).start();
         });
     }
 
@@ -335,7 +342,7 @@ public class GestorPromocionesController {
                     AlertaPersonalizada.mostrarAlerta("Éxito", "Promoción actualizada.", Alert.AlertType.INFORMATION);
                 }
             }
-
+            new Thread(() -> ConexionSQLite.sincronizarDetallesCombo()).start();
             cargarDatos();
             limpiarFormulario();
 

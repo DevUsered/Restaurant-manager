@@ -1,6 +1,9 @@
 package Attizos.Frontend;
 
+import Attizos.Backend.Api.ApiClient;
 import Attizos.Backend.Attizos.*;
+import Attizos.Backend.Database.ConexionSQLite;
+import Attizos.Frontend.Network.WebSocketManager;
 import javafx.animation.Interpolator;
 import javafx.animation.KeyFrame;
 import javafx.animation.KeyValue;
@@ -72,6 +75,7 @@ public class DashboardController {
         }
         configurarVentana();
         cargarPVentas();
+        configurarSincronizacionEnVivo();
 
         Platform.runLater(() -> {
             Stage stage = (Stage) rootPane.getScene().getWindow();
@@ -96,6 +100,17 @@ public class DashboardController {
         }
         iniciarMonitoreoInternet();
     }
+    private void configurarSincronizacionEnVivo(){
+        WebSocketManager.setAccionMenu(()-> {
+            Platform.runLater(() -> {
+                new Thread(() -> {
+                    App.attizos.getMenu().clear();
+                    App.attizos.getMenu().addAll(ConexionSQLite.obtenerMenuLocal());
+                }).start();
+            });
+        });
+    }
+
 
     private void configurarVentana() {
         sidebar.setOnMousePressed(event -> {
@@ -361,8 +376,7 @@ public class DashboardController {
     }
     private boolean verificarConexion() {
         try{
-            InetAddress ip = InetAddress.getByName("8.8.8.8");
-            return ip.isReachable(2000);
+            return ApiClient.isServidorDisponible();
         }catch (Exception e){
             return false;
         }

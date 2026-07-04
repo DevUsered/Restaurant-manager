@@ -5,6 +5,7 @@ import Attizos.Backend.AI.AuditoriaLocal;
 import Attizos.Backend.Api.ApiClient;
 import Attizos.Backend.Attizos.App;
 import Attizos.Backend.Attizos.Insumo;
+import Attizos.Backend.Database.ConexionSQLite;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
@@ -208,6 +209,7 @@ public class FormularioNuevoInsumoController {
         }
     }
 
+
     private void ejecutarGuardado(String cod, String nom, String cat, String uni, double inicial, double min, double max, LocalDate ven,double costo, ActionEvent event) {
         try {
             double multiplicador = 1;
@@ -232,13 +234,17 @@ public class FormularioNuevoInsumoController {
             double stockInicial = inicial * multiplicador;
             double stockMinimo = min * multiplicador;
             double stockMaximo = max * multiplicador;
-            Insumo nuevo = new Insumo(cod, nom, cat, uni, inicial, min, max, ven);
+            Insumo nuevo = new Insumo(cod, nom, cat, unidadFinal, stockInicial, stockMinimo, stockMaximo, ven); // Corrección: Usar unidadFinal y variables de stock calculadas
             boolean guardado = ApiClient.guardarInsumoEnServidor(nuevo, costo);
             if(guardado) {
                 if(costo > 0){
                     ApiClient.registrarEgresoEnServidor("Stock Inicial Catálogo: "+nom,costo);
                 }
                 App.attizos.getInventario().getInventarioInsumos().put(nuevo.getCodigo(), nuevo);
+
+                // Hilo secundario para actualizar SQLite
+                new Thread(() -> ConexionSQLite.sincronizarInsumos()).start();
+
                 String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
                 App.registrarAuditoria(
                         operador,
@@ -260,7 +266,6 @@ public class FormularioNuevoInsumoController {
             mostrarError("Ocurrió un error al intentar guardar: " + e.getMessage());
         }
     }
-
     private void mostrarError(String msj) {
         AlertaPersonalizada.mostrarAlerta("Datos inválidos", msj, Alert.AlertType.ERROR);
     }

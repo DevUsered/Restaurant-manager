@@ -66,14 +66,32 @@ public class VentasController {
         }
         WebSocketManager.setAccionVentasYStock(() ->{
             System.out.println("Actualizando ventas...");
-            Platform.runLater(() ->{
-                inventarioFrescoBD = App.attizos.getInventario().getInventarioInsumos();
-                menuRAM = App.attizos.getMenu();
-                cargarCategorias();
-                mostrarProductosPorCategoria(categoriaActiva);
-                cargarPromocionesActivas();
-                actualizarVistaCarrito();
-            });
+            new Thread(() ->{
+                ArrayList<Producto> menuActualizado = ConexionSQLite.obtenerMenuLocal();
+                HashMap<String, Insumo> inventarioActualizado = ConexionSQLite.obtenerInventarioLocal();
+                ArrayList<Promocion> promosActualizadas = ConexionSQLite.obtenerPromocionesLocal(menuActualizado);
+                Platform.runLater(() ->{
+                    if(inventarioActualizado != null){
+                        App.attizos.getInventario().getInventarioInsumos().clear();
+                        App.attizos.getInventario().getInventarioInsumos().putAll(inventarioActualizado);
+                        inventarioFrescoBD = App.attizos.getInventario().getInventarioInsumos();
+                    }
+                    if(menuActualizado != null){
+                        App.attizos.getMenu().clear();
+                        App.attizos.getMenu().addAll(menuActualizado);
+                        menuRAM = App.attizos.getMenu();
+                    }
+                    if(promosActualizadas != null){
+                        App.attizos.setPromocionesActivas(promosActualizadas);
+                    }
+                    cargarCategorias();
+                    mostrarProductosPorCategoria(categoriaActiva);
+                    cargarPromocionesActivas();
+                    actualizarVistaCarrito();
+                    System.out.println("Ventas actualizada. ");
+                });
+            }).start();
+
         });
     }
 

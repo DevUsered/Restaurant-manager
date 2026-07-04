@@ -389,7 +389,8 @@ public class ConexionSQLite {
 
     public static ArrayList<Producto> obtenerMenuLocal() {
         ArrayList<Producto> menu = new ArrayList<>();
-        String sql = "SELECT id_producto, nombre, precio, categoria, stock_directo, tiene_receta, imagen_base64, atributos_extra, estado FROM productos WHERE estado = 'Activo' ORDER BY id_producto";
+        String sql = "SELECT id_producto, nombre, precio, categoria, stock_directo, tiene_receta, imagen_base64, atributos_extra, estado " +
+                "FROM productos WHERE estado = 'Activo' AND categoria != 'Promocion' ORDER BY id_producto";
         String sqlReceta = "SELECT codigo_insumo, cantidad FROM recetas_local WHERE id_producto = ?";
 
         try (Connection conn = getConexion();
@@ -680,6 +681,37 @@ public class ConexionSQLite {
         } catch (Exception e) {
             System.err.println("Error descargando imagen para producto " + idProducto + ": " + e.getMessage());
             return "default.png";
+        }
+    }
+    public static void subirVentasPendientes() {
+        String sqlLeer = "SELECT id_local, json_venta FROM ventas_pendientes WHERE estado = 'pendiente'";
+        String sqlActualizar = "UPDATE ventas_pendientes SET estado = 'sincronizado' WHERE id_local = ?";
+
+        try (Connection connLocal = getConexion();
+             PreparedStatement psLeer = connLocal.prepareStatement(sqlLeer);
+             ResultSet rs = psLeer.executeQuery()) {
+
+            int sincronizadas = 0;
+            while (rs.next()) {
+                int idLocal = rs.getInt("id_local");
+                String jsonVenta = rs.getString("json_venta");
+
+                // Enviamos el JSON guardado directamente al servidor Spring Boot
+                boolean exito = ApiClient.enviarVentaOfflineAServidor(jsonVenta);
+
+                if (exito) {
+                    try (PreparedStatement psActualizar = connLocal.prepareStatement(sqlActualizar)) {
+                        psActualizar.setInt(1, idLocal);
+                        psActualizar.executeUpdate();
+                        sincronizadas++;
+                    }
+                }
+            }
+            if (sincronizadas > 0) {
+                System.out.println("☁️ ✅ ¡Rescate Offline exitoso! Se subieron " + sincronizadas + " ventas pendientes a la nube.");
+            }
+        } catch (SQLException e) {
+            System.err.println("❌ Error al sincronizar ventas pendientes: " + e.getMessage());
         }
     }
 }
