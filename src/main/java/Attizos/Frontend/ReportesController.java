@@ -2,6 +2,7 @@ package Attizos.Frontend;
 
 import Attizos.Backend.Api.ApiClient;
 import Attizos.Backend.Attizos.*;
+import Attizos.Frontend.Network.WebSocketManager;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -92,6 +93,9 @@ public class ReportesController {
         UtilidadesUI.formatearDatePicker(dpFin);
 
         generarReportes();
+        WebSocketManager.setAccionReportes(() ->{
+            generarReportes();
+        });
     }
 
     private void configurarTablas() {
@@ -393,17 +397,18 @@ public class ReportesController {
                                         AlertaPersonalizada.mostrarAlerta("Error", "El monto debe ser mayor a 0.", Alert.AlertType.WARNING);
                                         return;
                                     }
-                                    boolean exito = ApiClient.registrarEgresoEnServidor(concepto, monto);
+                                    new Thread(() ->{
+                                        boolean exito = ApiClient.registrarEgresoEnServidor(concepto, monto);
+                                        Platform.runLater(() ->{
+                                            if(exito){
+                                                String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
+                                                new Thread(() -> ApiClient.registrarAuditoriaEnServidor(operador,"Finanzas","Gasto manual","Egreso",monto,concepto)).start();
+                                                generarReportes();
+                                            }else{}
+                                            AlertaPersonalizada.mostrarAlerta("Error", "No se pudo guardar el gasto.", Alert.AlertType.ERROR);
+                                        });
+                                    }).start();
 
-                                    if(exito){
-                                        String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
-                                        ApiClient.registrarAuditoriaEnServidor(operador, "Finanzas", "Gasto Manual", "Egreso", monto, concepto);
-
-                                        generarReportes();
-                                        AlertaPersonalizada.mostrarAlerta("Éxito", "El gasto manual ha sido registrado.", Alert.AlertType.INFORMATION);
-                                    }else{
-                                        AlertaPersonalizada.mostrarAlerta("Error", "No se pudo guardar el gasto.", Alert.AlertType.ERROR);
-                                    }
                                 } catch (NumberFormatException e) {
                                     AlertaPersonalizada.mostrarAlerta("Error", "Debe ingresar un número válido.", Alert.AlertType.ERROR);
                                 }
@@ -416,18 +421,24 @@ public class ReportesController {
             AlertaPersonalizada.mostrarAlerta("Sin Conexión", "El desglose exacto de los productos de este ticket se encuentra en el servidor. Reconecte el sistema para visualizarlo.", Alert.AlertType.WARNING);
             return;
         }
-        try {
-            Factura facDetalles = ApiClient.obtenerFacturaConDetalles(seleccionada.getNumeroFactura());
 
-            if (facDetalles == null || facDetalles.getDetalles().isEmpty()) {
-                AlertaPersonalizada.mostrarAlerta("Error", "No se pudo obtener el detalle de la factura desde el servidor.", Alert.AlertType.ERROR);
-                return;
+        new Thread(() -> {
+            try {
+                Factura facDetalles = ApiClient.obtenerFacturaConDetalles(seleccionada.getNumeroFactura());
+
+                Platform.runLater(() -> {
+                    if (facDetalles == null || facDetalles.getDetalles().isEmpty()) {
+                        AlertaPersonalizada.mostrarAlerta("Error", "No se pudo obtener el detalle de la factura desde el servidor.", Alert.AlertType.ERROR);
+                        return;
+                    }
+                    mostrarVisorDigitalDeFactura(facDetalles);
+                });
+            } catch (Exception e) {
+                Platform.runLater(() -> AlertaPersonalizada.mostrarAlerta("Error", "No se pudo cargar el Ticket.", Alert.AlertType.ERROR));
             }
-            mostrarVisorDigitalDeFactura(facDetalles);
-        } catch (Exception e) {
-            AlertaPersonalizada.mostrarAlerta("Error", "No se pudo cargar el Ticket.", Alert.AlertType.ERROR);
-        }
+        }).start();
     }
+
     private void mostrarVisorDigitalDeFactura(Factura fac) {
         Stage dialogStage = new Stage();
         dialogStage.initStyle(StageStyle.TRANSPARENT);

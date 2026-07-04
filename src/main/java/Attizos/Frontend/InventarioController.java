@@ -4,7 +4,9 @@ import Attizos.Backend.AI.AuditoriaAI;
 import Attizos.Backend.AI.AuditoriaLocal;
 import Attizos.Backend.Api.ApiClient;
 import Attizos.Backend.Attizos.*;
+import Attizos.Backend.Database.ConexionSQLite;
 import Attizos.Frontend.Network.WebSocketManager;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
@@ -107,8 +109,14 @@ public class InventarioController {
         cargarDatos();
         WebSocketManager.setAccionVentasYStock(() ->{
             System.out.println("Movimiento de inventario: Actualizando tabla de inventario.");
-            App.sincronizarDatosDesdeServidor();
-            cargarDatos();
+            new Thread(() ->{
+                App.sincronizarDatosDesdeServidor();
+                Platform.runLater(() ->{
+                    cargarDatos();
+                    tablaInventario.refresh();
+                    System.out.println("Inventario actualizado");
+                });
+            }).start();
         });
     }
 
@@ -237,19 +245,25 @@ public class InventarioController {
                                 }
                                 boolean exitoDB = ApiClient.registrarLoteEnServidor(codigoBase, cantidad, costo, nuevaFecha);
                                 if (exitoDB) {
-                                    App.attizos.getInventario().getInventarioInsumos().clear();
-                                    for (Insumo ins : ApiClient.obtenerInsumoDelServidor()) {
-                                        App.attizos.getInventario().getInventarioInsumos().put(ins.getCodigo(), ins);
-                                    }
-                                    ApiClient.registrarEgresoEnServidor("Registrar insumo", costo);
-
+                                    ApiClient.registrarEgresoEnServidor("Registrar insumo",costo);
                                     String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
                                     App.registrarAuditoria(operador, "Insumo", insumoBase.getNombre(), "Ingreso Lote", cantidad, "Ingreso de nuevo lote. Costo: " + costo);
-                                    txtCodigoInsumo.clear();
-                                    txtCantidad.clear();
-                                    dpFechaVencimiento.setValue(null);
-                                    cargarDatos();
-                                    mostrarExito("Lote Registrado", "El stock ha sido sumado correctamente en la Base de Datos.");
+                                    new Thread(() ->{
+                                        ConexionSQLite.sincronizarInsumos();
+                                        ArrayList<Insumo> insumosFrescos = ApiClient.obtenerInsumoDelServidor();
+                                        Platform.runLater(() ->{
+                                            App.attizos.getInventario().getInventarioInsumos().clear();
+                                            for(Insumo ins : insumosFrescos){
+                                                App.attizos.getInventario().getInventarioInsumos().put(ins.getCodigo(), ins);
+                                            }
+                                            txtCodigoInsumo.clear();
+                                            txtCantidad.clear();
+                                            dpFechaVencimiento.setValue(null);
+                                            cargarDatos();
+                                            mostrarExito("Lote Registrado", "El stock ha sido sumado correctamente en la Base de Datos.");
+
+                                        });
+                                    }).start();
                                 } else {
                                     mostrarAlerta("Error", "No se pudo registrar el lote. ");
                                 }
@@ -280,24 +294,35 @@ public class InventarioController {
                         }else{
                             boolean descuentoExitoso = ApiClient.descontarStockFEFOEnServidor(seleccionado.getCodigo(), 1);
                             if(descuentoExitoso){
-                                App.attizos.getInventario().getInventarioInsumos().clear();
-                                for (Insumo ins : ApiClient.obtenerInsumoDelServidor()) {
-                                    App.attizos.getInventario().getInventarioInsumos().put(ins.getCodigo(), ins);
-                                }
                                 String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
                                 App.registrarAuditoria(operador, "Insumo", seleccionado.getNombre(), "Ajuste Stock (-1)", 1.0, "Merma FEFO: " + motivo);
 
-                                cargarDatos();
+                                new Thread(() -> {
+                                    ConexionSQLite.sincronizarInsumos();
+                                    ArrayList<Insumo> insumosFrescos = ApiClient.obtenerInsumoDelServidor();
 
-                                Insumo actualizado = App.attizos.getInventario().buscarInsumo(seleccionado.getCodigo());
-                                if (actualizado != null) {
-                                    mostrarExito("Ajuste Realizado", "Se descontó 1 unidad bajo el sistema FEFO.\nQuedan: " + actualizado.getStockActual() + " " + actualizado.getUnidad());
-                                    if (actualizado.getStockActual() <= actualizado.getStockMinimo()) {
-                                        mostrarAlerta("⚠ Stock Crítico", "El insumo bajó a niveles críticos. ¡Es momento de reabastecer!");
-                                    }
-                                } else {
-                                    mostrarExito("Insumo Agotado", "El stock llegó a cero en todos los lotes. El catálogo sigue activo.\nMotivo Registrado: " + motivo);
-                                }
+                                    Platform.runLater(() -> {
+                                        App.attizos.getInventario().getInventarioInsumos().clear();
+                                        for(Insumo ins : insumosFrescos){
+                                            App.attizos.getInventario().getInventarioInsumos().put(ins.getCodigo(),ins);
+                                        }
+                                        txtCodigoInsumo.clear();
+                                        txtCantidad.clear();
+                                        dpFechaVencimiento.setValue(null);
+
+                                        cargarDatos();
+
+                                        Insumo actualizado = App.attizos.getInventario().buscarInsumo(seleccionado.getCodigo());
+                                        if (actualizado != null) {
+                                            mostrarExito("Ajuste Realizado", "Se descontó 1 unidad bajo el sistema FEFO.\nQuedan: " + actualizado.getStockActual() + " " + actualizado.getUnidad());
+                                            if (actualizado.getStockActual() <= actualizado.getStockMinimo()) {
+                                                mostrarAlerta("⚠ Stock Crítico", "El insumo bajó a niveles críticos. ¡Es momento de reabastecer!");
+                                            }
+                                        } else {
+                                            mostrarExito("Insumo Agotado", "El stock llegó a cero en todos los lotes. El catálogo sigue activo.\nMotivo Registrado: " + motivo);
+                                        }
+                                    });
+                                }).start();
                             }
                         }
                     });
@@ -383,16 +408,22 @@ public class InventarioController {
                 double retirado = ApiClient.darDeBajaLotesVencidosEnServidor(seleccionado.getCodigo());
 
                 if (retirado > 0) {
-                    App.attizos.getInventario().getInventarioInsumos().clear();
-                    for (Insumo ins : ApiClient.obtenerInsumoDelServidor()) {
-                        App.attizos.getInventario().getInventarioInsumos().put(ins.getCodigo(), ins);
-                    }
-
                     String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
                     App.registrarAuditoria(operador, "Insumo", seleccionado.getNombre(), "Merma por Caducidad", retirado, "Limpieza manual: " + motivo);
+                    new Thread(() ->{
+                        ConexionSQLite.sincronizarInsumos();
+                        ArrayList<Insumo> insumosFrescos = ApiClient.obtenerInsumoDelServidor();
 
-                    cargarDatos();
-                    mostrarExito("Limpieza Exitosa", "Se retiraron " + retirado + " " + seleccionado.getUnidad() + " caducados.\nLos lotes frescos siguen intactos en el inventario.");
+                        Platform.runLater(() ->{
+                            App.attizos.getInventario().getInventarioInsumos().clear();
+                            for(Insumo ins : insumosFrescos){
+                                App.attizos.getInventario().getInventarioInsumos().put(ins.getCodigo(),ins);
+                            }
+                            cargarDatos();
+                            mostrarExito("Limpieza Exitosa", "Se retiraron " + retirado + " " + seleccionado.getUnidad() + " caducados.\nLos lotes frescos siguen intactos en el inventario.");
+
+                        });
+                    }).start();
                 } else {
                     mostrarAlerta("Error", "No se pudo realizar la limpieza en la base de datos.");
                 }

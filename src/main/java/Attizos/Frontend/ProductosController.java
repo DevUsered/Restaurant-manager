@@ -149,11 +149,20 @@ public class ProductosController {
         }
         WebSocketManager.setAccionMenu(() ->{
             System.out.println("Actualizando menu...");
-            Platform.runLater( () ->{
-                cargarMenu();
-                cargarCategoriasUnicas();
-                tablaMenu.refresh();
-            });
+            new Thread(()->{
+                ArrayList<Producto> menuFresco = ConexionSQLite.obtenerMenuLocal();
+
+                Platform.runLater(() ->{
+                    if(menuFresco != null && !menuFresco.isEmpty()){
+                        App.attizos.getMenu().clear();
+                        App.attizos.getMenu().addAll(menuFresco);
+                    }
+                    cargarMenu();
+                    cargarCategoriasUnicas();
+                    tablaMenu.refresh();
+                    System.out.println("Menu actualizado...");
+                });
+            }).start();
         });
     }
     private void mostrarOcultarCamposRecetaStock(boolean esCocina) {
@@ -345,11 +354,16 @@ public class ProductosController {
                                 if(guardadoDB) {
                                     ApiClient.registrarEgresoEnServidor("Compra Inicial: "+nuevo.getNombre(), costoTotal);
                                     App.attizos.getMenu().add(nuevo);
-                                    ConexionSQLite.sincronizarProductos();
-
+                                    new Thread(() ->{
+                                        ConexionSQLite.sincronizarProductos();
+                                        if(!App.modoOffline){
+                                            ServicioNube.sincronizarImagenesPendientes();
+                                        }
+                                    }).start();
                                     String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
                                     App.registrarAuditoria(operador, "Producto", nuevo.getNombre(), "Creación", cant, "Nuevo producto con stock inicial");
                                     cargarMenu();
+                                    cargarCategoriasUnicas();
                                     mostrarExito("Éxito", "Producto guardado correctamente con stock inicial.\nCompra registrada.");
                                     limpiarFormulario();
                                 }else{
@@ -369,6 +383,7 @@ public class ProductosController {
                     String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
                     App.registrarAuditoria(operador, "Producto", nuevo.getNombre(), "Creación", 0, usaReceta ? "Nuevo producto de preparación" : "Producto sin stock inicial");
                     cargarMenu();
+                    cargarCategoriasUnicas();
                     mostrarExito("Éxito", "Producto guardado correctamente.");
                     limpiarFormulario();
                     if (!App.modoOffline) {

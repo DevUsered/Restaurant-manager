@@ -1,6 +1,5 @@
 package Attizos.Frontend.Network;
 
-import Attizos.Backend.Attizos.App;
 import javafx.application.Platform;
 
 import java.net.URI;
@@ -59,8 +58,11 @@ public class WebSocketManager {
     private static void procesarEventoDelServidor(String mensajeJson){
         System.out.println("📩 Evento recibido del servidor: " + mensajeJson);
 
-        if (mensajeJson.contains("ACTUALIZAR_INVENTARIO") && accionVentasYStock != null) {
-            accionVentasYStock.run();
+        if (mensajeJson.contains("ACTUALIZAR_INVENTARIO") || mensajeJson.contains("SYNC_INVENTARIO")) {
+            if (accionVentasYStock != null) {
+                System.out.println("🔄 Refrescando stock en pantalla de Ventas...");
+                accionVentasYStock.run();
+            }
         }
         else if (mensajeJson.contains("SYNC_PEDIDOS") && accionCocina != null) {
             accionCocina.run();

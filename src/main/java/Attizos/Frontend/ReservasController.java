@@ -3,6 +3,8 @@ package Attizos.Frontend;
 import Attizos.Backend.Api.ApiClient;
 import Attizos.Backend.Attizos.App;
 import Attizos.Backend.Attizos.Reserva;
+import Attizos.Frontend.Network.WebSocketManager;
+import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -35,6 +37,11 @@ public class ReservasController {
         configurarColumnas();
         generarSelectorDeHoras();
         cargarReservas();
+
+        WebSocketManager.setAccionReservas(() ->{
+            System.out.println("Actulizando reservas...");
+            cargarReservas();
+        });
     }
     private void configurarColumnas() {
         colId.setCellValueFactory(new PropertyValueFactory<>("id"));
@@ -46,7 +53,8 @@ public class ReservasController {
 
         colFechaHora.setCellValueFactory(cellData -> {
             LocalDateTime fecha = cellData.getValue().getFecha();
-            return new SimpleStringProperty(fecha.format(DateTimeFormatter.ofPattern("dd/MM HH:mm")));
+            String textoFecha = (fecha != null) ? fecha.format(DateTimeFormatter.ofPattern("dd/MM HH:mm")) : "Sin Fecha";
+            return new SimpleStringProperty(textoFecha);
         });
 
         listaVisible = FXCollections.observableArrayList();
@@ -99,19 +107,21 @@ public class ReservasController {
 
             String id = App.attizos.generarIdReserva(fechaHora);
             Reserva nueva = new Reserva(id, cliente, telf, pax, fechaHora, obs);
+            new Thread(() ->{
+                boolean guardado = ApiClient.guardarReservaEnServidor(nueva);
+                Platform.runLater(() ->{
+                    if(guardado){
+                        String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
+                        App.registrarAuditoria(operador, "Reservas", cliente, "Nueva Reserva", pax, "Reserva agendada");
 
-            boolean guardado = ApiClient.guardarReservaEnServidor(nueva);
-
-            if(guardado){
-                String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
-                App.registrarAuditoria(operador, "Reservas", cliente, "Nueva Reserva", pax, "Reserva agendada");
-
-                cargarReservas();
-                limpiarFormulario();
-                mostrarExito("Éxito", "Reserva guardada correctamente.");
-            }else{
-                mostrarAlerta("Error", "No se pudo guardar la reserva.");
-            }
+                        cargarReservas();
+                        limpiarFormulario();
+                        mostrarExito("Éxito", "Reserva guardada correctamente.");
+                    }else{
+                        mostrarAlerta("Error", "No se pudo guardar la reserva.");
+                    }
+                });
+            }).start();
         } catch (Exception e) {
             mostrarAlerta("Error", "Verifique que 'Personas' y 'Mesa' sean números.");
         }
@@ -121,16 +131,21 @@ public class ReservasController {
         Reserva sel = tablaReservas.getSelectionModel().getSelectedItem();
         if (sel == null) return;
 
-        boolean actualizado = ApiClient.actualizarEstadoReservaEnServidor(sel.getId(), "Atendida");
-        if(actualizado){
-            String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
-            App.registrarAuditoria(operador, "Reservas", sel.getNombreCliente(), "Atención", 0, "Reserva finalizada/atendida");
+        new Thread(() -> {
+            boolean actualizado = ApiClient.actualizarEstadoReservaEnServidor(sel.getId(), "Atendida");
 
-            mostrarExito("Éxito", "Reserva procesada. Ha sido marcada como Atendida.");
-            cargarReservas();
-        }else{
-            mostrarAlerta("Error", "No se pudo actualizar el estado de la reserva.");
-        }
+            Platform.runLater(() -> {
+                if(actualizado){
+                    String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
+                    App.registrarAuditoria(operador, "Reservas", sel.getNombreCliente(), "Atención", 0, "Reserva finalizada/atendida");
+
+                    mostrarExito("Éxito", "Reserva procesada. Ha sido marcada como Atendida.");
+                    cargarReservas();
+                } else {
+                    mostrarAlerta("Error", "No se pudo actualizar el estado de la reserva.");
+                }
+            });
+        }).start();
     }
     @FXML
     void cancelarReservaSeleccionada(ActionEvent event) {
@@ -139,18 +154,25 @@ public class ReservasController {
             DialogoPersonalizado.mostrarDialogo("Confirmar Cancelación", "Va a cancelar la reserva de: " + sel.getNombreCliente(), "¿Está seguro de cancelar?", "")
                     .ifPresent(respuesta -> {
                         if (!respuesta.trim().isEmpty()) {
-                            boolean cancelado = ApiClient.actualizarEstadoReservaEnServidor(sel.getId(), "Cancelada");
-                            if (cancelado) {
-                                String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
-                                App.registrarAuditoria(operador, "Reservas", sel.getNombreCliente(), "Cancelación", 0, "Reserva cancelada manualmente");
-                                cargarReservas();
-                            } else {
-                                mostrarAlerta("Error", "No se pudo cancelar la reserva en la BD.");
-                            }
+
+                            new Thread(() -> {
+                                boolean cancelado = ApiClient.actualizarEstadoReservaEnServidor(sel.getId(), "Cancelada");
+
+                                Platform.runLater(() -> {
+                                    if (cancelado) {
+                                        String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
+                                        App.registrarAuditoria(operador, "Reservas", sel.getNombreCliente(), "Cancelación", 0, "Reserva cancelada manualmente");
+                                        cargarReservas();
+                                    } else {
+                                        mostrarAlerta("Error", "No se pudo cancelar la reserva en la BD.");
+                                    }
+                                });
+                            }).start();
+
                         }
                     });
-        }else {
-            mostrarAlerta("Atención","Seleccione una reserva para cancelar. ");
+        } else {
+            mostrarAlerta("Atención","Seleccione una reserva para cancelar.");
         }
     }
 
