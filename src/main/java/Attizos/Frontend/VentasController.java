@@ -116,7 +116,7 @@ public class VentasController {
     private void cargarCategorias() {
         hBCategoria.getChildren().clear();
 
-        Button btnAll = crearBotonCategoria("Todo");
+        Button btnAll = crearBotonCategoria("Todos");
         hBCategoria.getChildren().add(btnAll);
 
         Set<String> cats = new HashSet<>();
@@ -149,7 +149,7 @@ public class VentasController {
         if (menuRAM != null) {
             for(Producto p : App.attizos.getMenu()){
                 if(p.getEstado() != null && p.getEstado().equals("Activo") && !p.isPromocion() && !p.getCategoria().equalsIgnoreCase("Promocion")){
-                    boolean coincideCategoria = categoria.equals("Todos") || p.getCategoria().equalsIgnoreCase(categoria);
+                    boolean coincideCategoria = categoria.equalsIgnoreCase("Todos") || p.getCategoria().equalsIgnoreCase(categoria);
                     boolean coincideBusqueda = p.getNombre().toLowerCase().contains(busqueda);
                     if(coincideCategoria && coincideBusqueda){
                         crearTarjetaProducto(p);

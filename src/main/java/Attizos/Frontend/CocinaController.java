@@ -25,6 +25,7 @@ import javafx.stage.StageStyle;
 import javafx.util.Duration;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class CocinaController {
 
@@ -63,29 +64,29 @@ public class CocinaController {
         cargarColaDesdeBackend();
         WebSocketManager.setAccionCocina(() ->{
             System.out.println("Pedido recibido en la cocina. Actualizando la tabla...");
-            new Thread(() ->{
-                ArrayList<Pedido> pedidosFrescos = ApiClient.obtenerPedidosPendientes();
-                Platform.runLater(() ->{
-                    int indiceSeleccionado = tablaPedidos.getSelectionModel().getSelectedIndex();
-
-                    listaColaPedidos.clear();
-                    listaColaPedidos.addAll(pedidosFrescos);
-
-                    tablaPedidos.refresh();
-
-                    if (indiceSeleccionado >= 0 && indiceSeleccionado < listaColaPedidos.size()) {
-                        tablaPedidos.getSelectionModel().select(indiceSeleccionado);
-                    }
-                    System.out.println("Tabla actuaalizada...");
-                });
-            }).start();
+            cargarColaDesdeBackend();
         });
 
     }
 
     private void cargarColaDesdeBackend() {
-        listaColaPedidos.clear();
-        listaColaPedidos.addAll(ApiClient.obtenerPedidosPendientes());
+        new Thread(() -> {
+            ArrayList<Pedido> pedidosFrescos = ApiClient.obtenerPedidosPendientes();
+
+            Platform.runLater(() -> {
+                int indiceSeleccionado = tablaPedidos.getSelectionModel().getSelectedIndex();
+
+                listaColaPedidos.clear();
+                if (pedidosFrescos != null) {
+                    listaColaPedidos.addAll(pedidosFrescos);
+                }
+                tablaPedidos.refresh();
+
+                if (indiceSeleccionado >= 0 && indiceSeleccionado < listaColaPedidos.size()) {
+                    tablaPedidos.getSelectionModel().select(indiceSeleccionado);
+                }
+            });
+        }).start();
     }
 
     private void mostrarDetallesPedido(Pedido pedido) {
@@ -96,29 +97,41 @@ public class CocinaController {
         }
 
         lblPedidoActual.setText("Ticket #" + pedido.getNumeroTicket() + " - " + pedido.getCliente());
-        
-        listaDetallesCocina.getItems().addAll(ApiClient.obtenerDetallesParaCocina(pedido.getIdPedido()));
-    }
 
+        new Thread(() -> {
+            List<String> detalles = ApiClient.obtenerDetallesParaCocina(pedido.getIdPedido());
+            Platform.runLater(() -> {
+                listaDetallesCocina.getItems().clear();
+                if (detalles != null) {
+                    listaDetallesCocina.getItems().addAll(detalles);
+                }
+            });
+        }).start();
+    }
     @FXML
     void atenderSiguiente(ActionEvent event) {
         if (listaColaPedidos.isEmpty()) return;
-        
+
         Pedido pedidoAtendido = tablaPedidos.getSelectionModel().getSelectedItem();
         if(pedidoAtendido == null){
             pedidoAtendido = listaColaPedidos.get(0);
         }
-        
-        boolean eliminado = ApiClient.eliminarPedidoDespachado(pedidoAtendido.getIdPedido());
 
-        if(eliminado){
-            mostrarExito("¡Plato Listo!", "El Ticket #" + pedidoAtendido.getIdPedido() + " ha sido despachado.");
-            cargarColaDesdeBackend();
-            listaDetallesCocina.getItems().clear();
-            lblPedidoActual.setText("Seleccione un pedido...");
-        }else{
-            mostrarAlerta("Error", "No se pudo despachar el pedido en la Base de Datos.");
-        }
+        final Pedido pedidoAEliminar = pedidoAtendido;
+
+        new Thread(() -> {
+            boolean eliminado = ApiClient.eliminarPedidoDespachado(pedidoAEliminar.getIdPedido());
+
+            Platform.runLater(() -> {
+                if(eliminado){
+                    cargarColaDesdeBackend();
+                    listaDetallesCocina.getItems().clear();
+                    lblPedidoActual.setText("Seleccione un pedido...");
+                }else{
+                    mostrarAlerta("Error", "No se pudo despachar el pedido en la Base de Datos.");
+                }
+            });
+        }).start();
     }
 
     @FXML
@@ -130,26 +143,27 @@ public class CocinaController {
             return;
         }
 
-        boolean cancelado = ApiClient.cancelarPedidoEnServidor(seleccionado.getIdPedido());
+        new Thread(() -> {
+            boolean cancelado = ApiClient.cancelarPedidoEnServidor(seleccionado.getIdPedido());
 
-        if (cancelado) {
-            mostrarExito("Anulado", "El pedido se anuló contablemente y los ingredientes regresaron al inventario.");
-            cargarColaDesdeBackend();
-            listaDetallesCocina.getItems().clear();
-
-            new Thread(() -> {
+            if (cancelado) {
                 ConexionSQLite.sincronizarInsumos();
                 ConexionSQLite.sincronizarProductos();
 
-
                 Platform.runLater(() -> {
                     actualizarDespuesDeCancelar();
-                });
-            }).start();
+                    cargarColaDesdeBackend();
+                    listaDetallesCocina.getItems().clear();
+                    lblPedidoActual.setText("Seleccione un pedido...");
 
-        } else {
-            mostrarAlerta("Error Crítico", "No se pudo anular el pedido o falló la devolución del stock.");
-        }
+                    mostrarExito("Anulado", "El pedido se anuló contablemente y los ingredientes regresaron al inventario.");
+                });
+            } else {
+                Platform.runLater(() -> {
+                    mostrarAlerta("Error Crítico", "No se pudo anular el pedido o falló la devolución del stock.");
+                });
+            }
+        }).start();
     }
 
     private void actualizarDespuesDeCancelar(){

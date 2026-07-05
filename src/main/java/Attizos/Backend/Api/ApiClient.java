@@ -628,11 +628,15 @@ public class ApiClient {
     }
     public static boolean registrarEgresoEnServidor(String descripcion, double monto) {
         try {
-            String url = String.format("%s/reportes/egreso?descripcion=%s&monto=%s", BASE_URL, descripcion.replace(" ", "%20"), monto);
-            java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
-                    .uri(java.net.URI.create(url)).POST(java.net.http.HttpRequest.BodyPublishers.noBody()).build();
+            String url = String.format("%s/reportes/egreso?descripcion=%s&monto=%s",
+                    BASE_URL,
+                    codificar(descripcion),
+                    monto);
 
-            return httpClient.send(request, java.net.http.HttpResponse.BodyHandlers.ofString()).statusCode() == 200;
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url)).POST(HttpRequest.BodyPublishers.noBody()).build();
+
+            return httpClient.send(request, HttpResponse.BodyHandlers.ofString()).statusCode() == 200;
         } catch (Exception e) {
             System.err.println("Error al registrar egreso: " + e.getMessage());
             return false;
@@ -698,19 +702,19 @@ public class ApiClient {
         try {
             String url = String.format("%s/reportes/auditoria?operador=%s&tipoArea=%s&nombreItem=%s&accion=%s&cantidad=%s&motivo=%s",
                     BASE_URL,
-                    operador.replace(" ", "%20"),
-                    tipoArea.replace(" ", "%20"),
-                    nombreItem.replace(" ", "%20"),
-                    accion.replace(" ", "%20"),
+                    codificar(operador),
+                    codificar(tipoArea),
+                    codificar(nombreItem),
+                    codificar(accion),
                     cantidad,
-                    motivo.replace(" ", "%20"));
+                    codificar(motivo));
 
-            java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
-                    .uri(java.net.URI.create(url))
-                    .POST(java.net.http.HttpRequest.BodyPublishers.noBody())
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .POST(HttpRequest.BodyPublishers.noBody())
                     .build();
 
-            java.net.http.HttpResponse<String> response = httpClient.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             return response.statusCode() == 200 || response.statusCode() == 201;
         } catch (Exception e) {
             System.err.println("Error subiendo auditoría al servidor: " + e.getMessage());
@@ -734,13 +738,13 @@ public class ApiClient {
 
     public static Empleado autenticarUsuarioEnServidor(String username, String password) {
         try {
-            String url = BASE_URL + "/empleados/login?username=" + username + "&password=" + password;
-            java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
-                    .uri(java.net.URI.create(url))
+            String url = BASE_URL + "/empleados/login?username=" + codificar(username) + "&password=" + codificar(password);
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
                     .GET()
                     .build();
 
-            java.net.http.HttpResponse<String> response = httpClient.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() == 200 && !response.body().isEmpty()) {
                 return mapper.readValue(response.body(), Empleado.class);
@@ -784,7 +788,6 @@ public class ApiClient {
                     item.put("idProducto", idProd);
                     item.put("cantidad", cant);
 
-                    // Buscamos el precio y si tiene receta en la memoria RAM para completar el DTO
                     double precio = 0.0;
                     boolean receta = false;
                     if (Attizos.Backend.Attizos.App.attizos != null && Attizos.Backend.Attizos.App.attizos.getMenu() != null) {
@@ -826,6 +829,10 @@ public class ApiClient {
             System.err.println("❌ Error al intentar subir venta offline al servidor: " + e.getMessage());
             return false;
         }
+    }
+    private static String codificar(String texto) {
+        if (texto == null) return "";
+        return java.net.URLEncoder.encode(texto, java.nio.charset.StandardCharsets.UTF_8);
     }
 
 }
