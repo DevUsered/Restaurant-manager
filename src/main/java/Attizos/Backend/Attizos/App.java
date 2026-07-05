@@ -38,30 +38,29 @@ public class App {
         ApiClient.cargarCredencialesDelServidor();
         ConexionSQLite.inicializarTablasLocales();
 
-        System.out.println("Cargando datos locales...");
+        if(ApiClient.isServidorDisponible()) {
+            System.out.println("🔄 Sincronizando datos con la Base de Datos PRINCIPAL...");
+            modoOffline = false;
+            ConexionSQLite.subirAuditoriaPendiente();
+            ConexionSQLite.subirVentasPendientes();
+            ServicioNube.sincronizarImagenesPendientes();
+
+            ConexionSQLite.actualizarCacheCompleta();
+
+            new Thread(() -> {
+                String ipServidor = ApiClient.getIpServidor();
+                WebSocketManager.conectarAlServidor(ipServidor);
+            }).start();
+        } else {
+            System.err.println("[Modo Offline] Trabajando con caché local.");
+            modoOffline = true;
+        }
+
+        System.out.println("Cargando datos locales a RAM...");
         cargarEmpleados();
         cargarInventario();
         cargarProductos();
-        System.out.println("✅ Datos locales cargados.");
-
-        Thread hiloInicial = new Thread(() ->{
-            if(ApiClient.isServidorDisponible()){
-                    System.out.println("🔄 Sincronizando datos con la Base de Datos...");
-                    modoOffline = false;
-                    ConexionSQLite.subirAuditoriaPendiente();
-                    ConexionSQLite.subirVentasPendientes();
-                    ServicioNube.sincronizarImagenesPendientes();
-                    sincronizarDatosDesdeServidor();
-
-                    String ipServidor = ApiClient.getIpServidor();
-                   WebSocketManager.conectarAlServidor(ipServidor);
-            }else{
-                System.err.println("[Segundo Plano] Sin internet. Attizos sigue funcionando al 100% en modo local.");
-                modoOffline = true;
-            }
-        });
-        hiloInicial.setDaemon(true);
-        hiloInicial.start();
+        System.out.println("✅ Datos listos.");
     }
     public static void sincronizarDatosDesdeServidor() {
         try {

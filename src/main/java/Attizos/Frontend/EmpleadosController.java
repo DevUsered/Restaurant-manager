@@ -146,6 +146,7 @@ public class EmpleadosController {
                 txtPassword.clear();
             }
         });
+        cargarEmpleados();
         WebSocketManager.setAccionEmpleados(() ->{
             System.out.println("Hubo modificacion en la tabla de empleados. Actualizando la tabla...");
             new Thread(() ->{
