@@ -130,16 +130,39 @@ public class CocinaController {
             return;
         }
 
-        boolean cancelado = ApiClient.cancelarPedidoEnServidor(seleccionado.getIdPedido())    ;
+        boolean cancelado = ApiClient.cancelarPedidoEnServidor(seleccionado.getIdPedido());
 
         if (cancelado) {
-            actualizarDespuesDeCancelar();
             mostrarExito("Anulado", "El pedido se anuló contablemente y los ingredientes regresaron al inventario.");
             cargarColaDesdeBackend();
             listaDetallesCocina.getItems().clear();
+
+            new Thread(() -> {
+                ConexionSQLite.sincronizarInsumos();
+                ConexionSQLite.sincronizarProductos();
+
+
+                Platform.runLater(() -> {
+                    actualizarDespuesDeCancelar();
+                });
+            }).start();
+
         } else {
             mostrarAlerta("Error Crítico", "No se pudo anular el pedido o falló la devolución del stock.");
         }
+    }
+
+    private void actualizarDespuesDeCancelar(){
+        App.attizos.getInventario().getInventarioInsumos().clear();
+        App.attizos.getInventario().getInventarioInsumos().putAll(ConexionSQLite.obtenerInventarioLocal());
+
+        App.attizos.getMenu().clear();
+        ArrayList<Producto> menuAct = ConexionSQLite.obtenerMenuLocal();
+
+        App.attizos.getMenu().addAll(menuAct);
+        RecetaDAO.cargarRecetas();
+        App.attizos.setPromocionesActivas(ConexionSQLite.obtenerPromocionesLocal(menuAct));
+        System.out.println("✅ RAM de cocina actualizada con el stock devuelto.");
     }
 
     @FXML
@@ -166,16 +189,5 @@ public class CocinaController {
     }
     private void mostrarExito(String titulo, String mensaje) {
         AlertaPersonalizada.mostrarAlerta(titulo, mensaje, Alert.AlertType.INFORMATION);
-    }
-    private void actualizarDespuesDeCancelar(){
-        App.attizos.getInventario().getInventarioInsumos().clear();
-        App.attizos.getInventario().getInventarioInsumos().putAll(ConexionSQLite.obtenerInventarioLocal());
-
-        App.attizos.getMenu().clear();
-        ArrayList<Producto> menuAct = ConexionSQLite.obtenerMenuLocal();
-
-        App.attizos.getMenu().addAll(menuAct);
-        RecetaDAO.cargarRecetas();
-        App.attizos.setPromocionesActivas(ConexionSQLite.obtenerPromocionesLocal(menuAct));
     }
 }

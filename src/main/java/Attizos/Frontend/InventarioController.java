@@ -112,8 +112,10 @@ public class InventarioController {
             new Thread(() ->{
                 App.sincronizarDatosDesdeServidor();
                 Platform.runLater(() ->{
+                    HashMap<String, Insumo> frescoLocal = ConexionSQLite.obtenerInventarioLocal();
+                    App.attizos.getInventario().getInventarioInsumos().clear();
+                    App.attizos.getInventario().getInventarioInsumos().putAll(frescoLocal);
                     cargarDatos();
-                    tablaInventario.refresh();
                     System.out.println("Inventario actualizado");
                 });
             }).start();
@@ -344,14 +346,22 @@ public class InventarioController {
                     if (motivo.trim().isEmpty()) {
                         mostrarAlerta("Obligatorio", "Es obligatorio dejar un registro del porqué se elimina información del sistema.");
                     } else {
-                        boolean eliminadoDB = ApiClient.inactivarInsumoEnServidor(seleccionado.getCodigo());
-                        if(eliminadoDB) {
-                            App.attizos.getInventario().getInventarioInsumos().remove(seleccionado.getCodigo());
-                            String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
-                            App.registrarAuditoria(operador, "Insumo", seleccionado.getNombre(), "Eliminación", seleccionado.getStockActual(), "Eliminación del sistema. Motivo: " + motivo);
-                            mostrarExito("Insumo Eliminado", "El registro ha sido eliminado del sistema.\nMotivo guardado: " + motivo);
-                            cargarDatos();
-                        }
+                        new Thread(() ->{
+                            boolean eliminadoDB = ApiClient.inactivarInsumoEnServidor(seleccionado.getCodigo());
+                            Platform.runLater(() ->{
+                                if(eliminadoDB) {
+                                    App.attizos.getInventario().getInventarioInsumos().remove(seleccionado.getCodigo());
+                                    String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
+                                    App.registrarAuditoria(operador, "Insumo", seleccionado.getNombre(), "Eliminación", seleccionado.getStockActual(), "Eliminación del sistema. Motivo: " + motivo);
+                                    mostrarExito("Insumo Eliminado", "El registro ha sido eliminado del sistema.\nMotivo guardado: " + motivo);
+                                    cargarDatos();
+                                }else{
+                                    mostrarAlerta("Insumo Eliminado", "No se pudo eliminar el insumo en el servidor.");
+                                }
+                            });
+
+                        }).start();
+
                     }
                 });
     }

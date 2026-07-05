@@ -67,6 +67,9 @@ public class VentasController {
         WebSocketManager.setAccionVentasYStock(() ->{
             System.out.println("Actualizando ventas...");
             new Thread(() ->{
+                ConexionSQLite.sincronizarInsumos();
+                ConexionSQLite.sincronizarProductos();
+                ConexionSQLite.sincronizarDetallesCombo();
                 ArrayList<Producto> menuActualizado = ConexionSQLite.obtenerMenuLocal();
                 HashMap<String, Insumo> inventarioActualizado = ConexionSQLite.obtenerInventarioLocal();
                 ArrayList<Promocion> promosActualizadas = ConexionSQLite.obtenerPromocionesLocal(menuActualizado);

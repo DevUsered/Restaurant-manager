@@ -150,6 +150,7 @@ public class ProductosController {
         WebSocketManager.setAccionMenu(() ->{
             System.out.println("Actualizando menu...");
             new Thread(()->{
+                ConexionSQLite.sincronizarProductos();
                 ArrayList<Producto> menuFresco = ConexionSQLite.obtenerMenuLocal();
 
                 Platform.runLater(() ->{
@@ -417,17 +418,24 @@ public class ProductosController {
                                     try {
                                         double costoTotal = Double.parseDouble(costoStr.replace(",", "."));
                                         if(costoTotal < 0){ mostrarAlerta("Error", "El costo no puede ser negativo."); return; }
-                                        sel.aumentarStock(cantidad);
-                                        boolean actualizado = ApiClient.actualizarProductoEnServidor(sel);
-                                        if(actualizado){
-                                            ApiClient.registrarEgresoEnServidor("Compra: "+sel.getNombre()+ " ("+cantidad+ " und)", costoTotal);
-                                            String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
-                                            App.registrarAuditoria(operador, "Producto", sel.getNombre(), "Ajuste Stock", cantidad, "Ingreso de mercadería. Costo: Bs. " + costoTotal);
-                                            tablaMenu.refresh();
-                                            mostrarExito("Stock Actualizado", "Stock sumado exitosamente.");
-                                        }else{
-                                            mostrarAlerta("Error", "No se pudo actualiza el stock. ");
-                                        }
+                                        new Thread(() ->{
+                                            sel.aumentarStock(cantidad);
+                                            boolean actualizado = ApiClient.actualizarProductoEnServidor(sel);
+                                            Platform.runLater(() ->{
+                                                if(actualizado){
+                                                    new Thread(() -> ApiClient.registrarEgresoEnServidor("Compra...", costoTotal)).start();
+
+                                                    String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
+                                                    App.registrarAuditoria(operador, "Producto", sel.getNombre(), "Ajuste Stock", cantidad, "Ingreso...");
+
+                                                    tablaMenu.refresh();
+                                                    mostrarExito("Stock Actualizado", "Stock sumado exitosamente.");
+                                                }else{
+                                                    sel.reducirStock(cantidad); // Revertir si falló
+                                                    mostrarAlerta("Error", "No se pudo actualizar el stock.");
+                                                }
+                                            });
+                                        }).start();
                                     } catch (NumberFormatException ex) {
                                         mostrarAlerta("Error", "El costo debe ser un número válido.");
                                     }
@@ -485,14 +493,18 @@ public class ProductosController {
                     if(motivo.trim().isEmpty()){
                         mostrarAlerta("Seguridad", "Es obligatorio escribir un motivo para eliminar el producto.");
                     }else {
-                        boolean eliminadoDB = ApiClient.inactivarProductoEnServidor(sel.getId());
-                        if (eliminadoDB) {
-                            App.attizos.getMenu().remove(sel);
-                            cargarMenu();
-                            String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
-                            App.registrarAuditoria(operador, "Producto", sel.getNombre(), "Eliminación Lógica", sel.getStock(), motivo);
-                            mostrarExito("Eliminado", "Producto dado de baja. Ya no aparecerá en el menú.\nMotivo: " + motivo);
-                        }
+                        Platform.runLater(() ->{
+                            boolean eliminadoDB = ApiClient.inactivarProductoEnServidor(sel.getId());
+                            if (eliminadoDB) {
+                                App.attizos.getMenu().remove(sel);
+                                cargarMenu();
+                                String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
+                                new Thread( () ->
+                                App.registrarAuditoria(operador, "Producto", sel.getNombre(), "Eliminación Lógica", sel.getStock(), motivo)).start();
+                                mostrarExito("Eliminado", "Producto dado de baja. Ya no aparecerá en el menú.\nMotivo: " + motivo);
+                            }
+                        });
+
                     }
                 });
     }

@@ -182,6 +182,7 @@ public class EmpleadosController {
                 mostrarAlerta("ID Duplicado", "Ya existe un empleado registrado con el CI/ID: " + id);
                 return;
             }
+
             Empleado nuevoEmpleado = new Empleado();
             nuevoEmpleado.setIdEmpleado(id);
             nuevoEmpleado.setNombre(nombre);
@@ -200,22 +201,30 @@ public class EmpleadosController {
                 nuevoEmpleado.setUsername(user);
                 nuevoEmpleado.setPasswordHash(pass);
             }
-            boolean guardadoDB = ApiClient.guardarEmpleadoEnServidor(nuevoEmpleado);
-            if(guardadoDB) {
-                new Thread(() ->{
-                    ConexionSQLite.sincronizarEmpleados();
-                    Platform.runLater(() ->{
-                        masterData.add(nuevoEmpleado);
-                        if(App.attizos != null){
-                            App.attizos.agregarEmpleado(nuevoEmpleado);
+
+            UtilidadesUI.ejecutarTareaAsincrona(
+                    tablaEmpleados,
+                    () -> {
+                        boolean guardadoDB = ApiClient.guardarEmpleadoEnServidor(nuevoEmpleado);
+                        if (guardadoDB) {
+                            ConexionSQLite.sincronizarEmpleados();
                         }
-                        limpiarFormulario(null);
-                        mostrarExito("Contratado", "El empleado " + nombre + " fue registrado con éxito.");
-                    });
-                }).start();
-            }else{
-                mostrarAlerta("Error de Persistencia", "No se pudo registrar el empleado.");
-            }
+                        return guardadoDB;
+                    },
+                    (exito) -> {
+                        if (exito) {
+                            masterData.add(nuevoEmpleado);
+                            if(App.attizos != null){
+                                App.attizos.agregarEmpleado(nuevoEmpleado);
+                            }
+                            limpiarFormulario(null);
+                            mostrarExito("Contratado", "El empleado " + nombre + " fue registrado con éxito.");
+                        } else {
+                            mostrarAlerta("Error de Persistencia", "No se pudo registrar el empleado en el servidor.");
+                        }
+                    }
+            );
+
         } catch (NumberFormatException e) {
             mostrarAlerta("Error de formato", "El ID y el Sueldo deben ser válidos.");
         }
@@ -230,24 +239,31 @@ public class EmpleadosController {
             DialogoPersonalizado.mostrarDialogo("Confirmar Despido", "Cuidado: Va a eliminar al empleado " + despedido.getNombre(), "Escriba 'SI' para confirmar el despido:", "")
                     .ifPresent(respuesta -> {
                         if (respuesta.trim().equalsIgnoreCase("SI")) {
-                            boolean eliminadoDB = ApiClient.inactivarEmpleadoEnServidor(despedido.getIdEmpleado());
-                            if(eliminadoDB) {
-                                new Thread(() -> {
-                                    ConexionSQLite.sincronizarEmpleados();
 
-                                    Platform.runLater(() -> {
-                                        masterData.remove(index);
-                                        if (App.attizos != null) {
-                                            App.attizos.eliminarEmpleado(despedido.getIdEmpleado());
-                                            String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
-                                            App.registrarAuditoria(operador, "Empleado", despedido.getNombre(), "Despido", 0, "Despedir un empleado");
+                            UtilidadesUI.ejecutarTareaAsincrona(
+                                    tablaEmpleados,
+                                    () -> {
+                                        boolean eliminadoDB = ApiClient.inactivarEmpleadoEnServidor(despedido.getIdEmpleado());
+                                        if (eliminadoDB) {
+                                            ConexionSQLite.sincronizarEmpleados();
                                         }
-                                        mostrarExito("Despedido", "El empleado ha sido removido de la planilla.");
-                                    });
-                                }).start();
-                            }else{
-                                mostrarAlerta("Error de persistencia", "No se pudo eliminar el empleado.");
-                            }
+                                        return eliminadoDB;
+                                    },
+                                    (exito) -> {
+                                        if (exito) {
+                                            masterData.remove(index); // Esto debe estar siempre en el hilo de JavaFX
+                                            if (App.attizos != null) {
+                                                App.attizos.eliminarEmpleado(despedido.getIdEmpleado());
+                                                String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
+                                                App.registrarAuditoria(operador, "Empleado", despedido.getNombre(), "Despido", 0, "Despedir un empleado");
+                                            }
+                                            mostrarExito("Despedido", "El empleado ha sido removido de la planilla.");
+                                        } else {
+                                            mostrarAlerta("Error de persistencia", "No se pudo eliminar el empleado.");
+                                        }
+                                    }
+                            );
+
                         } else {
                             mostrarAlerta("Cancelado", "El empleado NO fue despedido.");
                         }
@@ -318,10 +334,7 @@ public class EmpleadosController {
         try {
             String id = txtId.getText().trim();
             double sueldo = Double.parseDouble(txtSueldo.getText().trim().replace(",", "."));
-            if(sueldo <= 0){
-                mostrarAlerta("Sueldo inválido","Ingrese un sueldo válido.");
-                return;
-            }
+            if(sueldo <= 0){ mostrarAlerta("Sueldo inválido","Ingrese un sueldo válido."); return; }
             String nombre = txtNombre.getText().trim();
             String cargo = cmbCargo.getValue();
 
@@ -336,10 +349,8 @@ public class EmpleadosController {
             empleadoActualizado.setCargo(cargo);
             empleadoActualizado.setSueldo(sueldo);
             empleadoActualizado.setEstado("Activo");
-
             empleadoActualizado.setFechaUltimoPago(seleccionadoOriginal.getFechaUltimoPago());
             empleadoActualizado.setFechaContrato(seleccionadoOriginal.getFechaContrato());
-
 
             if (cargo.equalsIgnoreCase("Administrador") || cargo.equalsIgnoreCase("Cajero") || cargo.equalsIgnoreCase("Cocinero")) {
                 String user = txtUsername.getText().trim();
@@ -351,24 +362,37 @@ public class EmpleadosController {
                 empleadoActualizado.setUsername(user);
                 empleadoActualizado.setPasswordHash(pass);
             }
-            boolean actualizadoDB = ApiClient.actualizarEmpleadoEnServidor(empleadoActualizado);
-            if(actualizadoDB) {
-                new Thread(() ->{
-                    for(int i = 0; i<masterData.size(); i++){
-                        if(masterData.get(i).getIdEmpleado().equals(id)){
-                            masterData.set(i, empleadoActualizado);
+
+            // Usamos tu super herramienta para no congelar la pantalla
+            UtilidadesUI.ejecutarTareaAsincrona(
+                    tablaEmpleados,
+                    () -> {
+                        // TAREA LENTA: API y Sincronización SQLite (Hilo secundario)
+                        boolean actualizadoDB = ApiClient.actualizarEmpleadoEnServidor(empleadoActualizado);
+                        if (actualizadoDB) {
+                            ConexionSQLite.sincronizarEmpleados();
+                        }
+                        return actualizadoDB;
+                    },
+                    (exito) -> {
+                        if (exito) {
+                            for(int i = 0; i < masterData.size(); i++){
+                                if(masterData.get(i).getIdEmpleado().equals(id)){
+                                    masterData.set(i, empleadoActualizado);
+                                    break;
+                                }
+                            }
+                            if(App.attizos != null){
+                                App.attizos.eliminarEmpleado(id);
+                                App.attizos.agregarEmpleado(empleadoActualizado);
+                            }
+                            limpiarFormulario(null);
+                            mostrarExito("Actualizado", "Los datos de " + nombre + " fueron actualizados correctamente.");
+                        } else {
+                            mostrarAlerta("Error de Persistencia", "No se pudieron actualizar los cambios en el servidor.");
                         }
                     }
-                    if(App.attizos != null){
-                        App.attizos.eliminarEmpleado(id);
-                        App.attizos.agregarEmpleado(empleadoActualizado);
-                    }
-                    limpiarFormulario(null);
-                    mostrarExito("Actualizado", "Los datos de " + nombre + " fueron actualizados correctamente.");
-                }).start();
-            }else{
-                mostrarAlerta("Error de Persistencia", "No se pudieron actualizar los cambios.");
-            }
+            );
 
         } catch (NumberFormatException e) {
             mostrarAlerta("Error", "Revise que el sueldo sea un número válido.");

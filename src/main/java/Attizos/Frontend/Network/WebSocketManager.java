@@ -26,7 +26,7 @@ public class WebSocketManager {
     public static void setAccionEmpleados(Runnable accion) { accionEmpleados = accion; }
 
     public static void conectarAlServidor(String ipServidor){
-        System.out.println("Intentando conectar al servidor...");
+        System.out.println("🔌 Intentando conectar al túnel WebSocket en: " + ipServidor);
 
         HttpClient client = HttpClient.newHttpClient();
         String urlServidor = "ws://"+ ipServidor + ":8080/ws-sync";
@@ -35,25 +35,51 @@ public class WebSocketManager {
                 .buildAsync(URI.create(urlServidor), new WebSocket.Listener() {
                     @Override
                     public void onOpen(WebSocket webSocket){
-                        System.out.println("Tunel WebSocket establecido con éxito!");
+                        System.out.println("✅ ¡Túnel WebSocket establecido con éxito!");
                         socketActual = webSocket;
                         WebSocket.Listener.super.onOpen(webSocket);
                     }
+
                     @Override
                     public CompletionStage<?> onText(WebSocket webSocket, CharSequence data, boolean last){
                         String mensaje = data.toString();
-                        System.out.println("Mensaje recibido: "+mensaje);
+                        System.out.println("📩 Mensaje WS recibido: " + mensaje);
                         Platform.runLater(() ->{
                             procesarEventoDelServidor(mensaje);
                         });
                         webSocket.request(1);
                         return null;
                     }
+
                     @Override
                     public void onError(WebSocket webSocket, Throwable error){
-                        System.err.println("Error en el tunel WebSocket: "+error.getMessage());
+                        System.err.println("⚠️ Error en WebSocket. Reintentando...");
+                        reintentarConexion(ipServidor);
                     }
+
+                    @Override
+                    public CompletionStage<?> onClose(WebSocket webSocket, int statusCode, String reason) {
+                        System.err.println("⚠️ Túnel WebSocket cerrado por el servidor. Reintentando...");
+                        reintentarConexion(ipServidor);
+                        return null;
+                    }
+                })
+                .exceptionally(ex -> {
+                    System.err.println("⏳ Servidor aún no disponible. Reintentando en 5 segundos...");
+                    reintentarConexion(ipServidor);
+                    return null;
                 });
+    }
+
+    private static void reintentarConexion(String ipServidor) {
+        new Thread(() -> {
+            try {
+                Thread.sleep(5000); // Espera 5 segundos
+                conectarAlServidor(ipServidor); // Vuelve a intentarlo
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }).start();
     }
     private static void procesarEventoDelServidor(String mensajeJson){
         System.out.println("📩 Evento recibido del servidor: " + mensajeJson);
