@@ -19,7 +19,12 @@ import java.time.format.DateTimeFormatter;
 import java.time.LocalDateTime;
 
 public class TicketController {
-    @FXML private Label lblNombreNegocio;
+    @FXML private Label lblNombreNegocioCocina;
+    @FXML private ImageView imgLogoCocina;
+
+    @FXML private Label lblNombreNegocioCliente;
+    @FXML private ImageView imgLogoCliente;
+
     @FXML private Label lblNumFacturaCaja;
     @FXML private Label lblFechaCaja;
     @FXML private Label lblCajero;
@@ -38,12 +43,11 @@ public class TicketController {
     @FXML private Label separadorTijera;
 
     public void inicializarTicket(Factura factura, String nombreCajero, int turno){
-        System.out.println("-ID Global Factura: "+factura.getNumeroFactura());
-        System.out.println("- Turno diario: "+turno);
         cargarLogoEnTicket();
-        if(lblNombreNegocio != null && App.attizos != null){
-            lblNombreNegocio.setText(App.attizos.getNombre());
-        }
+        String nombreOficial = App.getNombre();
+        if(lblNombreNegocioCocina != null) lblNombreNegocioCocina.setText(nombreOficial);
+        if(lblNombreNegocioCliente != null) lblNombreNegocioCliente.setText(nombreOficial);
+
         DateTimeFormatter formato = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
         LocalDateTime fechaSegura = factura.getFecha() != null ? factura.getFecha() : LocalDateTime.now();
         String fechaStr = fechaSegura.format(formato);
@@ -143,7 +147,8 @@ public class TicketController {
         try{
             Image logo = App.getLogoImageCache();
             if(logo != null){
-                imgLogo.setImage(logo);
+               if(imgLogoCocina != null) imgLogoCocina.setImage(logo);
+               if(imgLogoCliente != null) imgLogoCliente.setImage(logo);
             }
         }catch (Exception e){
             System.out.println("Error al cargar el logo en el ticket: " + e.getMessage());

@@ -153,4 +153,8 @@ public class Restaurante
         }
         return false;
     }
+
+    public void setNombre(String nuevoNombre) {
+        this.nombre = nuevoNombre;
+    }
 }

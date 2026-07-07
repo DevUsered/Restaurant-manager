@@ -134,10 +134,6 @@ public class AjustesEmpresaController implements Initializable {
 
     private void ejecutarGuardadoEnNubeYLocal(String nuevoNombre, String nuevaIp, boolean nuevaCocina) {
 
-        // ==========================================
-        // 🛡️ VERIFICACIÓN DE RED DESDE EL DASHBOARD
-        // ==========================================
-        // Si cambió la IP del servidor, verificamos que esa nueva IP realmente exista y esté respondiendo
         if (!nuevaIp.equals(ConfigurationApp.getIpServidor()) && !nuevaIp.equalsIgnoreCase("localhost")) {
             System.out.println("🔄 Verificando nueva IP del servidor: " + nuevaIp);
             if (!ValidadorCredenciales.probarServidorCentral(nuevaIp)) {
@@ -168,11 +164,10 @@ public class AjustesEmpresaController implements Initializable {
             }
         }
 
-        // Guardar configuración usando nuestra clase estandarizada solo tras pasar las pruebas
         ConfigurationApp.guardarConfiguracionNueva(nuevaCocina, nuevaIp, nuevoNombre, rutaLogoFinal);
-
+        App.setNombre(nuevoNombre);
         if (App.attizos != null) {
-            App.setNombre(nuevoNombre);
+            App.getAttizos().setNombre(nuevoNombre);
         }
         ApiClient.configurarIpServidor(nuevaIp);
         App.cargarCacheLogo();

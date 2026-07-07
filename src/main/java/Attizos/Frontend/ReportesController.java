@@ -301,6 +301,10 @@ public class ReportesController {
                 } catch (Exception e) {}
                 listaFacturas.add(f);
             }
+            listaFacturas.sort((f1, f2) -> {
+                if (f1.getFecha() == null || f2.getFecha() == null) return 0;
+                return f2.getFecha().compareTo(f1.getFecha());
+            });
         }
 
         listaEgresos.clear();
@@ -313,6 +317,10 @@ public class ReportesController {
                 try { e.setDate(LocalDate.parse(map.get("fecha").toString().substring(0, 10))); } catch (Exception ex) {}
                 listaEgresos.add(e);
             }
+            listaEgresos.sort((e1, e2) ->{
+                if(e1.getDate() == null && e2.getDate() == null) return 0;
+                return e2.getDate().compareTo(e1.getDate());
+            });
         }
 
         listaEmpleados.clear();
@@ -348,6 +356,17 @@ public class ReportesController {
                 } catch (Exception e) {}
                 masterLogs.add(log);
             }
+            DateTimeFormatter fmtAudit = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
+            masterLogs.sort((l1, l2) -> {
+                if (l1.getFechaHora() == null || l2.getFechaHora() == null) return 0;
+                try {
+                    LocalDateTime dt1 = LocalDateTime.parse(l1.getFechaHora(), fmtAudit);
+                    LocalDateTime dt2 = LocalDateTime.parse(l2.getFechaHora(), fmtAudit);
+                    return dt2.compareTo(dt1); // dt2 vs dt1 invierte el orden para poner el último primero
+                } catch (Exception e) {
+                    return 0;
+                }
+            });
         }
 
         chartVentas.getData().clear();
@@ -404,8 +423,10 @@ public class ReportesController {
                                                 String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
                                                 new Thread(() -> ApiClient.registrarAuditoriaEnServidor(operador,"Finanzas","Gasto manual","Egreso",monto,concepto)).start();
                                                 generarReportes();
-                                            }else{}
-                                            AlertaPersonalizada.mostrarAlerta("Error", "No se pudo guardar el gasto.", Alert.AlertType.ERROR);
+                                                AlertaPersonalizada.mostrarAlerta("Éxito", "El gasto se registro correctamente.", Alert.AlertType.INFORMATION);
+                                            }else{
+                                                AlertaPersonalizada.mostrarAlerta("Error", "No se pudo guardar el gasto.", Alert.AlertType.ERROR);
+                                            }
                                         });
                                     }).start();
 
@@ -417,24 +438,26 @@ public class ReportesController {
     }
 
     private void verDetalleFacturaTicket(Factura seleccionada) {
-        if(App.modoOffline){
-            AlertaPersonalizada.mostrarAlerta("Sin Conexión", "El desglose exacto de los productos de este ticket se encuentra en el servidor. Reconecte el sistema para visualizarlo.", Alert.AlertType.WARNING);
-            return;
-        }
-
-        new Thread(() -> {
-            try {
+        new Thread(() ->{
+            if(!ApiClient.isServidorDisponible()){
+                Platform.runLater(() ->AlertaPersonalizada.mostrarAlerta(
+                        "Servidor No disponible",
+                        "El desglose exacto de los productos de este ticket se encuentra en el servidor principal. Espere a que el motor arranque completamente o reconecte el sistema.",
+                        Alert.AlertType.WARNING
+                ));
+                return;
+            }
+            try{
                 Factura facDetalles = ApiClient.obtenerFacturaConDetalles(seleccionada.getNumeroFactura());
-
-                Platform.runLater(() -> {
-                    if (facDetalles == null || facDetalles.getDetalles().isEmpty()) {
-                        AlertaPersonalizada.mostrarAlerta("Error", "No se pudo obtener el detalle de la factura desde el servidor.", Alert.AlertType.ERROR);
+                Platform.runLater(() ->{
+                    if(facDetalles == null || facDetalles.getDetalles().isEmpty()){
+                        AlertaPersonalizada.mostrarAlerta("Ticket No Encontrado", "No se pudo obtener el detalle de la factura desde el servidor.", Alert.AlertType.ERROR);
                         return;
                     }
                     mostrarVisorDigitalDeFactura(facDetalles);
                 });
-            } catch (Exception e) {
-                Platform.runLater(() -> AlertaPersonalizada.mostrarAlerta("Error", "No se pudo cargar el Ticket.", Alert.AlertType.ERROR));
+            }catch(Exception e){
+                Platform.runLater(() ->AlertaPersonalizada.mostrarAlerta("Error", "No se pudo cargar el Ticket.", Alert.AlertType.ERROR));
             }
         }).start();
     }

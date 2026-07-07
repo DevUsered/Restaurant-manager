@@ -319,6 +319,15 @@ public class VentasController {
             mostrarAlerta("Carrito Vacío", "⚠ Agregue productos antes de cobrar.", Alert.AlertType.WARNING);
             return;
         }
+        if(facturaActual.requierePreparacion()){
+            if(ConfigurationApp.tieneCocina) {
+                facturaActual.setEstado("En cocina");
+            }else{
+                facturaActual.setEstado("Finalizada");
+            }
+        }else{
+            facturaActual.setEstado("Finalizada");
+        }
 
         Map<Producto, Integer> carritoDB = new HashMap<>();
 
@@ -326,6 +335,7 @@ public class VentasController {
         jsonVenta.append("{\"cliente\": \"").append(nombreCli).append("\", ");
         jsonVenta.append("\"total\": ").append(facturaActual.getTotal()).append(", ");
         jsonVenta.append("\"metodo_pago\": \"").append(metodoPago).append("\", ");
+        jsonVenta.append("\"estado\": \"").append(facturaActual.getEstado()).append("\",");
         jsonVenta.append("\"detalles\": [");
 
         boolean primero = true;
@@ -341,25 +351,17 @@ public class VentasController {
         int numeroTicketDiario = -1;
         int numeroFacturaGlobal = -1;
 
-        if(facturaActual.requierePreparacion()){
-            if(ConfigurationApp.tieneCocina) {
-                facturaActual.setEstado("En cocina");
-            }else{
-                facturaActual.setEstado("Finalizada");
-            }
-        }else{
-            facturaActual.setEstado("Finalizada");
-        }
-
-        if (!App.modoOffline) {
+        if(ApiClient.isServidorDisponible()){
+            App.modoOffline = false;
             int[] resultados = ApiClient.registrarVenta(nombreCli, facturaActual.getTotal(), carritoDB, facturaActual.getEstado(), metodoPago);
-            if (resultados != null) {
+            if(resultados != null){
                 numeroFacturaGlobal = resultados[0];
                 numeroTicketDiario = resultados[1];
                 ConexionSQLite.actualizarSecuenciaLocal(numeroTicketDiario);
             }
+        }else{
+            App.modoOffline = true;
         }
-
         if (numeroTicketDiario <= 0) {
             numeroTicketDiario = ConexionSQLite.obtenerSiguienteTicketOffline();
             numeroFacturaGlobal = 0;
@@ -430,6 +432,7 @@ public class VentasController {
             }
             if(!App.modoOffline){
                 new Thread(() ->{
+                    ConexionSQLite.subirVentasPendientes();
                     ConexionSQLite.sincronizarInsumos();
                     ConexionSQLite.sincronizarProductos();
                 }).start();

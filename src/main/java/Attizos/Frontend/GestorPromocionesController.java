@@ -342,7 +342,10 @@ public class GestorPromocionesController {
                     AlertaPersonalizada.mostrarAlerta("Éxito", "Promoción actualizada.", Alert.AlertType.INFORMATION);
                 }
             }
-            new Thread(() -> ConexionSQLite.sincronizarDetallesCombo()).start();
+            new Thread(() -> {
+                ConexionSQLite.subirAuditoriaPendiente();
+                ConexionSQLite.sincronizarDetallesCombo();
+            }).start();
             cargarDatos();
             limpiarFormulario();
 
@@ -388,6 +391,10 @@ public class GestorPromocionesController {
         if (actualizar) {
             String op = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
             App.registrarAuditoria(op, "Promociones", sel.getNombre(), "Cambio Estado", 0, "Estado cambiado a: " + nuevoEstado);
+            new Thread(() -> {
+                ConexionSQLite.subirAuditoriaPendiente();
+                ConexionSQLite.sincronizarDetallesCombo();
+            }).start();
             cargarDatos();
             tablaPromos.refresh();
         }
@@ -407,7 +414,10 @@ public class GestorPromocionesController {
 
                         String op = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
                         App.registrarAuditoria(op, "Promociones", sel.getNombre(), "Eliminación", 0, "Motivo: " + motivo);
-
+                        new Thread(() -> {
+                            ConexionSQLite.subirAuditoriaPendiente();
+                            ConexionSQLite.sincronizarDetallesCombo();
+                        }).start();
                         cargarDatos();
                         AlertaPersonalizada.mostrarAlerta("Eliminado", "Promoción eliminada con éxito.", Alert.AlertType.INFORMATION);
                     }

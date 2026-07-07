@@ -218,6 +218,10 @@ public class EmpleadosController {
                             if(App.attizos != null){
                                 App.attizos.agregarEmpleado(nuevoEmpleado);
                             }
+                            String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
+                            App.registrarAuditoria(operador, "Empleado", nombre, "Contratación", sueldo, "Nuevo empleado registrado: " + cargo);
+
+                            new Thread(() -> ConexionSQLite.subirAuditoriaPendiente()).start();
                             limpiarFormulario(null);
                             mostrarExito("Contratado", "El empleado " + nombre + " fue registrado con éxito.");
                         } else {
@@ -252,11 +256,12 @@ public class EmpleadosController {
                                     },
                                     (exito) -> {
                                         if (exito) {
-                                            masterData.remove(index); // Esto debe estar siempre en el hilo de JavaFX
+                                            masterData.remove(index);
                                             if (App.attizos != null) {
                                                 App.attizos.eliminarEmpleado(despedido.getIdEmpleado());
                                                 String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
                                                 App.registrarAuditoria(operador, "Empleado", despedido.getNombre(), "Despido", 0, "Despedir un empleado");
+                                                new Thread(() -> ConexionSQLite.subirAuditoriaPendiente()).start();
                                             }
                                             mostrarExito("Despedido", "El empleado ha sido removido de la planilla.");
                                         } else {
@@ -387,6 +392,9 @@ public class EmpleadosController {
                                 App.attizos.eliminarEmpleado(id);
                                 App.attizos.agregarEmpleado(empleadoActualizado);
                             }
+                            String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
+                            App.registrarAuditoria(operador, "Empleado", nombre, "Actualización", sueldo, "Datos modificados (Cargo/Sueldo)");
+                            new Thread(() -> ConexionSQLite.subirAuditoriaPendiente()).start();
                             limpiarFormulario(null);
                             mostrarExito("Actualizado", "Los datos de " + nombre + " fueron actualizados correctamente.");
                         } else {
@@ -468,6 +476,7 @@ public class EmpleadosController {
                                     sel.setFechaUltimoPago(LocalDate.now());
 
                                     ConexionSQLite.sincronizarEmpleados();
+                                    ConexionSQLite.subirAuditoriaPendiente();
                                 }
                                 return egresoRegistrado;
                             },

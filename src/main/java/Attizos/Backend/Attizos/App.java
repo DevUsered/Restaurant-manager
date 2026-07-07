@@ -3,10 +3,12 @@ package Attizos.Backend.Attizos;
 import Attizos.Backend.Api.ApiClient;
 import Attizos.Backend.Database.*;
 import Attizos.Backend.Listas.*;
+import Attizos.Frontend.AlertaPersonalizada;
 import Attizos.Frontend.Config.ConfigurationApp;
 import Attizos.Frontend.Network.WebSocketManager;
 import Attizos.Frontend.ServicioNube;
 import javafx.application.Platform;
+import javafx.scene.control.Alert;
 import javafx.scene.image.Image;
 
 import java.io.File;
@@ -28,11 +30,12 @@ public class App {
     public static Restaurante attizos;
     public static Empleado usuarioLogueado;
     public static boolean modoOffline = true;
-    public static String nombre = ConfigurationApp.getNombreRestaurante();
+    public static String nombre;
     private static Image logoImageCache;
     private static Process procesoBackend = null;
 
     public static void iniciarSistema() {
+        nombre = ConfigurationApp.getNombreRestaurante();
         attizos = new Restaurante(nombre, "FAST_FOOD");
         cargarCacheLogo();
         ApiClient.cargarCredencialesDelServidor();
@@ -138,14 +141,17 @@ public class App {
     }
 
     public static void registrarAuditoria(String operador, String tipoArea, String nombreItem, String accion, double cantidad, String motivo) {
-        if(modoOffline){
-            ConexionSQLite.guardarAuditoriaOffline(operador,tipoArea,nombreItem,accion,cantidad,motivo);
-        }else {
+        if(ApiClient.isServidorDisponible()){
+            App.modoOffline = false;
             boolean guardadoDB = ApiClient.registrarAuditoriaEnServidor(operador, tipoArea, nombreItem, accion, cantidad, motivo);
-
             if (!guardadoDB) {
                 ConexionSQLite.guardarAuditoriaOffline(operador, tipoArea, nombreItem, accion, cantidad, motivo);
+            }else{
+                new Thread(() -> ConexionSQLite.subirAuditoriaPendiente()).start();
             }
+        }else{
+            App.modoOffline = true;
+            ConexionSQLite.guardarAuditoriaOffline(operador, tipoArea, nombreItem, accion, cantidad, motivo);
         }
     }
     public static void iniciarBackend(){
@@ -169,30 +175,75 @@ public class App {
                     if(jarFile.exists()){
                         System.out.println("🚀 Encendiendo servidor Spring Boot en segundo plano...");
 
-                        // 1. PRO-TIP: Usamos -Dspring.config.additional-location antes del -jar para obligarlo a leer tu archivo externo
+                        String javaHome = System.getProperty("java.home");
+                        String javaBin = javaHome + File.separator + "bin" + File.separator + "java";
                         ProcessBuilder pb = new ProcessBuilder(
-                                "java",
+                                javaBin,
                                 "-Dspring.config.additional-location=file:" + pathProps,
                                 "-jar", pathBackend
                         );
                         pb.redirectErrorStream(true);
                         procesoBackend = pb.start(); // Guardamos el proceso
 
-                        // 2. SOLUCIÓN AL DEADLOCK: Hilo lector que vacía el buffer de Windows y te muestra los logs en IntelliJ
                         new Thread(() -> {
                             try (java.io.BufferedReader reader = new java.io.BufferedReader(
                                     new java.io.InputStreamReader(procesoBackend.getInputStream()))) {
                                 String linea;
                                 while ((linea = reader.readLine()) != null) {
-                                    // Te imprimimos el log con una etiqueta clara para que lo veas todo
                                     System.out.println("[Spring Boot] " + linea);
+                                    if (linea.contains("CÓDIGO DE EQUIPO:")) {
+                                        try {
+                                            String codigo = linea.split("CÓDIGO DE EQUIPO:]")[1].trim();
+                                            Platform.runLater(() -> {
+                                                AlertaPersonalizada.mostrarAlerta(
+                                                        "Sistema No Activado",
+                                                        "Para poder utilizar el SISTEMA, debe activar su licencia. \n" +
+                                                                "Por favor, envíe este código de seguridad al administrador (+591 71709949):\n\n" + codigo,
+                                                        Alert.AlertType.ERROR
+                                                );
+                                                System.exit(0);
+                                            });
+                                        } catch (Exception e) {
+                                        }
+                                    } else if (linea.contains("ALERTA DE SEGURIDAD:") || linea.contains("LICENCIA VENCIDA") || linea.contains("ha expirado")) {
+                                        String mensajeAlerta = linea.replace("[Firebase] Alerta:", "").replace("[Offline] Alerta:", "").trim();
+                                        Platform.runLater(() -> {
+                                            AlertaPersonalizada.mostrarAlerta(
+                                                    "Problema de Licencia",
+                                                    mensajeAlerta + "\nComuníquese con soporte técnico al +591 71709949.",
+                                                    Alert.AlertType.ERROR
+                                            );
+                                            System.exit(0);
+                                        });
+                                    } else if (linea.contains("ALERTA_VENCIMIENTO:")) {
+                                        try {
+                                            String[] partes = linea.split("ALERTA_VENCIMIENTO:")[1].trim().split("\\|");
+                                            String dias = partes[0];
+                                            String fecha = partes[1];
+
+                                            String textoBase = dias.equals("0")
+                                                    ? "¡Atención! Su licencia vence HOY (" + fecha + ")."
+                                                    : "¡Atención! Su licencia de vencerá en " + dias + " días (" + fecha + ").";
+
+                                            final String mensajeFinal = textoBase + "\nPor favor, comuníquese con soporte para renovar su suscripción y evitar interrupciones.";
+
+                                            Platform.runLater(() -> {
+                                                Attizos.Frontend.AlertaPersonalizada.mostrarAlerta(
+                                                        "Renovación de Licencia Próxima",
+                                                        mensajeFinal,
+                                                        Alert.AlertType.WARNING
+                                                );
+                                            });
+                                        } catch (Exception e) {
+                                            System.err.println("Error procesando aviso de vencimiento: " + e.getMessage());
+                                        }
+                                    }
                                 }
                             } catch (Exception e) {
                                 System.err.println("🛑 Consola de Spring Boot desconectada.");
                             }
                         }).start();
 
-                        // 3. ANCLA DE APAGADO: Al cerrar tu JavaFX, matamos el servidor limpiamente
                         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                             if (procesoBackend != null && procesoBackend.isAlive()) {
                                 System.out.println("🛑 Apagando servidor Spring Boot y liberando puertos...");
@@ -270,7 +321,6 @@ public class App {
         File archivoCache = new File(carpeta, nombreArchivoCache);
 
         if (archivoCache.exists()) {
-            // ¡EL LOGO YA ESTÁ EN EL DISCO! Lo leemos al instante sin usar internet
             System.out.println("⚡ Cargando logo desde la caché local del disco...");
             logoImageCache = new Image(archivoCache.toURI().toString());
         }else{

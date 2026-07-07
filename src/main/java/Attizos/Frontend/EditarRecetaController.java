@@ -3,6 +3,7 @@ package Attizos.Frontend;
 import Attizos.Backend.Api.ApiClient;
 import Attizos.Backend.Attizos.*;
 import Attizos.Backend.Database.ConexionSQLite;
+import Attizos.Frontend.Network.WebSocketManager;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
@@ -185,11 +186,14 @@ public class EditarRecetaController {
                 productoEdicion.setReceta(nuevaReceta);
 
                 ApiClient.actualizarProductoEnServidor(productoEdicion);
-                new Thread(() -> ConexionSQLite.sincronizarProductos()).start();
-
                 String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
                 App.registrarAuditoria(operador, "Receta", productoEdicion.getNombre(), "Actualización", 0, "Receta modificada vía Modal");
 
+                new Thread(() -> {
+                    ConexionSQLite.subirAuditoriaPendiente();
+                    ConexionSQLite.sincronizarProductos();
+
+                }).start();
                 AlertaPersonalizada.mostrarAlerta("Éxito", "Receta actualizada correctamente.", Alert.AlertType.INFORMATION);
                 cerrarVentana();
             } else {

@@ -106,4 +106,12 @@ public class WebSocketManager {
             accionEmpleados.run();
         }
     }
+    public static void notificarCambio(String tipoSync) {
+        if (socketActual != null && !socketActual.isOutputClosed()) {
+            socketActual.sendText(tipoSync, true);
+            System.out.println("🚀 Notificación enviada por WebSocket: " + tipoSync);
+        } else {
+            System.err.println("⚠️ WebSocket no disponible para enviar: " + tipoSync);
+        }
+    }
 }

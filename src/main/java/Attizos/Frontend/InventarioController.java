@@ -251,6 +251,7 @@ public class InventarioController {
                                     String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
                                     App.registrarAuditoria(operador, "Insumo", insumoBase.getNombre(), "Ingreso Lote", cantidad, "Ingreso de nuevo lote. Costo: " + costo);
                                     new Thread(() ->{
+                                        ConexionSQLite.subirAuditoriaPendiente();
                                         ConexionSQLite.sincronizarInsumos();
                                         ArrayList<Insumo> insumosFrescos = ApiClient.obtenerInsumoDelServidor();
                                         Platform.runLater(() ->{
@@ -300,6 +301,7 @@ public class InventarioController {
                                 App.registrarAuditoria(operador, "Insumo", seleccionado.getNombre(), "Ajuste Stock (-1)", 1.0, "Merma FEFO: " + motivo);
 
                                 new Thread(() -> {
+                                    ConexionSQLite.subirAuditoriaPendiente();
                                     ConexionSQLite.sincronizarInsumos();
                                     ArrayList<Insumo> insumosFrescos = ApiClient.obtenerInsumoDelServidor();
 
@@ -353,6 +355,10 @@ public class InventarioController {
                                     App.attizos.getInventario().getInventarioInsumos().remove(seleccionado.getCodigo());
                                     String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
                                     App.registrarAuditoria(operador, "Insumo", seleccionado.getNombre(), "Eliminación", seleccionado.getStockActual(), "Eliminación del sistema. Motivo: " + motivo);
+                                   new Thread(() -> {
+                                       ConexionSQLite.subirAuditoriaPendiente();
+                                       ConexionSQLite.sincronizarInsumos();
+                                   }).start();
                                     mostrarExito("Insumo Eliminado", "El registro ha sido eliminado del sistema.\nMotivo guardado: " + motivo);
                                     cargarDatos();
                                 }else{
@@ -421,6 +427,7 @@ public class InventarioController {
                     String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
                     App.registrarAuditoria(operador, "Insumo", seleccionado.getNombre(), "Merma por Caducidad", retirado, "Limpieza manual: " + motivo);
                     new Thread(() ->{
+                        ConexionSQLite.subirAuditoriaPendiente();
                         ConexionSQLite.sincronizarInsumos();
                         ArrayList<Insumo> insumosFrescos = ApiClient.obtenerInsumoDelServidor();
 

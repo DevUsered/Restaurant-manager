@@ -254,6 +254,10 @@ public class FormularioNuevoInsumoController {
                         nuevo.getStockActual(),
                         "Ingreso inicial de nuevo insumo al catálogo"
                 );
+                new Thread(() ->{
+                    ConexionSQLite.subirAuditoriaPendiente();
+                    ConexionSQLite.sincronizarInsumos();
+                }).start();
 
                 AlertaPersonalizada.mostrarAlerta("¡Éxito!", "El insumo '" + nom + "' se agregó correctamente al catálogo.", Alert.AlertType.INFORMATION);
 

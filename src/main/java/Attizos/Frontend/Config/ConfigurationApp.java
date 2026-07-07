@@ -14,7 +14,7 @@ public class ConfigurationApp {
     public static String modoOperacion = "SERVIDOR";
     public static boolean tieneCocina = true;
     public static String ipServidor = "localhost";
-    public static String nombreRestaurante = "Mi Restaurante";
+    public static String nombreRestaurante;
     public static String rutaLogo = "default_logo.png";
 
     public static void cargarConfiguracion() {
@@ -30,7 +30,7 @@ public class ConfigurationApp {
             modoOperacion = propiedades.getProperty("app.modo", "SERVIDOR");
             tieneCocina = Boolean.parseBoolean(propiedades.getProperty("app.modulo.cocina", "true"));
             ipServidor = propiedades.getProperty("app.servidor.ip", "localhost");
-            nombreRestaurante = propiedades.getProperty("app.negocio.nombre", "Mi restaurante");
+            nombreRestaurante = propiedades.getProperty("app.negocio.nombre", "Mi Restaurante");
             rutaLogo = propiedades.getProperty("app.negocio.logo", "default_logo.png");
 
             Attizos.Backend.Api.ApiClient.configurarIpServidor(ipServidor);
@@ -39,6 +39,7 @@ public class ConfigurationApp {
             System.err.println("Error al leer configuración local: " + e.getMessage());
         }
     }
+
     public static void guardarConfiguracionNueva(boolean usarCocina, String ip, String nombre, String logo) {
         File carpeta = new File(RUTA_CARPETA);
         if (!carpeta.exists()) carpeta.mkdirs();
@@ -64,6 +65,7 @@ public class ConfigurationApp {
             System.err.println("Error al guardar configuración: " + e.getMessage());
         }
     }
+
     public static Properties getPropiedades() { return propiedades; }
     public static void setPropiedades(Properties propiedades) { ConfigurationApp.propiedades = propiedades; }
     public static boolean isEsPrimeraVez() { return esPrimeraVez; }

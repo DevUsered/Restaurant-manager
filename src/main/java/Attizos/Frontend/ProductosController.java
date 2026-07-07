@@ -355,14 +355,15 @@ public class ProductosController {
                                 if(guardadoDB) {
                                     ApiClient.registrarEgresoEnServidor("Compra Inicial: "+nuevo.getNombre(), costoTotal);
                                     App.attizos.getMenu().add(nuevo);
+                                    String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
+                                    App.registrarAuditoria(operador, "Producto", nuevo.getNombre(), "Creación", cant, "Nuevo producto con stock inicial");
                                     new Thread(() ->{
+                                        ConexionSQLite.subirAuditoriaPendiente();
                                         ConexionSQLite.sincronizarProductos();
                                         if(!App.modoOffline){
                                             ServicioNube.sincronizarImagenesPendientes();
                                         }
                                     }).start();
-                                    String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
-                                    App.registrarAuditoria(operador, "Producto", nuevo.getNombre(), "Creación", cant, "Nuevo producto con stock inicial");
                                     cargarMenu();
                                     cargarCategoriasUnicas();
                                     mostrarExito("Éxito", "Producto guardado correctamente con stock inicial.\nCompra registrada.");
@@ -383,12 +384,19 @@ public class ProductosController {
                     App.attizos.getMenu().add(nuevo);
                     String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
                     App.registrarAuditoria(operador, "Producto", nuevo.getNombre(), "Creación", 0, usaReceta ? "Nuevo producto de preparación" : "Producto sin stock inicial");
+                    new Thread(() ->{
+                        ConexionSQLite.subirAuditoriaPendiente();
+                        if(!App.modoOffline)ServicioNube.sincronizarImagenesPendientes();
+                    }).start();
                     cargarMenu();
                     cargarCategoriasUnicas();
                     mostrarExito("Éxito", "Producto guardado correctamente.");
                     limpiarFormulario();
                     if (!App.modoOffline) {
-                        new Thread(() -> ServicioNube.sincronizarImagenesPendientes()).start();
+                        new Thread(() -> {
+                            ServicioNube.sincronizarImagenesPendientes();
+                            ConexionSQLite.sincronizarProductos();
+                        }).start();
                     }
                 }else{
                     mostrarAlerta("Error", "No se pudo guardar el producto. ");
@@ -423,15 +431,19 @@ public class ProductosController {
                                             boolean actualizado = ApiClient.actualizarProductoEnServidor(sel);
                                             Platform.runLater(() ->{
                                                 if(actualizado){
-                                                    new Thread(() -> ApiClient.registrarEgresoEnServidor("Compra...", costoTotal)).start();
-
                                                     String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
-                                                    App.registrarAuditoria(operador, "Producto", sel.getNombre(), "Ajuste Stock", cantidad, "Ingreso...");
+                                                    App.registrarAuditoria(operador, "Producto", sel.getNombre(), "Ajuste Stock", cantidad, "Ingreso por compra");
+
+                                                    new Thread(() -> {
+                                                        ApiClient.registrarEgresoEnServidor("Compra mercadería: " + sel.getNombre(), costoTotal);
+                                                        ConexionSQLite.subirAuditoriaPendiente();
+                                                        ConexionSQLite.sincronizarProductos();
+                                                    }).start();
 
                                                     tablaMenu.refresh();
                                                     mostrarExito("Stock Actualizado", "Stock sumado exitosamente.");
                                                 }else{
-                                                    sel.reducirStock(cantidad); // Revertir si falló
+                                                    sel.reducirStock(cantidad);
                                                     mostrarAlerta("Error", "No se pudo actualizar el stock.");
                                                 }
                                             });
@@ -467,6 +479,12 @@ public class ProductosController {
                                         if(actualizado) {
                                             String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
                                             App.registrarAuditoria(operador, "Producto", sel.getNombre(), "Ajuste Stock", cantidad, "Baja de mercadería: " + motivo);
+
+                                            new Thread(() -> {
+                                                ConexionSQLite.subirAuditoriaPendiente();
+                                                ConexionSQLite.sincronizarProductos();
+                                            }).start();
+
                                             tablaMenu.refresh();
                                             mostrarExito("Baja Exitosa", "Se restaron " + cantidad + " unidades.\nMotivo: " + motivo);
                                         }else{
@@ -499,8 +517,13 @@ public class ProductosController {
                                 App.attizos.getMenu().remove(sel);
                                 cargarMenu();
                                 String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
-                                new Thread( () ->
-                                App.registrarAuditoria(operador, "Producto", sel.getNombre(), "Eliminación Lógica", sel.getStock(), motivo)).start();
+
+                                new Thread( () -> {
+                                    App.registrarAuditoria(operador, "Producto", sel.getNombre(), "Eliminación Lógica", sel.getStock(), motivo);
+                                    ConexionSQLite.subirAuditoriaPendiente();
+                                    ConexionSQLite.sincronizarProductos();
+                                }).start();
+
                                 mostrarExito("Eliminado", "Producto dado de baja. Ya no aparecerá en el menú.\nMotivo: " + motivo);
                             }
                         });

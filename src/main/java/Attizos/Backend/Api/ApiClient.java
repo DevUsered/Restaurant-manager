@@ -11,10 +11,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class ApiClient {
     private static String ipServidor = "localhost";
@@ -25,6 +22,7 @@ public class ApiClient {
             .build();
     private static final ObjectMapper mapper = new ObjectMapper()
             .registerModule(new JavaTimeModule())
+            .setTimeZone(TimeZone.getTimeZone("America/La_Paz"))
             .configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     public static String getIpServidor(){
         return ipServidor;
@@ -700,24 +698,32 @@ public class ApiClient {
     }
     public static boolean registrarAuditoriaEnServidor(String operador, String tipoArea, String nombreItem, String accion, double cantidad, String motivo) {
         try {
-            String url = String.format("%s/reportes/auditoria?operador=%s&tipoArea=%s&nombreItem=%s&accion=%s&cantidad=%s&motivo=%s",
-                    BASE_URL,
-                    codificar(operador),
-                    codificar(tipoArea),
-                    codificar(nombreItem),
-                    codificar(accion),
-                    cantidad,
-                    codificar(motivo));
+            java.util.Map<String, Object> bodyMap = new java.util.HashMap<>();
+            bodyMap.put("operador", operador != null ? operador : "Sistema");
+            bodyMap.put("tipoArea", tipoArea != null ? tipoArea : "General");
+            bodyMap.put("nombreItem", nombreItem != null ? nombreItem : "Varios");
+            bodyMap.put("accion", accion);
+            bodyMap.put("cantidad", cantidad);
+            bodyMap.put("motivo", motivo != null ? motivo : "");
+
+            String jsonAuditoria = mapper.writeValueAsString(bodyMap);
 
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(url))
-                    .POST(HttpRequest.BodyPublishers.noBody())
+                    .uri(URI.create(BASE_URL + "/reportes/auditoria"))
+                    .header("Content-Type", "application/json") // Avisamos que va un JSON
+                    .POST(HttpRequest.BodyPublishers.ofString(jsonAuditoria))
                     .build();
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            return response.statusCode() == 200 || response.statusCode() == 201;
+
+            if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                return true;
+            } else {
+                System.err.println("El servidor rechazó la auditoría. Código: " + response.statusCode() + " - " + response.body());
+                return false;
+            }
         } catch (Exception e) {
-            System.err.println("Error subiendo auditoría al servidor: " + e.getMessage());
+            System.err.println("Falla de conexión al registrar auditoría: " + e.getMessage());
             return false;
         }
     }

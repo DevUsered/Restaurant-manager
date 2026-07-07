@@ -2,7 +2,7 @@ package Attizos.Frontend.Config;
 
 import Attizos.Backend.Attizos.App;
 import Attizos.Frontend.AlertaPersonalizada;
-import Attizos.Frontend.ServicioNube; // <-- Import para subir a Cloudinary
+import Attizos.Frontend.ServicioNube;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -29,13 +29,13 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.Properties;
 import java.util.ResourceBundle;
+import java.util.TimeZone;
 
 public class SetupController implements Initializable {
 
     @FXML private RadioButton rbServidorPrincipal;
     @FXML private RadioButton rbTerminalSucursal;
     @FXML private ToggleGroup tgModoOperacion;
-
     @FXML private TextField txtNombreNegocio;
     @FXML private HBox boxLogo;
     @FXML private Button btnSeleccionarLogo;
@@ -46,7 +46,6 @@ public class SetupController implements Initializable {
     @FXML private TextField txtDbUser;
     @FXML private PasswordField txtDbPassword;
 
-    // Contenedor de la sección 4 para ocultarlo entero en Sucursal
     @FXML private VBox boxModuloCocina;
     @FXML private TextField txtCloudinaryUrl;
     @FXML private CheckBox chkTieneCocina;
@@ -67,7 +66,6 @@ public class SetupController implements Initializable {
         tgModoOperacion.selectedToggleProperty().addListener((observable, oldValue, newValue) -> {
             boolean esSucursal = rbTerminalSucursal.isSelected();
 
-            // En Sucursal ocultamos Branding, Logo y todo el módulo de Cocina/Cloudinary
             txtNombreNegocio.setVisible(!esSucursal);
             txtNombreNegocio.setManaged(!esSucursal);
             boxLogo.setVisible(!esSucursal);
@@ -115,12 +113,7 @@ public class SetupController implements Initializable {
             AlertaPersonalizada.mostrarAlerta("Campos Incompletos", "Por favor, completa todos los campos requeridos para continuar.", Alert.AlertType.WARNING);
             return;
         }
-
-        // ==========================================
-        // 🛡️ VERIFICACIÓN ESTRICTA EN VIVO
-        // ==========================================
         if (rbServidorPrincipal.isSelected()) {
-            // A. Prueba REAL en PostgreSQL
             String ipPostgres = txtDbUrl.getText().trim();
             String user = txtDbUser.getText().trim();
             String pass = txtDbPassword.getText().trim();
@@ -131,10 +124,9 @@ public class SetupController implements Initializable {
                         "¡No se pudo iniciar sesión en PostgreSQL!\nVerifica que la base de datos 'attizos_db' esté creada y que el usuario y la contraseña sean exactamente los correctos.\n\nEl sistema no guardará cambios hasta que sean válidos.",
                         Alert.AlertType.ERROR
                 );
-                return; // 🚫 PROHIBIDO GUARDAR
+                return;
             }
 
-            // B. Prueba REAL en Cloudinary
             String urlCloudinary = txtCloudinaryUrl.getText().trim();
             if (!urlCloudinary.isEmpty() && !ValidadorCredenciales.probarCloudinaryReal(urlCloudinary)) {
                 AlertaPersonalizada.mostrarAlerta(
@@ -155,12 +147,15 @@ public class SetupController implements Initializable {
                 return;
             }
         }
+
         Properties propsFrontend = new Properties();
         propsFrontend.setProperty("app.modo", rbServidorPrincipal.isSelected() ? "SERVIDOR" : "SUCURSAL");
         propsFrontend.setProperty("app.modulo.cocina", String.valueOf(chkTieneCocina.isSelected()));
 
+        String nombreIngresado = "Attizos POS"; // Valor por defecto si es sucursal
         if(rbServidorPrincipal.isSelected()){
-            propsFrontend.setProperty("app.negocio.nombre", txtNombreNegocio.getText().trim());
+            nombreIngresado = txtNombreNegocio.getText().trim();
+            propsFrontend.setProperty("app.negocio.nombre", nombreIngresado);
 
             if (archivoLogoTemporal != null) {
                 try {
@@ -189,9 +184,13 @@ public class SetupController implements Initializable {
             propsBackend.setProperty("spring.datasource.username", txtDbUser.getText().trim());
             propsBackend.setProperty("spring.datasource.password", txtDbPassword.getText().trim());
             propsBackend.setProperty("spring.datasource.driver-class-name", "org.postgresql.Driver");
-            propsBackend.setProperty("spring.jpa.hibernate.ddl-auto", "none");
+            propsBackend.setProperty("spring.jpa.hibernate.ddl-auto", "update");
             propsBackend.setProperty("spring.jpa.properties.hibernate.dialect", "org.hibernate.dialect.PostgreSQLDialect");
             propsBackend.setProperty("spring.jpa.show-sql", "true");
+            String zonaHoraria = TimeZone.getDefault().getID();
+            propsBackend.setProperty("spring.jackson.time-zone", zonaHoraria);
+
+            propsBackend.setProperty("app.negocio.nombre", nombreIngresado);
 
             String cloudinaryInput = txtCloudinaryUrl.getText().trim();
             desglosarCloudinary(cloudinaryInput, propsBackend);
@@ -201,11 +200,11 @@ public class SetupController implements Initializable {
 
         guardarArchivos(propsFrontend, propsBackend);
     }
+
     private boolean probarConexionPostgreSQL(String url, String user, String pass) {
         String jdbcUrl = "jdbc:postgresql://" + url + "/attizos_db";
         System.out.println("🔄 Probando credenciales en: " + jdbcUrl);
         try {
-            // Seteamos 3 segundos de timeout para que no congele la pantalla si la IP no existe
             java.sql.DriverManager.setLoginTimeout(3);
             try (java.sql.Connection conn = java.sql.DriverManager.getConnection(jdbcUrl, user, pass)) {
                 return conn.isValid(3);
@@ -216,20 +215,14 @@ public class SetupController implements Initializable {
         }
     }
 
-    /**
-     * Valida que la URL de Cloudinary tenga la sintaxis correcta.
-     */
     private boolean validarFormatoCloudinary(String url) {
         if (url == null || url.trim().isEmpty()) return false;
         return url.trim().matches("^cloudinary://[^:]+:[^@]+@[a-zA-Z0-9_-]+$");
     }
 
-    /**
-     * Verifica mediante un Socket si el servidor principal está vivo en el puerto 8080.
-     */
     private boolean probarConexionSucursal(String ipCentral) {
         try (java.net.Socket socket = new java.net.Socket()) {
-            socket.connect(new java.net.InetSocketAddress(ipCentral, 8080), 2500); // 2.5 seg timeout
+            socket.connect(new java.net.InetSocketAddress(ipCentral, 8080), 2500);
             return true;
         } catch (Exception e) {
             return false;
@@ -275,44 +268,38 @@ public class SetupController implements Initializable {
                 }
             }
 
-            // 1. ENCENDEMOS EL SERVIDOR SPRING BOOT PRIMERO
             App.iniciarBackend();
 
-            // 2. BLOQUEAMOS EL BOTÓN Y DAMOS FEEDBACK CLARO
             btnGuardar.setText("⏳ Iniciando Servidor y Base de Datos...");
             btnGuardar.setDisable(true);
 
-            // 3. HILO DE ESPERA ACTIVA: Ahora esperamos hasta 90 SEGUNDOS (1 minuto y medio)
             new Thread(() -> {
-                    int intentos = 0;
-                    boolean servidorListo = false;
+                int intentos = 0;
+                boolean servidorListo = false;
 
-                    // 90 intentos = 90 segundos máximos de espera
-                    while (intentos < 90 && !servidorListo) {
-                        try {
-                            Thread.sleep(1000); // Esperamos 1 segundo entre cada toque de puerta
-                        } catch (InterruptedException e) {}
+                while (intentos < 90 && !servidorListo) {
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {}
 
-                        // Consultamos si el puerto 8080 ya respondió
-                        servidorListo = Attizos.Backend.Api.ApiClient.isServidorDisponible();
-                        intentos++;
-                        // Cada 5 segundos actualizamos el texto del botón para calmar al usuario
-                        int finalIntentos = intentos;
-                        javafx.application.Platform.runLater(() -> {
-                            if (finalIntentos == 15) {
-                                btnGuardar.setText("⏳ Creando tablas en PostgreSQL (Espera un momento)...");
-                            } else if (finalIntentos == 35) {
-                                btnGuardar.setText("⏳ Configurando motor de base de datos...");
-                            } else if (finalIntentos == 60) {
-                                btnGuardar.setText("⏳ Ya casi listo, finalizando arranque del servidor...");
-                            }
-                        });
-                    }
+                    servidorListo = Attizos.Backend.Api.ApiClient.isServidorDisponible();
+                    intentos++;
+
+                    int finalIntentos = intentos;
+                    javafx.application.Platform.runLater(() -> {
+                        if (finalIntentos == 15) {
+                            btnGuardar.setText("⏳ Creando tablas en PostgreSQL (Espera un momento)...");
+                        } else if (finalIntentos == 35) {
+                            btnGuardar.setText("⏳ Configurando motor de base de datos...");
+                        } else if (finalIntentos == 60) {
+                            btnGuardar.setText("⏳ Ya casi listo, finalizando arranque del servidor...");
+                        }
+                    });
+                }
 
                 boolean finalServidorListo = servidorListo;
                 int tiempoTotal = intentos;
 
-                // 4. REGRESAMOS AL HILO DE JAVAFX PARA ABRIR LA PANTALLA
                 javafx.application.Platform.runLater(() -> {
                     if (finalServidorListo) {
                         System.out.println("✅ ¡Servidor detectado en línea tras " + tiempoTotal + " segundos! Sincronizando...");
@@ -323,9 +310,8 @@ public class SetupController implements Initializable {
                                 Alert.AlertType.WARNING
                         );
                     }
+                    App.setNombre(ConfigurationApp.getNombreRestaurante());
 
-                    // AHORA SÍ: Como el servidor ya despertó (aunque haya tardado 50 segs),
-                    // al iniciarSistema() descargará tus usuarios y productos reales de PostgreSQL a SQLite
                     App.iniciarSistema();
 
                     try {
