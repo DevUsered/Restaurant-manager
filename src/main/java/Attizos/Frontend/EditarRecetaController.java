@@ -192,6 +192,7 @@ public class EditarRecetaController {
                 new Thread(() -> {
                     ConexionSQLite.subirAuditoriaPendiente();
                     ConexionSQLite.sincronizarProductos();
+                    WebSocketManager.notificarCambio("SYNC_CATALOGO");
 
                 }).start();
                 AlertaPersonalizada.mostrarAlerta("Éxito", "Receta actualizada correctamente.", Alert.AlertType.INFORMATION);

@@ -61,6 +61,7 @@ public class ConexionSQLite {
                 + "stock_minimo REAL DEFAULT 0, "
                 + "stock_maximo REAL DEFAULT 0, "
                 + "stock_actual REAL DEFAULT 0,"
+                + "fecha_vencimiento TEXT, "
                 + "estado TEXT DEFAULT 'Activo'"
                 + ");";
         String sqlProductos = "CREATE TABLE IF NOT EXISTS productos ("
@@ -174,7 +175,7 @@ public class ConexionSQLite {
     public static void sincronizarInsumos() {
         System.out.println("Sincronizando insumos...");
         String sqlLimpiarSQLite = "DELETE FROM insumos_catalogo";
-        String sqlInsertarSQLite = "INSERT INTO insumos_catalogo (codigo, nombre, categoria, unidad_medida, stock_minimo, stock_maximo, stock_actual, estado) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        String sqlInsertarSQLite = "INSERT INTO insumos_catalogo (codigo, nombre, categoria, unidad_medida, stock_minimo, stock_maximo, stock_actual, fecha_vencimiento, estado) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection connSQL = getConexion();
              Statement stmtLimpiar = connSQL.createStatement();
@@ -192,7 +193,8 @@ public class ConexionSQLite {
                 stmtInsertar.setDouble(5, ins.getStockMinimo());
                 stmtInsertar.setDouble(6, ins.getStockMaximo());
                 stmtInsertar.setDouble(7, ins.getStockActual());
-                stmtInsertar.setString(8, ins.getEstado());
+                stmtInsertar.setString(8, ins.getFechaVencimiento() != null ? ins.getFechaVencimiento().toString() : null);
+                stmtInsertar.setString(9, ins.getEstado());
 
                 stmtInsertar.executeUpdate();
                 contador++;
@@ -363,7 +365,7 @@ public class ConexionSQLite {
 
     public static HashMap<String, Insumo> obtenerInventarioLocal() {
         HashMap<String, Insumo> inventario = new HashMap<>();
-        String sql = "SELECT codigo, nombre, categoria, unidad_medida, stock_minimo, stock_maximo, stock_actual, estado FROM insumos_catalogo WHERE estado = 'Activo'";
+        String sql = "SELECT codigo, nombre, categoria, unidad_medida, stock_minimo, stock_maximo, stock_actual, fecha_vencimiento, estado FROM insumos_catalogo WHERE estado = 'Activo'";
 
         try (Connection conn = getConexion();
              PreparedStatement ps = conn.prepareStatement(sql);
@@ -377,8 +379,19 @@ public class ConexionSQLite {
                 double min = rs.getDouble("stock_minimo");
                 double max = rs.getDouble("stock_maximo");
                 double actual = rs.getDouble("stock_actual");
+                String fechaVencimientoStr = rs.getString("fecha_vencimiento");
+                LocalDate fechaVencimientoReal;
+                if (fechaVencimientoStr != null && !fechaVencimientoStr.trim().isEmpty() && !fechaVencimientoStr.equals("null")) {
+                    try {
+                        fechaVencimientoReal = LocalDate.parse(fechaVencimientoStr);
+                    } catch (Exception e) {
+                        fechaVencimientoReal = LocalDate.of(2099, 12, 31);
+                    }
+                } else {
+                    fechaVencimientoReal = LocalDate.of(2099, 12, 31);
+                }
 
-                Insumo i = new Insumo(codigo, nombre, categoria, unidad, actual, min, max, LocalDate.now().plusYears(1));
+                Insumo i = new Insumo(codigo, nombre, categoria, unidad, actual, min, max, fechaVencimientoReal);
                 inventario.put(codigo, i);
             }
         } catch (SQLException e) {

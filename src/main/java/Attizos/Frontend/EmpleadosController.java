@@ -295,9 +295,13 @@ public class EmpleadosController {
 
     private void cargarEmpleados() {
         masterData.clear();
-        if(App.attizos != null && App.attizos.getEmpleados() != null){
-            masterData.addAll(App.attizos.getEmpleados());
+        if(App.attizos != null){
+            App.attizos.getEmpleados().clear();
+            App.cargarEmpleados();
+            if(App.attizos != null && App.attizos.getEmpleados() != null){
+                masterData.addAll(App.attizos.getEmpleados());
             }
+        }
         masterData.sort(Comparator.comparing(Empleado::getCargo));
         tablaEmpleados.refresh();
     }

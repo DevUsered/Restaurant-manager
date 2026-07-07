@@ -126,17 +126,45 @@ public class App {
     }
 
     public static boolean autenticarUsuario(String username, String pass) {
+        // 1. Intentamos buscar al usuario en SQLite localmente
         Empleado user = ConexionSQLite.autenticarUsuarioLocal(username, pass);
         if (user != null) {
             usuarioLogueado = user;
             return true;
-        } else if(!modoOffline){
-            user = ApiClient.autenticarUsuarioEnServidor(username, pass);
-            if(user != null){
+        }
+
+        if (ApiClient.isServidorDisponible()) {
+            App.modoOffline = false; // El servidor ya está en línea
+
+            System.out.println("⚡ SQLite vacío. Sincronizando empleados desde el servidor...");
+            ConexionSQLite.sincronizarEmpleados();
+
+            user = ConexionSQLite.autenticarUsuarioLocal(username, pass);
+            if (user != null) {
                 usuarioLogueado = user;
-                return  true;
+
+                new Thread(() -> {
+                    System.out.println("🌐 Conectando WebSocket y descargando catálogo completo...");
+                    String ipServidor = ApiClient.getIpServidor();
+                    Attizos.Frontend.Network.WebSocketManager.conectarAlServidor(ipServidor);
+
+                    ConexionSQLite.subirAuditoriaPendiente();
+                    ConexionSQLite.subirVentasPendientes();
+                    Attizos.Frontend.ServicioNube.sincronizarImagenesPendientes();
+
+                    App.sincronizarDatosDesdeServidor();
+                }).start();
+
+                return true;
+            }
+
+            user = ApiClient.autenticarUsuarioEnServidor(username, pass);
+            if (user != null) {
+                usuarioLogueado = user;
+                return true;
             }
         }
+
         return false;
     }
 
