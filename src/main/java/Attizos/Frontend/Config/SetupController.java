@@ -147,20 +147,40 @@ public class SetupController implements Initializable {
                 return;
             }
         }
+        Properties propsBackend = new Properties();
+        String nombreIngresado = rbServidorPrincipal.isSelected() ? txtNombreNegocio.getText().trim() : "Attizos POS";
 
+        if (rbServidorPrincipal.isSelected()) {
+            propsBackend.setProperty("server.port", "8080");
+            propsBackend.setProperty("spring.datasource.url", "jdbc:postgresql://" + txtDbUrl.getText().trim() + "/attizos_db");
+            propsBackend.setProperty("spring.datasource.username", txtDbUser.getText().trim());
+            propsBackend.setProperty("spring.datasource.password", txtDbPassword.getText().trim());
+            propsBackend.setProperty("spring.datasource.driver-class-name", "org.postgresql.Driver");
+            propsBackend.setProperty("spring.jpa.hibernate.ddl-auto", "update");
+            propsBackend.setProperty("spring.jpa.properties.hibernate.dialect", "org.hibernate.dialect.PostgreSQLDialect");
+            propsBackend.setProperty("spring.jpa.show-sql", "true");
+            propsBackend.setProperty("spring.jackson.time-zone", TimeZone.getDefault().getID());
+            propsBackend.setProperty("app.negocio.nombre", nombreIngresado);
+            propsBackend.setProperty("gemini.api-key", "AQ.Ab8RN6IIu1a1FViogSvXftSrRPmq1_gCHFvGjyXs3fqf_dldKw");
+
+            String cloudinaryInput = txtCloudinaryUrl.getText().trim();
+            desglosarCloudinary(cloudinaryInput, propsBackend);
+        }
         Properties propsFrontend = new Properties();
         propsFrontend.setProperty("app.modo", rbServidorPrincipal.isSelected() ? "SERVIDOR" : "SUCURSAL");
         propsFrontend.setProperty("app.modulo.cocina", String.valueOf(chkTieneCocina.isSelected()));
-
-        String nombreIngresado = "Attizos POS"; // Valor por defecto si es sucursal
-        if(rbServidorPrincipal.isSelected()){
-            nombreIngresado = txtNombreNegocio.getText().trim();
+        propsFrontend.setProperty("app.servidor.ip", rbServidorPrincipal.isSelected() ? "localhost" : txtDbUrl.getText().trim());
+        if (rbServidorPrincipal.isSelected()) {
             propsFrontend.setProperty("app.negocio.nombre", nombreIngresado);
+
+
+            guardarArchivosFisicos(propsFrontend, propsBackend);
 
             if (archivoLogoTemporal != null) {
                 try {
                     lblRutaLogo.setText("Subiendo a la nube...");
                     String urlCloudinary = ServicioNube.subirImagen(archivoLogoTemporal);
+
                     if (urlCloudinary != null && !urlCloudinary.isEmpty()) {
                         propsFrontend.setProperty("app.negocio.logo", urlCloudinary);
                     } else {
@@ -171,34 +191,89 @@ public class SetupController implements Initializable {
                     String rutaLocal = guardarLogoFisicamente(archivoLogoTemporal);
                     if (rutaLocal != null) propsFrontend.setProperty("app.negocio.logo", rutaLocal);
                 }
+                guardarArchivosFisicos(propsFrontend, propsBackend);
             }
-            propsFrontend.setProperty("app.servidor.ip", "localhost");
-        } else {
-            propsFrontend.setProperty("app.servidor.ip", txtDbUrl.getText().trim());
         }
+        arrancarSistema();
 
-        Properties propsBackend = new Properties();
-        if (rbServidorPrincipal.isSelected()) {
-            propsBackend.setProperty("server.port", "8080");
-            propsBackend.setProperty("spring.datasource.url", "jdbc:postgresql://" + txtDbUrl.getText().trim() + "/attizos_db");
-            propsBackend.setProperty("spring.datasource.username", txtDbUser.getText().trim());
-            propsBackend.setProperty("spring.datasource.password", txtDbPassword.getText().trim());
-            propsBackend.setProperty("spring.datasource.driver-class-name", "org.postgresql.Driver");
-            propsBackend.setProperty("spring.jpa.hibernate.ddl-auto", "update");
-            propsBackend.setProperty("spring.jpa.properties.hibernate.dialect", "org.hibernate.dialect.PostgreSQLDialect");
-            propsBackend.setProperty("spring.jpa.show-sql", "true");
-            String zonaHoraria = TimeZone.getDefault().getID();
-            propsBackend.setProperty("spring.jackson.time-zone", zonaHoraria);
+    }
+    private void guardarArchivosFisicos(Properties propsF, Properties propsB) {
+        File dirBase = new File(RUTA_BASE);
+        File dirBackend = new File(RUTA_BASE + File.separator + "backend");
 
-            propsBackend.setProperty("app.negocio.nombre", nombreIngresado);
+        if(!dirBase.exists()) dirBase.mkdirs();
+        if(!dirBackend.exists() && rbServidorPrincipal.isSelected()) dirBackend.mkdirs();
 
-            String cloudinaryInput = txtCloudinaryUrl.getText().trim();
-            desglosarCloudinary(cloudinaryInput, propsBackend);
-
-            propsBackend.setProperty("gemini.api-key", "AQ.Ab8RN6IIu1a1FViogSvXftSrRPmq1_gCHFvGjyXs3fqf_dldKw");
+        try {
+            try(FileOutputStream outFront = new FileOutputStream(RUTA_CONFIG)){
+                propsF.store(outFront, "Configuración de POS - Frontend");
+            }
+            if(rbServidorPrincipal.isSelected()){
+                String rutaBackendProps = dirBackend.getAbsolutePath() + File.separator + "application.properties";
+                try(FileOutputStream outBack = new FileOutputStream(rutaBackendProps)){
+                    propsB.store(outBack, "Configuración de POS - Backend");
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
         }
+    }
+    private void arrancarSistema() {
+        App.iniciarBackend();
+        btnGuardar.setText("⏳ Iniciando Servidor y Base de Datos...");
+        btnGuardar.setDisable(true);
 
-        guardarArchivos(propsFrontend, propsBackend);
+        new Thread(() -> {
+            int intentos = 0;
+            boolean servidorListo = false;
+
+            while (intentos < 90 && !servidorListo) {
+                try { Thread.sleep(1000); } catch (InterruptedException e) {}
+                servidorListo = Attizos.Backend.Api.ApiClient.isServidorDisponible();
+                intentos++;
+
+                int finalIntentos = intentos;
+                javafx.application.Platform.runLater(() -> {
+                    if (finalIntentos == 15) btnGuardar.setText("⏳ Creando tablas en PostgreSQL...");
+                    else if (finalIntentos == 35) btnGuardar.setText("⏳ Configurando motor de base de datos...");
+                    else if (finalIntentos == 60) btnGuardar.setText("⏳ Ya casi listo, finalizando arranque...");
+                });
+            }
+
+            boolean finalServidorListo = servidorListo;
+            int tiempoTotal = intentos;
+
+            javafx.application.Platform.runLater(() -> {
+                if (finalServidorListo) {
+                    System.out.println("✅ ¡Servidor detectado en línea tras " + tiempoTotal + " segundos!");
+                } else if (rbServidorPrincipal.isSelected()) {
+                    AlertaPersonalizada.mostrarAlerta("Tiempo de Espera Agotado", "El servidor tardó más de 90 segundos en arrancar.", Alert.AlertType.WARNING);
+                }
+                App.setNombre(ConfigurationApp.getNombreRestaurante());
+                App.iniciarSistema();
+
+                try {
+                    Stage stage = (Stage) btnGuardar.getScene().getWindow();
+                    stage.close();
+
+                    FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Login.fxml"));
+                    Parent root = loader.load();
+
+                    Stage homeStage = new Stage();
+                    homeStage.initStyle(StageStyle.TRANSPARENT);
+                    Scene scene = new Scene(root);
+                    scene.setFill(Color.TRANSPARENT);
+
+                    homeStage.setScene(scene);
+                    homeStage.setResizable(false);
+                    homeStage.centerOnScreen();
+                    homeStage.setOnCloseRequest(e -> System.exit(0));
+                    homeStage.show();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            });
+        }).start();
     }
 
     private boolean probarConexionPostgreSQL(String url, String user, String pass) {
@@ -318,7 +393,7 @@ public class SetupController implements Initializable {
                         Stage stage = (Stage) btnGuardar.getScene().getWindow();
                         stage.close();
 
-                        FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Home.fxml"));
+                        FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Login.fxml"));
                         Parent root = loader.load();
 
                         Stage homeStage = new Stage();

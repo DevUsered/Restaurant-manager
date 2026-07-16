@@ -24,7 +24,9 @@ public class AjustesEmpresaController implements Initializable {
     @FXML private ImageView imgLogoActual;
     @FXML private Label lblRutaLogo;
     @FXML private TextField txtIpServidor;
+
     @FXML private CheckBox chkTieneCocina;
+    @FXML private CheckBox chkImpresion; // ✨ NUEVA CASILLA
 
     private File nuevoLogoSeleccionado = null;
     private String urlLogoActual = "";
@@ -39,7 +41,13 @@ public class AjustesEmpresaController implements Initializable {
 
         txtNombreNegocio.setText(ConfigurationApp.getNombreRestaurante());
         txtIpServidor.setText(ConfigurationApp.getIpServidor());
+
+        // Cargamos los estados booleanos
         chkTieneCocina.setSelected(ConfigurationApp.isTieneCocina());
+        chkImpresion.setSelected(ConfigurationApp.isImpresionActivada());
+
+        // Disparamos la actualización visual de textos
+        actualizarTextosChecks(null);
 
         urlLogoActual = ConfigurationApp.getRutaLogo();
         lblRutaLogo.setText(urlLogoActual.startsWith("http") ? "Sincronizado en Cloudinary" : "Logo local/defecto");
@@ -57,6 +65,22 @@ public class AjustesEmpresaController implements Initializable {
             }
         } catch (Exception e) {
             System.err.println("No se pudo cargar la vista previa del logo: " + e.getMessage());
+        }
+    }
+
+    // ✨ EVENTO DINÁMICO QUE CAMBIA LOS TEXTOS AL HACER CLIC
+    @FXML
+    private void actualizarTextosChecks(ActionEvent event) {
+        if (chkTieneCocina.isSelected()) {
+            chkTieneCocina.setText("👨‍🍳 Módulo de Cocina: ACTIVADO");
+        } else {
+            chkTieneCocina.setText("👨‍🍳 Módulo de Cocina: DESACTIVADO");
+        }
+
+        if (chkImpresion.isSelected()) {
+            chkImpresion.setText("🖨️ Impresión de Tickets: ACTIVADA");
+        } else {
+            chkImpresion.setText("🖨️ Impresión de Tickets: DESACTIVADA");
         }
     }
 
@@ -78,9 +102,6 @@ public class AjustesEmpresaController implements Initializable {
         }
     }
 
-    /**
-     * Evalúa qué campos cambiaron exactamente y muestra un diálogo dinámico.
-     */
     @FXML
     private void confirmarYGuardar(ActionEvent event) {
         String nuevoNombre = txtNombreNegocio.getText().trim();
@@ -91,9 +112,10 @@ public class AjustesEmpresaController implements Initializable {
 
         String nuevaIp = txtIpServidor.getText().trim();
         if (nuevaIp.isEmpty()) nuevaIp = "localhost";
-        boolean nuevaCocina = chkTieneCocina.isSelected();
 
-        // 1. DETECTOR DINÁMICO DE CAMBIOS
+        boolean nuevaCocina = chkTieneCocina.isSelected();
+        boolean nuevaImpresion = chkImpresion.isSelected();
+
         StringBuilder cambios = new StringBuilder();
         boolean hayCambios = false;
 
@@ -109,6 +131,10 @@ public class AjustesEmpresaController implements Initializable {
             cambios.append("• Módulo Cocina: ").append(nuevaCocina ? "Habilitado" : "Deshabilitado").append("\n");
             hayCambios = true;
         }
+        if (nuevaImpresion != ConfigurationApp.isImpresionActivada()) {
+            cambios.append("• Impresión Tickets: ").append(nuevaImpresion ? "Habilitada" : "Deshabilitada").append("\n");
+            hayCambios = true;
+        }
         if (nuevoLogoSeleccionado != null) {
             cambios.append("• Logotipo: Nueva imagen lista para subir a Cloudinary\n");
             hayCambios = true;
@@ -120,7 +146,7 @@ public class AjustesEmpresaController implements Initializable {
             return;
         }
 
-        // 2. DIÁLOGO DINÁMICO CON TU TARJETA DORADA
+        // 2. DIÁLOGO DINÁMICO
         Optional<ButtonType> respuesta = DialogoPersonalizado.mostrarDialogoConfirmacion(
                 "Confirmar Modificaciones",
                 "¿Estás seguro de aplicar los siguientes cambios?",
@@ -128,11 +154,11 @@ public class AjustesEmpresaController implements Initializable {
         );
 
         if (respuesta.isPresent() && respuesta.get() == ButtonType.OK) {
-            ejecutarGuardadoEnNubeYLocal(nuevoNombre, nuevaIp, nuevaCocina);
+            ejecutarGuardadoEnNubeYLocal(nuevoNombre, nuevaIp, nuevaCocina, nuevaImpresion);
         }
     }
 
-    private void ejecutarGuardadoEnNubeYLocal(String nuevoNombre, String nuevaIp, boolean nuevaCocina) {
+    private void ejecutarGuardadoEnNubeYLocal(String nuevoNombre, String nuevaIp, boolean nuevaCocina, boolean nuevaImpresion) {
 
         if (!nuevaIp.equals(ConfigurationApp.getIpServidor()) && !nuevaIp.equalsIgnoreCase("localhost")) {
             System.out.println("🔄 Verificando nueva IP del servidor: " + nuevaIp);
@@ -142,7 +168,7 @@ public class AjustesEmpresaController implements Initializable {
                         "La nueva dirección IP (" + nuevaIp + ") no responde.\nNo se puede guardar esta IP porque la terminal perdería conexión con la base de datos.",
                         Alert.AlertType.ERROR
                 );
-                return; // 🚫 PROHIBIDO GUARDAR CAMBIOS
+                return;
             }
         }
 
@@ -163,8 +189,8 @@ public class AjustesEmpresaController implements Initializable {
                 return;
             }
         }
+        ConfigurationApp.guardarConfiguracionNueva(nuevaCocina, nuevaImpresion, nuevaIp, nuevoNombre, rutaLogoFinal);
 
-        ConfigurationApp.guardarConfiguracionNueva(nuevaCocina, nuevaIp, nuevoNombre, rutaLogoFinal);
         App.setNombre(nuevoNombre);
         if (App.attizos != null) {
             App.getAttizos().setNombre(nuevoNombre);

@@ -39,7 +39,8 @@
 
             <VBox spacing="8">
                 <Label text="MÓDULOS ACTIVOS" textFill="#B89728" style="-fx-font-weight: bold; -fx-font-size: 11px;"/>
-                <CheckBox fx:id="chkTieneCocina" text="Habilitar Pantalla de Cocina en esta terminal" textFill="#1A1A1A"/>
+                <CheckBox fx:id="chkTieneCocina" onAction="#actualizarTextosChecks" textFill="#1A1A1A" style="-fx-font-size: 13px;"/>
+                <CheckBox fx:id="chkImpresion" onAction="#actualizarTextosChecks" textFill="#1A1A1A" style="-fx-font-size: 13px;"/>
             </VBox>
 
             <Region VBox.vgrow="ALWAYS" />

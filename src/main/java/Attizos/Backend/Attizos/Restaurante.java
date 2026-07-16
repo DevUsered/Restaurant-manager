@@ -123,16 +123,22 @@ public class Restaurante
     public String generarIdReserva(LocalDateTime fechaReserva) {
         String[] inicialesDias = {"L", "M", "X", "J", "V", "S", "D"};
         String letraDia = inicialesDias[fechaReserva.getDayOfWeek().getValue() - 1];
-
-        int correlativoMes = 1;
+        int diaMes =   fechaReserva.getDayOfMonth();
+        int maxCorrelativo = 0;
         for( Reserva r : reservas){
             LocalDateTime f = r.getFecha();
-            if(f.getMonthValue() == fechaReserva.getMonthValue() && f.getYear() == fechaReserva.getYear()){
-                correlativoMes++;
+            if(f.getYear() == fechaReserva.getYear() && f.getMonthValue() == fechaReserva.getMonthValue()){
+                String idExistente = r.getId();
+                if(idExistente != null && idExistente.length() == 6){
+                    try{
+                        int correlativo = Integer.parseInt(idExistente.substring(1,4));
+                        if(correlativo > maxCorrelativo) maxCorrelativo = correlativo;
+                    }catch (NumberFormatException e){}
+                }
             }
         }
-        int diaMes = fechaReserva.getDayOfMonth();
-        return String.format("%s%03d%02d",letraDia,correlativoMes,diaMes);
+        int nuevoCorreletivo = maxCorrelativo + 1;
+        return String.format("%s%03d%02d",letraDia,nuevoCorreletivo,diaMes);
     }
     public Empleado buscarEmpleado(String id){
         for(Empleado emp : empleados){

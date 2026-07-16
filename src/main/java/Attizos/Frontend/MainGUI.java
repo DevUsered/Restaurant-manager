@@ -39,7 +39,7 @@ public class MainGUI extends Application {
                 System.out.println("Archivo de configuración encontrado. Iniciando aplicación principal...");
                 App.iniciarBackend();
                 App.iniciarSistema();
-                loader = new FXMLLoader(getClass().getResource("/fxml/Home.fxml"));
+                loader = new FXMLLoader(getClass().getResource("/fxml/Login.fxml"));
                 Parent root = loader.load();
                 ventanaPrincipal.initStyle(StageStyle.TRANSPARENT);
                 Scene scene = new Scene(root);

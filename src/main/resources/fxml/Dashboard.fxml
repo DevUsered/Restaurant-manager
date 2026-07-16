@@ -22,7 +22,7 @@
 
                 <HBox alignment="CENTER_LEFT" spacing="10">
                     <Label styleClass="logo-icon" text="🍕" />
-                    <Label fx:id="lblNombre" styleClass="logo-text" text="Attizos" />
+                    <Label fx:id="lblNombre" styleClass="logo-text" text="Welcome!!" />
                 </HBox>
 
                 <ScrollPane fitToWidth="true" style="-fx-background: transparent; -fx-background-color: transparent; -fx-border-color: transparent;" VBox.vgrow="ALWAYS">
@@ -54,9 +54,9 @@
 
                 <HBox alignment="CENTER_LEFT" spacing="12" styleClass="profile-box">
                     <StackPane styleClass="profile-avatar">
-                        <ImageView fx:id="profileImage" fitHeight="84.0" fitWidth="87.0" pickOnBounds="false" preserveRatio="false">
+                        <ImageView fx:id="profileImage" fitHeight="88.0" fitWidth="109.0" pickOnBounds="false" preserveRatio="false">
                             <image>
-                                <Image url="@../logo.png" />
+                                <Image url="@../images/logo_personal.png" />
                             </image>
                         </ImageView>
                     </StackPane>

@@ -297,7 +297,7 @@ public class DashboardController {
     @FXML
     void logout(ActionEvent event) {
         try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Home.fxml"));
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Login.fxml"));
             Stage stage = new Stage();
             Parent root = loader.load();
             stage.initStyle(StageStyle.TRANSPARENT);

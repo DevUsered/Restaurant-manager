@@ -3,11 +3,7 @@ package Attizos.Frontend;
 import Attizos.Backend.Api.ApiClient;
 import Attizos.Backend.Attizos.*;
 import Attizos.Backend.Database.*;
-import Attizos.Backend.Listas.ListaDE;
-import Attizos.Backend.Listas.NodoDE;
 import Attizos.Frontend.Network.WebSocketManager;
-import javafx.animation.KeyFrame;
-import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -22,8 +18,8 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
-import javafx.util.Duration;
-
+import javafx.scene.media.AudioClip;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -61,9 +57,38 @@ public class CocinaController {
         tablaPedidos.getSelectionModel().selectedItemProperty().addListener((obs, viejo, nuevo) -> {
             mostrarDetallesPedido(nuevo);
         });
+        listaDetallesCocina.setCellFactory(lv -> new ListCell<String>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("");
+                } else {
+                    setText(item);
+                    setStyle("-fx-font-size: 45px; -fx-font-weight: bold; -fx-text-fill: #111111; -fx-padding: 15px;");
+                }
+            }
+        });
         cargarColaDesdeBackend();
         WebSocketManager.setAccionCocina(() ->{
             System.out.println("Pedido recibido en la cocina. Actualizando la tabla...");
+            String cargo = App.usuarioLogueado.getCargo();
+            if(cargo.equalsIgnoreCase("Cocinero") || cargo.equalsIgnoreCase("Chef")){
+                Platform.runLater(() -> {
+                    try{
+                        URL rutaAudio = getClass().getResource("/sounds/cocina.mp3");
+                        if(rutaAudio != null){
+                            AudioClip sonido = new AudioClip(rutaAudio.toExternalForm());
+                            sonido.play();
+                        }else{
+                            System.out.println("No se pudo reproducir el sonido de cocina.");
+                        }
+                    }catch (Exception e){
+                        System.out.println("Error al reproducir el sonido de cocina:" + e.getMessage());
+                    }
+                });
+            }
             cargarColaDesdeBackend();
         });
 
@@ -84,6 +109,9 @@ public class CocinaController {
 
                 if (indiceSeleccionado >= 0 && indiceSeleccionado < listaColaPedidos.size()) {
                     tablaPedidos.getSelectionModel().select(indiceSeleccionado);
+                }
+                else if(!listaColaPedidos.isEmpty()){
+                    tablaPedidos.getSelectionModel().select(0);
                 }
             });
         }).start();
@@ -182,7 +210,7 @@ public class CocinaController {
     @FXML
     void cerrarVentana(ActionEvent event) {
         try{
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Home.fxml"));
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Login.fxml"));
             Parent root = loader.load();
             Stage stage = new Stage();
             stage.initStyle(StageStyle.TRANSPARENT);

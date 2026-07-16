@@ -77,6 +77,8 @@ public class ReservasController {
             var reservasDB = ApiClient.obtenerReservasPendientes();
 
             javafx.application.Platform.runLater(() ->{
+                App.attizos.getReservas().clear();
+                App.attizos.getReservas().addAll(reservasDB);
                 listaVisible.clear();
                 listaVisible.addAll(reservasDB);
                 tablaReservas.refresh();

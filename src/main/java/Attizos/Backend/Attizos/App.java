@@ -35,6 +35,7 @@ public class App {
     private static Process procesoBackend = null;
 
     public static void iniciarSistema() {
+        ConfigurationApp.cargarConfiguracion();
         nombre = ConfigurationApp.getNombreRestaurante();
         attizos = new Restaurante(nombre, "FAST_FOOD");
         cargarCacheLogo();
@@ -353,8 +354,6 @@ public class App {
             logoImageCache = new Image(archivoCache.toURI().toString());
         }else{
             System.out.println("☁️ Descargando nuevo logo desde Cloudinary a la caché local...");
-
-            logoImageCache = new Image(rutaOLink, true);
             new Thread(() ->{
                 try (InputStream in = new URL(rutaOLink).openStream();
                      FileOutputStream out = new FileOutputStream(archivoCache)) {

@@ -13,6 +13,7 @@ public class ConfigurationApp {
     public static boolean esPrimeraVez = true;
     public static String modoOperacion = "SERVIDOR";
     public static boolean tieneCocina = true;
+    public static boolean impresionActivada = true;
     public static String ipServidor = "localhost";
     public static String nombreRestaurante;
     public static String rutaLogo = "default_logo.png";
@@ -29,6 +30,7 @@ public class ConfigurationApp {
             esPrimeraVez = false;
             modoOperacion = propiedades.getProperty("app.modo", "SERVIDOR");
             tieneCocina = Boolean.parseBoolean(propiedades.getProperty("app.modulo.cocina", "true"));
+            impresionActivada = Boolean.parseBoolean(propiedades.getProperty("app.modulo.impresion", "true"));
             ipServidor = propiedades.getProperty("app.servidor.ip", "localhost");
             nombreRestaurante = propiedades.getProperty("app.negocio.nombre", "Mi Restaurante");
             rutaLogo = propiedades.getProperty("app.negocio.logo", "default_logo.png");
@@ -40,12 +42,13 @@ public class ConfigurationApp {
         }
     }
 
-    public static void guardarConfiguracionNueva(boolean usarCocina, String ip, String nombre, String logo) {
+    public static void guardarConfiguracionNueva(boolean usarCocina, boolean imprimir,String ip, String nombre, String logo) {
         File carpeta = new File(RUTA_CARPETA);
         if (!carpeta.exists()) carpeta.mkdirs();
 
         propiedades.setProperty("app.modo", modoOperacion);
         propiedades.setProperty("app.modulo.cocina", String.valueOf(usarCocina));
+        propiedades.setProperty("app.modulo.impresion", String.valueOf(imprimir));
         propiedades.setProperty("app.servidor.ip", ip);
         propiedades.setProperty("app.negocio.nombre", nombre);
         propiedades.setProperty("app.negocio.logo", logo);
@@ -55,6 +58,7 @@ public class ConfigurationApp {
 
             // Actualizar variables en RAM
             tieneCocina = usarCocina;
+            impresionActivada = imprimir;
             ipServidor = ip;
             nombreRestaurante = nombre;
             rutaLogo = logo;
@@ -64,6 +68,22 @@ public class ConfigurationApp {
         } catch (Exception e) {
             System.err.println("Error al guardar configuración: " + e.getMessage());
         }
+    }
+
+    public static String getModoOperacion() {
+        return modoOperacion;
+    }
+
+    public static void setModoOperacion(String modoOperacion) {
+        ConfigurationApp.modoOperacion = modoOperacion;
+    }
+
+    public static boolean isImpresionActivada() {
+        return impresionActivada;
+    }
+
+    public static void setImpresionActivada(boolean impresionActivada) {
+        ConfigurationApp.impresionActivada = impresionActivada;
     }
 
     public static Properties getPropiedades() { return propiedades; }

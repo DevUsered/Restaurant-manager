@@ -319,14 +319,12 @@ public class VentasController {
             mostrarAlerta("Carrito Vacío", "⚠ Agregue productos antes de cobrar.", Alert.AlertType.WARNING);
             return;
         }
-        if(facturaActual.requierePreparacion()){
-            if(ConfigurationApp.tieneCocina) {
+        boolean usarCocina = ConfigurationApp.isTieneCocina();
+        boolean usarImpresora = ConfigurationApp.isImpresionActivada();
+        if(facturaActual.requierePreparacion() && usarCocina) {
                 facturaActual.setEstado("En cocina");
-            }else{
-                facturaActual.setEstado("Finalizada");
-            }
         }else{
-            facturaActual.setEstado("Finalizada");
+                facturaActual.setEstado("Finalizada");
         }
 
         Map<Producto, Integer> carritoDB = new HashMap<>();
@@ -402,30 +400,34 @@ public class VentasController {
 
                 rootCompleto.applyCss();
                 rootCompleto.layout();
-
-                if(facturaActual.requierePreparacion()){
-                    javafx.print.PrinterJob printerJob = javafx.print.PrinterJob.createPrinterJob();
-                    if(printerJob != null){
-                        printerJob.printPage(controller.getContenedorTicketCliente());
-                        printerJob.printPage(controller.getContenedorTicketCocina());
-                        printerJob.endJob();
-                    }else{
-                        mostrarAlerta("Error", "No se detectó impresora.", Alert.AlertType.ERROR);
-                    }
-                } else {
-                    // MODO AHORRO DE PAPEL
-                    boolean imprimir = AlertaPersonalizada.mostrarConfirmacion(
-                            "Ahorro de Papel",
-                            "Venta registrada con éxito (" + metodoPago + ").\n\n¿El cliente solicita su comprobante impreso?"
-                    );
-                    if (imprimir) {
+                if(usarImpresora){
+                    if(facturaActual.requierePreparacion()){
                         javafx.print.PrinterJob printerJob = javafx.print.PrinterJob.createPrinterJob();
-                        if (printerJob != null) {
+                        if(printerJob != null){
                             printerJob.printPage(controller.getContenedorTicketCliente());
+                            printerJob.printPage(controller.getContenedorTicketCocina());
                             printerJob.endJob();
+                        }else{
+                            mostrarAlerta("Error", "No se detectó impresora.", Alert.AlertType.ERROR);
+                        }
+                    } else {
+                        // MODO AHORRO DE PAPEL
+                        boolean imprimir = AlertaPersonalizada.mostrarConfirmacion(
+                                "Ahorro de Papel",
+                                "Venta registrada con éxito (" + metodoPago + ").\n\n¿El cliente solicita su comprobante impreso?"
+                        );
+                        if (imprimir) {
+                            javafx.print.PrinterJob printerJob = javafx.print.PrinterJob.createPrinterJob();
+                            if (printerJob != null) {
+                                printerJob.printPage(controller.getContenedorTicketCliente());
+                                printerJob.endJob();
+                            }
                         }
                     }
+                }else{
+                    mostrarAlerta("¡Venta registrada!", "Cobro exitoso mediante "+metodoPago, Alert.AlertType.INFORMATION);
                 }
+
             } catch (Exception e) {
                 e.printStackTrace();
                 mostrarAlerta("Error", "La venta se registró pero no se pudo mandar al ticket.", Alert.AlertType.ERROR);
