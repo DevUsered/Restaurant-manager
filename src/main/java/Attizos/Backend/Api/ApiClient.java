@@ -316,6 +316,23 @@ public class ApiClient {
             return false;
         }
     }
+    public static boolean actualizarImagenProductoEnServidor(int idProducto, String urlImagen){
+       try {
+           Map<String, String> body = new HashMap<>();
+           body.put("imageURL", urlImagen);
+           String json = mapper.writeValueAsString(body);
+           HttpRequest request = HttpRequest.newBuilder()
+                   .uri(URI.create(BASE_URL + "/menu/productos/" + idProducto + "/imagen"))
+                   .header("Content-Type", "application/json")
+                   .PUT(HttpRequest.BodyPublishers.ofString(json))
+                   .build();
+           int code = httpClient.send(request, HttpResponse.BodyHandlers.ofString()).statusCode();
+           return code >= 200 && code < 300;
+       }catch (Exception e){
+           System.out.println("Erro al actualizar la imagen del producto: "+e.getMessage());
+           return false;
+       }
+    }
 
     public static boolean inactivarProductoEnServidor(int idProducto) {
         try {

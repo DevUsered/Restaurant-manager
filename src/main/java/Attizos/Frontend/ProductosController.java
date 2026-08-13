@@ -647,8 +647,48 @@ public class ProductosController {
                 abrirVentanaEdicionReceta(seleccionado);
             }
         });
+        MenuItem itemModificarImagen = new MenuItem("🖼 Modificar imagen");
+        itemModificarImagen.setOnAction(e -> {
+            Producto seleccionado = tablaMenu.getSelectionModel().getSelectedItem();
+            if (seleccionado != null) {
+                // Abrimos el explorador de archivos igual que en seleccionarImagen()
+                FileChooser fc = new FileChooser();
+                fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("Imágenes", "*.png", "*.jpg", "*.jpeg"));
+                File nuevoArchivo = fc.showOpenDialog(null);
 
-        contextMenu.getItems().addAll(itemModificarPrecio, itemModificarReceta);
+                if (nuevoArchivo != null) {
+                    String nombreArchivoLocal = UtilidadesImagen.guardarImagenLocal(nuevoArchivo, seleccionado.getNombre());
+
+                    seleccionado.setImagenURL(nombreArchivoLocal);
+                    tablaMenu.refresh();
+
+                    new Thread(() -> {
+                        boolean actualizado = ApiClient.actualizarImagenProductoEnServidor(seleccionado.getId(), nombreArchivoLocal);
+
+                        Platform.runLater(() -> {
+                            if (actualizado) {
+                                String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
+                                App.registrarAuditoria(operador, "Producto", seleccionado.getNombre(), "Actualización Imagen", 0, "Nueva imagen asignada al producto.");
+
+                                new Thread(() -> {
+                                    ConexionSQLite.subirAuditoriaPendiente();
+                                    ConexionSQLite.sincronizarProductos(); // Actualiza SQLite local
+                                    if (!App.modoOffline) {
+                                        ServicioNube.sincronizarImagenesPendientes(); // El recolector subirá esta nueva imagen a Cloudinary
+                                    }
+                                }).start();
+
+                                mostrarExito("Imagen Actualizada", "La nueva imagen se guardó correctamente y se sincronizará en la nube.");
+                            } else {
+                                mostrarAlerta("Error", "No se pudo actualizar el registro de la imagen en el servidor.");
+                            }
+                        });
+                    }).start();
+                }
+            }
+        });
+
+        contextMenu.getItems().addAll(itemModificarPrecio, itemModificarReceta, itemModificarImagen);
 
         tablaMenu.setRowFactory(tv -> {
             TableRow<Producto> row = new TableRow<>();
