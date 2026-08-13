@@ -66,6 +66,7 @@ public class App {
         cargarProductos();
         System.out.println("✅ Datos listos.");
     }
+
     public static void sincronizarDatosDesdeServidor() {
         try {
             ConexionSQLite.actualizarCacheCompleta();
@@ -89,6 +90,7 @@ public class App {
             System.err.println("❌ Error al sincronizar datos desde el servidor: " + e.getMessage());
         }
     }
+
     public static void cargarInventario() {
         HashMap<String, Insumo> inventario = ConexionSQLite.obtenerInventarioLocal();
         if (inventario != null && !inventario.isEmpty()) {
@@ -127,7 +129,6 @@ public class App {
     }
 
     public static boolean autenticarUsuario(String username, String pass) {
-        // 1. Intentamos buscar al usuario en SQLite localmente
         Empleado user = ConexionSQLite.autenticarUsuarioLocal(username, pass);
         if (user != null) {
             usuarioLogueado = user;
@@ -135,7 +136,7 @@ public class App {
         }
 
         if (ApiClient.isServidorDisponible()) {
-            App.modoOffline = false; // El servidor ya está en línea
+            App.modoOffline = false;
 
             System.out.println("⚡ SQLite vacío. Sincronizando empleados desde el servidor...");
             ConexionSQLite.sincronizarEmpleados();
@@ -183,6 +184,7 @@ public class App {
             ConexionSQLite.guardarAuditoriaOffline(operador, tipoArea, nombreItem, accion, cantidad, motivo);
         }
     }
+
     public static void iniciarBackend(){
         try{
             String rutaBase = System.getenv("APPDATA") + File.separator + "Attizos";
@@ -204,15 +206,19 @@ public class App {
                     if(jarFile.exists()){
                         System.out.println("🚀 Encendiendo servidor Spring Boot en segundo plano...");
 
-                        String javaHome = System.getProperty("java.home");
-                        String javaBin = javaHome + File.separator + "bin" + File.separator + "java";
+                        // --- CAMBIO CLAVE AQUI: Apuntar al JRE empaquetado ---
+                        String directorioApp = System.getProperty("user.dir");
+                        String extensionExe = System.getProperty("os.name").toLowerCase().contains("win") ? "java.exe" : "java";
+                        String javaBin = directorioApp + File.separator + "jre" + File.separator + "bin" + File.separator + extensionExe;
+                        // -----------------------------------------------------
+
                         ProcessBuilder pb = new ProcessBuilder(
                                 javaBin,
                                 "-Dspring.config.additional-location=file:" + pathProps,
                                 "-jar", pathBackend
                         );
                         pb.redirectErrorStream(true);
-                        procesoBackend = pb.start(); // Guardamos el proceso
+                        procesoBackend = pb.start();
 
                         new Thread(() -> {
                             try (java.io.BufferedReader reader = new java.io.BufferedReader(
@@ -222,7 +228,7 @@ public class App {
                                     System.out.println("[Spring Boot] " + linea);
                                     if (linea.contains("CÓDIGO DE EQUIPO:")) {
                                         try {
-                                            String codigo = linea.split("CÓDIGO DE EQUIPO:]")[1].trim();
+                                            String codigo = linea.split("CÓDIGO DE EQUIPO:")[1].trim();
                                             Platform.runLater(() -> {
                                                 AlertaPersonalizada.mostrarAlerta(
                                                         "Sistema No Activado",
@@ -279,15 +285,34 @@ public class App {
                                 procesoBackend.destroyForcibly();
                             }
                         }));
-                    }else{
+                    } else {
                         System.out.println("❌ No se encontró el archivo backend.jar en la ruta: " + pathBackend);
+                        // NUEVO: Alerta visual si no se instaló bien el backend
+                        final String rutaFaltante = pathBackend;
+                        Platform.runLater(() -> {
+                            AlertaPersonalizada.mostrarAlerta(
+                                    "Error de Instalación",
+                                    "No se encontró el archivo del servidor en la ruta:\n" + rutaFaltante,
+                                    Alert.AlertType.ERROR
+                            );
+                        });
                     }
                 }
             }
-        }catch (Exception e){
+        } catch (Exception e) {
             System.err.println("Error al iniciar backend: " + e.getMessage());
+            // NUEVO: Alerta visual si ProcessBuilder explota (ej. falta de permisos o no encuentra java.exe)
+            final String mensajeError = e.getMessage();
+            Platform.runLater(() -> {
+                AlertaPersonalizada.mostrarAlerta(
+                        "Error Crítico",
+                        "El servidor backend no pudo arrancar. Detalle:\n" + mensajeError,
+                        Alert.AlertType.ERROR
+                );
+            });
         }
     }
+
     public static Restaurante getAttizos() {
         return attizos;
     }
@@ -319,12 +344,15 @@ public class App {
     public static void setNombre(String nombre) {
         App.nombre = nombre;
     }
+
     public static Image getLogoImageCache() {
         return logoImageCache;
     }
+
     public static void setLogoImageCache(Image newImage) {
         logoImageCache = newImage;
     }
+
     public static void cargarCacheLogo(){
         String rutaOLink = ConfigurationApp.getRutaLogo();
         if (rutaOLink == null || rutaOLink.isEmpty() || rutaOLink.equals("default_logo.png")) {

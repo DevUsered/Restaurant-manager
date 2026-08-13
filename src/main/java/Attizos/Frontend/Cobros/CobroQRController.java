@@ -11,6 +11,9 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.AnchorPane;
 import javafx.stage.Stage;
 
+import java.io.ByteArrayInputStream;
+import java.util.Base64;
+
 public class CobroQRController {
     @FXML private AnchorPane rootPane;
     @FXML private Label lblMonto;
@@ -48,25 +51,28 @@ public class CobroQRController {
         pagoCompletado = false;
         esperandoPago = true;
 
-        int idTransaccion = (int) (Math.random() * 10000);
+        String idTransaccion = "VT-" + System.currentTimeMillis();
 
         new Thread(() -> {
             try {
-                String urlQR = servicioPagos.solicitarQrDinamico(montoTotal, String.valueOf(idTransaccion));
-                javafx.scene.image.Image imagenQR = new javafx.scene.image.Image(urlQR, true);
+                String respuestaBanco = servicioPagos.solicitarQrDinamico(montoTotal, idTransaccion);
 
-                imagenQR.progressProperty().addListener((obs, oldProgress, newProgress) -> {
-                    if (newProgress.doubleValue() == 1.0 && !imagenQR.isError()) {
-                        javafx.application.Platform.runLater(() -> {
-                            imgQR.setImage(imagenQR);
-                            lblEstado.setText("QR Listo. Esperando pago desde la App del banco...");
-                            iniciarSondeoDePago(String.valueOf(idTransaccion));
-                        });
-                    }
+                String[] partes = respuestaBanco.split("\\|");
+                String idTransaccionBanco = partes[0];
+                String qrBase64 = partes[1];
+
+                byte[] imageBytes = Base64.getDecoder().decode(qrBase64);
+                Image imageQR = new Image(new ByteArrayInputStream(imageBytes));
+
+                Platform.runLater(() ->{
+                    imgQR.setImage(imageQR);
+                    lblEstado.setText("QR Listo: Esperando pago desde el banca movil...");
+
+                    iniciarSondeoDePago(idTransaccionBanco);
                 });
             } catch (Exception e) {
                 javafx.application.Platform.runLater(() -> {
-                    lblEstado.setText("Error al conectar con la pasarela.");
+                    lblEstado.setText("Error al conectar con el banco.");
                     lblEstado.setStyle("-fx-text-fill: #ff4c4c;");
                     progressIndicador.setVisible(false);
                 });
@@ -102,18 +108,6 @@ public class CobroQRController {
             } catch (Exception e) {
                 System.out.println("⚠️ Sondeo interrumpido.");
             }
-        }).start();
-    }
-    @FXML
-    void simularPagoExitoso(ActionEvent event) {
-        esperandoPago = false;
-        pagoCompletado = true;
-        progressIndicador.setVisible(false);
-        lblEstado.setText("¡Pago Confirmado!");
-        lblEstado.setStyle("-fx-text-fill: #218c4e; -fx-font-size: 16px;"); // Verde éxito
-        new Thread(() ->{
-            try{ Thread.sleep(1000);}catch (Exception e){}
-            Platform.runLater(this::cerrarVentana);
         }).start();
     }
 
