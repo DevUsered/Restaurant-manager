@@ -401,31 +401,28 @@ public class VentasController {
                 rootCompleto.applyCss();
                 rootCompleto.layout();
                 if(usarImpresora){
-                    if(facturaActual.requierePreparacion()){
-                        javafx.print.PrinterJob printerJob = javafx.print.PrinterJob.createPrinterJob();
-                        if(printerJob != null){
+                    javafx.print.PrinterJob printerJob = javafx.print.PrinterJob.createPrinterJob();
+                    if(printerJob != null){
+                        if(facturaActual.requierePreparacion()){
                             printerJob.printPage(controller.getContenedorTicketCliente());
                             printerJob.printPage(controller.getContenedorTicketCocina());
                             printerJob.endJob();
-                        }else{
-                            mostrarAlerta("Error", "No se detectó impresora.", Alert.AlertType.ERROR);
-                        }
-                    } else {
-                        // MODO AHORRO DE PAPEL
-                        boolean imprimir = AlertaPersonalizada.mostrarConfirmacion(
-                                "Ahorro de Papel",
-                                "Venta registrada con éxito (" + metodoPago + ").\n\n¿El cliente solicita su comprobante impreso?"
-                        );
-                        if (imprimir) {
-                            javafx.print.PrinterJob printerJob = javafx.print.PrinterJob.createPrinterJob();
-                            if (printerJob != null) {
+                            mostrarAlerta("¡Venta registrada!", "Cobro exitoso mediante " + metodoPago + ".\nTickets impresos.", Alert.AlertType.INFORMATION);
+                        } else {
+                            boolean imprimir = AlertaPersonalizada.mostrarConfirmacion(
+                                    "Ahorro de Papel",
+                                    "Venta registrada con éxito (" + metodoPago + ").\n\n¿El cliente solicita su comprobante impreso?"
+                            );
+                            if (imprimir) {
                                 printerJob.printPage(controller.getContenedorTicketCliente());
                                 printerJob.endJob();
                             }
                         }
+                    } else {
+                        mostrarAlerta("Error", "No se detectó impresora.", Alert.AlertType.ERROR);
                     }
-                }else{
-                    mostrarAlerta("¡Venta registrada!", "Cobro exitoso mediante "+metodoPago, Alert.AlertType.INFORMATION);
+                } else {
+                    mostrarAlerta("¡Venta registrada!", "Cobro exitoso mediante " + metodoPago, Alert.AlertType.INFORMATION);
                 }
 
             } catch (Exception e) {

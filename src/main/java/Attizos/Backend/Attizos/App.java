@@ -39,6 +39,7 @@ public class App {
         nombre = ConfigurationApp.getNombreRestaurante();
         attizos = new Restaurante(nombre, "FAST_FOOD");
         cargarCacheLogo();
+        crearPlantillaCredencialesQR();
         ApiClient.cargarCredencialesDelServidor();
         ConexionSQLite.inicializarTablasLocales();
 
@@ -395,6 +396,27 @@ public class App {
                     System.err.println("❌ Error guardando el logo en caché: " + e.getMessage());
                 }
             }).start();
+        }
+    }
+    public static void crearPlantillaCredencialesQR() {
+        try {
+            String rutaBase = System.getenv("APPDATA") + File.separator + "Attizos";
+            File archivoCredenciales = new File(rutaBase + File.separator + "credenciales_economico.properties");
+
+            if (!archivoCredenciales.exists()) {
+                java.util.Properties props = new java.util.Properties();
+                props.setProperty("API_URL_BASE", "https://apimktdesa.baneco.com.bo/ApiGateway");
+                props.setProperty("USER_NAME", "AQUI_TU_USUARIO");
+                props.setProperty("PASSWORD_ENCRIPTADO", "AQUI_TU_CLAVE_ENCRIPTADA");
+                props.setProperty("CUENTA_ABONO_ENCRIPTADA", "AQUI_TU_CUENTA_ENCRIPTADA");
+
+                try (java.io.FileOutputStream out = new java.io.FileOutputStream(archivoCredenciales)) {
+                    props.store(out, "--- Plantilla de Credenciales para Banco Economico (Pagos QR Simple) ---");
+                }
+                System.out.println("✅ Plantilla de credenciales QR generada en: " + archivoCredenciales.getAbsolutePath());
+            }
+        } catch (Exception e) {
+            System.err.println("❌ Error al generar la plantilla de credenciales QR: " + e.getMessage());
         }
     }
 }
