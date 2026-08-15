@@ -662,7 +662,7 @@ public class ProductosController {
                     tablaMenu.refresh();
 
                     new Thread(() -> {
-                        boolean actualizado = ApiClient.actualizarImagenProductoEnServidor(seleccionado.getId(), nombreArchivoLocal);
+                        boolean actualizado = ApiClient.actualizarProductoEnServidor(seleccionado);
 
                         Platform.runLater(() -> {
                             if (actualizado) {

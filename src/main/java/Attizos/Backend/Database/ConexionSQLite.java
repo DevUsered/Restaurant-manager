@@ -254,8 +254,7 @@ public class ConexionSQLite {
                 stmtInsertar.setInt(6, (int) p.getStock());
                 stmtInsertar.setInt(7, p.tieneReceta() ? 1 : 0);
 
-                String imagenLocal = asegurarImagenLocal(p.getImagenURL(), p.getId());
-                stmtInsertar.setString(8, imagenLocal);
+                stmtInsertar.setString(8, p.getImagenURL() != null ? p.getImagenURL() : "default.png");
 
                 String atributos = (p.getAtributosDinamicos() != null) ? p.getAtributosDinamicos().toString() : "{}";
                 stmtInsertar.setString(9, atributos);
@@ -319,6 +318,7 @@ public class ConexionSQLite {
                 
                 String imgPromo = asegurarImagenLocal(promo.getImagenURL(), promo.getId());
                 stmtPromo.setString(8, imgPromo);
+                stmtPromo.setString(8, promo.getImagenURL() != null ? promo.getImagenURL() : "default.png");
                 
                 stmtPromo.setString(9, "{}"); // Atributos extra vacíos
                 
