@@ -141,6 +141,13 @@ public class ConexionSQLite {
 
     public static void sincronizarEmpleados() {
         System.out.println("Iniciando sincronización de empleados via API REST.");
+        ArrayList<Empleado> empleadosDelServidor = ApiClient.obtenerEmpleadosDelServidor();
+
+        // 2. VALIDAR SEGURIDAD
+        if (empleadosDelServidor == null) {
+            System.err.println("⚠️ Error de red. Abortando limpieza de empleados locales.");
+            return;
+        }
         String sqlLimpiarSQLite = "DELETE FROM empleados";
         String sqlInsertarSQLite = "INSERT INTO empleados (id_empleado, nombre, cargo, sueldo, username, password_hash, estado, fecha_ultimo_pago, fecha_contrato) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
@@ -148,7 +155,6 @@ public class ConexionSQLite {
              Statement stmtLimpiar = connSQL.createStatement();
              PreparedStatement stmtInsertar = connSQL.prepareStatement(sqlInsertarSQLite)) {
             stmtLimpiar.executeUpdate(sqlLimpiarSQLite);
-            ArrayList<Empleado> empleadosDelServidor = ApiClient.obtenerEmpleadosDelServidor();
 
             int contador = 0;
             for(Empleado emp : empleadosDelServidor){
@@ -174,6 +180,13 @@ public class ConexionSQLite {
 
     public static void sincronizarInsumos() {
         System.out.println("Sincronizando insumos...");
+        ArrayList<Insumo> insumosDelServidor = ApiClient.obtenerInsumoDelServidor();
+
+        // 2. VALIDAR SEGURIDAD
+        if (insumosDelServidor == null) {
+            System.err.println("⚠️ Error de red. Abortando limpieza de insumos locales.");
+            return;
+        }
         String sqlLimpiarSQLite = "DELETE FROM insumos_catalogo";
         String sqlInsertarSQLite = "INSERT INTO insumos_catalogo (codigo, nombre, categoria, unidad_medida, stock_minimo, stock_maximo, stock_actual, fecha_vencimiento, estado) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
@@ -182,7 +195,6 @@ public class ConexionSQLite {
              PreparedStatement stmtInsertar = connSQL.prepareStatement(sqlInsertarSQLite)) {
 
             stmtLimpiar.executeUpdate(sqlLimpiarSQLite);
-            ArrayList<Insumo> insumosDelServidor = ApiClient.obtenerInsumoDelServidor();
             int contador = 0;
 
             for(Insumo ins : insumosDelServidor){
@@ -207,6 +219,11 @@ public class ConexionSQLite {
 
     public static void sincronizarProductos() {
         System.out.println("Sincronizando productos...");
+        ArrayList<Producto> productosDelServidor = ApiClient.obtenerProductosDelServidor();
+        if(productosDelServidor == null){
+            System.out.println("No se puedo obtener productos del servidor. Se aborta la sincronización.");
+            return;
+        }
         String sqlLimpiarSQLite = "DELETE FROM productos";
         String sqlLimpiarRecetas = "DELETE FROM recetas_local";
         
@@ -222,7 +239,6 @@ public class ConexionSQLite {
 
             stmtLimpiar.executeUpdate(sqlLimpiarSQLite);
             stmtLimpiar.executeUpdate(sqlLimpiarRecetas);
-            ArrayList<Producto> productosDelServidor = ApiClient.obtenerProductosDelServidor();
             int contador = 0;
             
             for(Producto p : productosDelServidor) {
@@ -267,6 +283,13 @@ public class ConexionSQLite {
     }
     public static void sincronizarDetallesCombo() {
         System.out.println("Sincronizando promociones y combos...");
+        ArrayList<Promocion> promosDelServidor = ApiClient.obtenerPromocionesDelServidor();
+
+        // 2. VALIDAR SEGURIDAD
+        if (promosDelServidor == null) {
+            System.err.println("⚠️ Error de red. Abortando limpieza de combos locales.");
+            return;
+        }
         String sqlLimpiarDetalle = "DELETE FROM detalle_combo";
         
         String sqlInsertarPromo = "INSERT OR REPLACE INTO productos " +
@@ -281,8 +304,7 @@ public class ConexionSQLite {
              PreparedStatement stmtDetalle = connSQL.prepareStatement(sqlInsertarDetalle)) {
 
             stmtLimpiar.executeUpdate(sqlLimpiarDetalle);
-            ArrayList<Promocion> promosDelServidor = ApiClient.obtenerPromocionesDelServidor();
-            
+
             int contadorPromo = 0;
             int contadorDetalle = 0;
             

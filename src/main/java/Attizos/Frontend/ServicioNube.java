@@ -88,21 +88,15 @@ public class ServicioNube {
             ArrayList<Producto> productos = ApiClient.obtenerProductosDelServidor();
             for(Producto p : productos){
                 String imagenActual = p.getImagenURL();
-                if(imagenActual != null && !imagenActual.startsWith("http")) {
-                    String rutaLocal = descargarImagen(imagenActual, p.getId());
-                    if (!rutaLocal.equals(imagenActual)) {
-                        ConexionSQLite.actualizarImagenProductoLocal(p.getId(), rutaLocal);
-                        p.setImagenURL(rutaLocal);
-                    }
-                    continue;
-                }
                 if(imagenActual != null && !imagenActual.equals(DEFAULT_IMAGE) && !imagenActual.startsWith("http")){
 
                     String nombreArchivo = new File(imagenActual).getName();
                     File archivoLocal = new File(UtilidadesImagen.DIRECTORIO_IMAGENES, nombreArchivo);
                     if(archivoLocal.exists()){
+                        System.out.println("SUbiendo imagen a Cloudinary: "+archivoLocal.getName());
                         String urlNube = subirImagen(archivoLocal);
                         if(urlNube != null && urlNube.startsWith("http")){
+                            p.setImagenURL(urlNube);
                             ApiClient.actualizarProductoEnServidor(p);
                             ConexionSQLite.actualizarImagenProductoLocal(p.getId(), urlNube);
                             System.out.println("Imagen sincronizada para producto ID " + p.getId() + ": " + urlNube);

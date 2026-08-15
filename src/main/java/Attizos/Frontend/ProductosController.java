@@ -651,7 +651,6 @@ public class ProductosController {
         itemModificarImagen.setOnAction(e -> {
             Producto seleccionado = tablaMenu.getSelectionModel().getSelectedItem();
             if (seleccionado != null) {
-                // Abrimos el explorador de archivos igual que en seleccionarImagen()
                 FileChooser fc = new FileChooser();
                 fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("Imágenes", "*.png", "*.jpg", "*.jpeg"));
                 File nuevoArchivo = fc.showOpenDialog(null);
@@ -672,10 +671,10 @@ public class ProductosController {
 
                                 new Thread(() -> {
                                     ConexionSQLite.subirAuditoriaPendiente();
-                                    ConexionSQLite.sincronizarProductos(); // Actualiza SQLite local
                                     if (!App.modoOffline) {
-                                        ServicioNube.sincronizarImagenesPendientes(); // El recolector subirá esta nueva imagen a Cloudinary
+                                        ServicioNube.sincronizarImagenesPendientes();
                                     }
+                                    ConexionSQLite.sincronizarProductos();
                                 }).start();
 
                                 mostrarExito("Imagen Actualizada", "La nueva imagen se guardó correctamente y se sincronizará en la nube.");
