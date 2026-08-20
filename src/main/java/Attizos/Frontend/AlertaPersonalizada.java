@@ -145,4 +145,55 @@ public class AlertaPersonalizada {
 
         return respuesta[0];
     }
+    public static void mostrarAlertaConImagen(String titulo, String mensaje, javafx.scene.Node imagenNode) {
+        Stage dialogStage = new Stage();
+        dialogStage.initStyle(StageStyle.TRANSPARENT);
+        dialogStage.initModality(Modality.APPLICATION_MODAL);
+
+        String colorAcento = "#218c4e"; // Usamos verde para indicar éxito o acción positiva
+        String iconoText = "📱"; // Ícono de dispositivo
+
+        VBox cajaDialogo = new VBox(15);
+        cajaDialogo.setAlignment(Pos.CENTER);
+        cajaDialogo.setStyle("-fx-background-color: #FFFFFF; -fx-background-radius: 20; -fx-border-color: " + colorAcento + "; -fx-border-width: 2; -fx-border-radius: 20; -fx-padding: 30; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 20, 0, 0, 5);");
+        cajaDialogo.setPrefWidth(380);
+
+        Label lblIcono = new Label(iconoText);
+        lblIcono.setStyle("-fx-font-size: 40px; -fx-text-fill: " + colorAcento + ";");
+
+        Label lblTitulo = new Label(titulo);
+        lblTitulo.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #111111;");
+
+        Label lblMensaje = new Label(mensaje);
+        lblMensaje.setStyle("-fx-font-size: 15px; -fx-text-fill: #555555;");
+        lblMensaje.setWrapText(true);
+        lblMensaje.setTextAlignment(TextAlignment.CENTER);
+
+        Button btnOk = new Button("Entendido");
+        btnOk.setStyle("-fx-background-color: " + colorAcento + "; -fx-text-fill: #FFFFFF; -fx-font-weight: bold; -fx-font-size: 14px; -fx-background-radius: 10; -fx-padding: 10 25; -fx-cursor: hand;");
+        btnOk.setOnAction(e -> dialogStage.close());
+
+        // Aquí agregamos la imagen justo entre el mensaje y el botón
+        cajaDialogo.getChildren().addAll(lblIcono, lblTitulo, lblMensaje, imagenNode, btnOk);
+
+        StackPane root = new StackPane(cajaDialogo);
+        root.setStyle("-fx-background-color: transparent; -fx-padding: 20;");
+
+        Scene scene = new Scene(root);
+        scene.setFill(Color.TRANSPARENT);
+        dialogStage.setScene(scene);
+
+        final double[] xOffset = {0};
+        final double[] yOffset = {0};
+        root.setOnMousePressed(event -> {
+            xOffset[0] = event.getSceneX();
+            yOffset[0] = event.getSceneY();
+        });
+        root.setOnMouseDragged(event -> {
+            dialogStage.setX(event.getScreenX() - xOffset[0]);
+            dialogStage.setY(event.getScreenY() - yOffset[0]);
+        });
+
+        dialogStage.showAndWait();
+    }
 }

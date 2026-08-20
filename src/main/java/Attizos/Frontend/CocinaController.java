@@ -19,8 +19,12 @@ import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import javafx.scene.media.AudioClip;
+
+import java.net.InetAddress;
+import java.net.NetworkInterface;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.List;
 
 public class CocinaController {
@@ -231,5 +235,59 @@ public class CocinaController {
     }
     private void mostrarExito(String titulo, String mensaje) {
         AlertaPersonalizada.mostrarAlerta(titulo, mensaje, Alert.AlertType.INFORMATION);
+    }
+    @FXML
+    void mostrarEnlaceWeb(ActionEvent event) {
+        String ipReal = obtenerIpLocal();
+        String enlaceWeb = "http://" + ipReal + ":8080/cocina.html";
+        String mensaje = "Escanee este código QR con la cámara de su celular o tablet,\n"
+                + "o ingrese manualmente al siguiente enlace:\n\n"
+                + enlaceWeb;
+
+        try {
+            javafx.scene.image.ImageView imagenQR = generarQR(enlaceWeb);
+
+            AlertaPersonalizada.mostrarAlertaConImagen("Vincular Pantalla", mensaje, imagenQR);
+
+        } catch (Exception e) {
+            System.out.println("Error al generar QR: " + e.getMessage());
+            AlertaPersonalizada.mostrarAlerta("Vincular Pantalla", mensaje, Alert.AlertType.INFORMATION);
+        }
+    }
+
+    private javafx.scene.image.ImageView generarQR(String texto) throws Exception {
+        com.google.zxing.qrcode.QRCodeWriter qrCodeWriter = new com.google.zxing.qrcode.QRCodeWriter();
+        com.google.zxing.common.BitMatrix bitMatrix = qrCodeWriter.encode(texto, com.google.zxing.BarcodeFormat.QR_CODE, 200, 200);
+
+        javafx.scene.image.WritableImage writableImage = new javafx.scene.image.WritableImage(200, 200);
+        javafx.scene.image.PixelWriter pixelWriter = writableImage.getPixelWriter();
+
+        for (int x = 0; x < 200; x++) {
+            for (int y = 0; y < 200; y++) {
+                pixelWriter.setColor(x, y, bitMatrix.get(x, y) ? javafx.scene.paint.Color.BLACK : javafx.scene.paint.Color.WHITE);
+            }
+        }
+        return new javafx.scene.image.ImageView(writableImage);
+    }
+    public String obtenerIpLocal(){
+        try{
+            Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
+            while(interfaces.hasMoreElements()){
+                NetworkInterface networkInterface = interfaces.nextElement();
+                if(networkInterface.isLoopback() || !networkInterface.isUp()){
+                    continue;
+                }
+                Enumeration<InetAddress> addresses = networkInterface.getInetAddresses();
+                while(addresses.hasMoreElements()){
+                    InetAddress addr = addresses.nextElement();
+                    if(addr.getHostAddress().contains(".")){
+                        return addr.getHostAddress();
+                    }
+                }
+            }
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+        return "localhost";
     }
 }

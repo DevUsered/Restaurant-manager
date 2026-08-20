@@ -21,7 +21,11 @@
                             <font><Font name="System Bold" size="26.0" /></font>
                         </Label>
                         <AnchorPane HBox.hgrow="ALWAYS" />
-                        <Button fx:id="btnCerrar" focusTraversable="false" mnemonicParsing="false" onAction="#cerrarVentana" prefHeight="38.0" prefWidth="154.0" style="-fx-background-color: transparent; -fx-border-color: #ff4c4c; -fx-border-radius: 10; -fx-border-width: 2; -fx-text-fill: #ff4c4c; -fx-font-weight: bold; -fx-font-size: 14px; -fx-cursor: hand;" text="❌ CERRAR SESIÓN" />
+                        <Button focusTraversable="false" mnemonicParsing="false" onAction="#mostrarEnlaceWeb" prefHeight="38.0"
+                                style="-fx-background-color: transparent; -fx-border-color: #2196F3; -fx-border-radius: 10; -fx-border-width: 2; -fx-text-fill: #2196F3; -fx-font-weight: bold; -fx-font-size: 14px; -fx-padding: 0 15 0 15; -fx-cursor: hand;"
+                                text="📱 VINCULAR PANTALLA" />
+                        <Button fx:id="btnCerrar" focusTraversable="false" mnemonicParsing="false" onAction="#cerrarVentana"
+                                prefHeight="38.0" prefWidth="154.0" style="-fx-background-color: transparent; -fx-border-color: #ff4c4c; -fx-border-radius: 10; -fx-border-width: 2; -fx-text-fill: #ff4c4c; -fx-font-weight: bold; -fx-font-size: 14px; -fx-cursor: hand;" text="❌ CERRAR SESIÓN" />
                     </children>
                 </HBox>
 
