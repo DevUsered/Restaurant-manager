@@ -76,23 +76,7 @@ public class CocinaController {
         });
         cargarColaDesdeBackend();
         WebSocketManager.setAccionCocina(() ->{
-            System.out.println("Pedido recibido en la cocina. Actualizando la tabla...");
-            String cargo = App.usuarioLogueado.getCargo();
-            if(cargo.equalsIgnoreCase("Cocinero") || cargo.equalsIgnoreCase("Chef")){
-                Platform.runLater(() -> {
-                    try{
-                        URL rutaAudio = getClass().getResource("/sounds/cocina.mp3");
-                        if(rutaAudio != null){
-                            AudioClip sonido = new AudioClip(rutaAudio.toExternalForm());
-                            sonido.play();
-                        }else{
-                            System.out.println("No se pudo reproducir el sonido de cocina.");
-                        }
-                    }catch (Exception e){
-                        System.out.println("Error al reproducir el sonido de cocina:" + e.getMessage());
-                    }
-                });
-            }
+            System.out.println("Pedido recibido/Despachado. Actualizando tabla...");
             cargarColaDesdeBackend();
         });
 
@@ -103,6 +87,32 @@ public class CocinaController {
             ArrayList<Pedido> pedidosFrescos = ApiClient.obtenerPedidosPendientes();
 
             Platform.runLater(() -> {
+                boolean llegoNuevo = false;
+
+                if (pedidosFrescos != null && !pedidosFrescos.isEmpty()) {
+                    if (listaColaPedidos.isEmpty()) {
+                        llegoNuevo = true;
+                    } else {
+                        // Comparamos para buscar si hay algún ID nuevo
+                        for (Pedido pFresco : pedidosFrescos) {
+                            boolean yaEstaba = false;
+                            for (Pedido pViejo : listaColaPedidos) {
+                                if (pViejo.getIdPedido() == pFresco.getIdPedido()) {
+                                    yaEstaba = true;
+                                    break;
+                                }
+                            }
+                            if (!yaEstaba) {
+                                llegoNuevo = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (llegoNuevo) {
+                    reproducirCampanaJavaFX();
+                }
                 int indiceSeleccionado = tablaPedidos.getSelectionModel().getSelectedIndex();
 
                 listaColaPedidos.clear();
@@ -110,6 +120,7 @@ public class CocinaController {
                     listaColaPedidos.addAll(pedidosFrescos);
                 }
                 tablaPedidos.refresh();
+
                 if (!listaColaPedidos.isEmpty()) {
                     if (indiceSeleccionado >= 0 && indiceSeleccionado < listaColaPedidos.size()) {
                         tablaPedidos.getSelectionModel().select(indiceSeleccionado);
@@ -292,5 +303,21 @@ public class CocinaController {
             e.printStackTrace();
         }
         return "localhost";
+    }
+    private void reproducirCampanaJavaFX() {
+        if (App.usuarioLogueado != null) {
+            String cargo = App.usuarioLogueado.getCargo();
+            if (cargo.equalsIgnoreCase("Cocinero") || cargo.equalsIgnoreCase("Chef")) {
+                try {
+                    URL rutaAudio = getClass().getResource("/sounds/cocina.mp3");
+                    if (rutaAudio != null) {
+                        javafx.scene.media.AudioClip sonido = new javafx.scene.media.AudioClip(rutaAudio.toExternalForm());
+                        sonido.play();
+                    }
+                } catch (Exception e) {
+                    System.out.println("Error de audio: " + e.getMessage());
+                }
+            }
+        }
     }
 }
