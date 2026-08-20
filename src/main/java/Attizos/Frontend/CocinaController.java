@@ -110,12 +110,15 @@ public class CocinaController {
                     listaColaPedidos.addAll(pedidosFrescos);
                 }
                 tablaPedidos.refresh();
-
-                if (indiceSeleccionado >= 0 && indiceSeleccionado < listaColaPedidos.size()) {
-                    tablaPedidos.getSelectionModel().select(indiceSeleccionado);
-                }
-                else if(!listaColaPedidos.isEmpty()){
-                    tablaPedidos.getSelectionModel().select(0);
+                if (!listaColaPedidos.isEmpty()) {
+                    if (indiceSeleccionado >= 0 && indiceSeleccionado < listaColaPedidos.size()) {
+                        tablaPedidos.getSelectionModel().select(indiceSeleccionado);
+                    } else {
+                        tablaPedidos.getSelectionModel().select(0);
+                    }
+                } else {
+                    listaDetallesCocina.getItems().clear();
+                    lblPedidoActual.setText("No hay pedidos pendientes.");
                 }
             });
         }).start();
