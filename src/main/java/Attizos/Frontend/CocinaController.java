@@ -84,6 +84,11 @@ public class CocinaController {
 
     private void cargarColaDesdeBackend() {
         new Thread(() -> {
+            try{
+                Thread.sleep(300);
+            }catch (InterruptedException e){
+                e.printStackTrace();
+            }
             ArrayList<Pedido> pedidosFrescos = ApiClient.obtenerPedidosPendientes();
 
             Platform.runLater(() -> {

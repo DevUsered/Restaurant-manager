@@ -90,8 +90,13 @@ public class WebSocketManager {
                 accionVentasYStock.run();
             }
         }
-        else if (mensajeJson.contains("SYNC_PEDIDOS") && accionCocina != null) {
-            accionCocina.run();
+        else if (mensajeJson.contains("SYNC_PEDIDOS")) {
+            if(accionCocina != null) {
+                accionCocina.run();
+            }
+            if(accionVentasYStock != null){
+                accionVentasYStock.run();
+            }
         }
         else if (mensajeJson.contains("SYNC_RESERVAS") && accionReservas != null) {
             accionReservas.run();
