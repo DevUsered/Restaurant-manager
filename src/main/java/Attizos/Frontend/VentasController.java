@@ -464,6 +464,9 @@ public class VentasController {
         VBox card = new VBox(8);
         card.getStyleClass().add("sale-product-card");
         card.setAlignment(Pos.CENTER);
+        card.setPrefWidth(140);
+        card.setMaxWidth(140);
+        card.setMinHeight(Region.USE_PREF_SIZE);
         ImageView imgView = new ImageView();
         imgView.setFitHeight(80);
         imgView.setFitWidth(80);
@@ -476,6 +479,8 @@ public class VentasController {
         name.getStyleClass().add("product-name");
         name.setWrapText(true);
         name.setTextAlignment(TextAlignment.CENTER);
+        name.setMaxWidth(130);
+        name.setMinHeight(Region.USE_PREF_SIZE);
 
         Label price = new Label("Bs. " + String.format("%.2f", p.getPrecio()));
         price.getStyleClass().add("product-price");
