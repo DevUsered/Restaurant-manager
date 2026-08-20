@@ -18,7 +18,6 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
-import javafx.scene.media.AudioClip;
 
 import java.net.InetAddress;
 import java.net.NetworkInterface;
@@ -31,7 +30,6 @@ public class CocinaController {
 
     @FXML private TableView<Pedido> tablaPedidos;
     @FXML private TableColumn<Pedido, Integer> colIdPedido;
-    
     @FXML private TableColumn<Pedido, String> colDescripcion;
     @FXML private TableColumn<Pedido, String> colEstado;
 
@@ -51,16 +49,19 @@ public class CocinaController {
                 btnConfirmar.setVisible(false);
             }
         }
-        
-        colIdPedido.setCellValueFactory(new PropertyValueFactory<>("numeroTicket")); // Usamos el número diario
-        
+
+        colIdPedido.setCellValueFactory(new PropertyValueFactory<>("numeroTicket"));
         colEstado.setCellValueFactory(new PropertyValueFactory<>("estado"));
+
+        // 🔥 CORRECCIÓN: Enlazamos la descripción para que muestre el nombre del cliente
+        colDescripcion.setCellValueFactory(new PropertyValueFactory<>("cliente"));
 
         tablaPedidos.setItems(listaColaPedidos);
 
         tablaPedidos.getSelectionModel().selectedItemProperty().addListener((obs, viejo, nuevo) -> {
             mostrarDetallesPedido(nuevo);
         });
+
         listaDetallesCocina.setCellFactory(lv -> new ListCell<String>() {
             @Override
             protected void updateItem(String item, boolean empty) {
@@ -74,21 +75,25 @@ public class CocinaController {
                 }
             }
         });
+
         cargarColaDesdeBackend();
+
+        // 🔥 Escuchador del WebSocket en tiempo real
         WebSocketManager.setAccionCocina(() ->{
-            System.out.println("Pedido recibido/Despachado. Actualizando tabla...");
+            System.out.println("🔄 Evento WS recibido en Cocina. Forzando actualización visual...");
             cargarColaDesdeBackend();
         });
-
     }
 
     private void cargarColaDesdeBackend() {
         new Thread(() -> {
-            try{
-                Thread.sleep(300);
-            }catch (InterruptedException e){
+            try {
+                // Pequeña pausa para que la Base de Datos termine de asentar los cambios
+                Thread.sleep(350);
+            } catch (InterruptedException e) {
                 e.printStackTrace();
             }
+
             ArrayList<Pedido> pedidosFrescos = ApiClient.obtenerPedidosPendientes();
 
             Platform.runLater(() -> {
@@ -98,7 +103,6 @@ public class CocinaController {
                     if (listaColaPedidos.isEmpty()) {
                         llegoNuevo = true;
                     } else {
-                        // Comparamos para buscar si hay algún ID nuevo
                         for (Pedido pFresco : pedidosFrescos) {
                             boolean yaEstaba = false;
                             for (Pedido pViejo : listaColaPedidos) {
@@ -118,12 +122,19 @@ public class CocinaController {
                 if (llegoNuevo) {
                     reproducirCampanaJavaFX();
                 }
+
                 int indiceSeleccionado = tablaPedidos.getSelectionModel().getSelectedIndex();
 
+                // 🔥 TRUCO DEFINITIVO PARA OBLIGAR A JAVAFX A REDIBUJAR LA TABLA 🔥
                 listaColaPedidos.clear();
                 if (pedidosFrescos != null) {
                     listaColaPedidos.addAll(pedidosFrescos);
                 }
+
+                // Desconectamos y volvemos a conectar la lista para que la interfaz parpadee y se actualice
+                tablaPedidos.setItems(null);
+                tablaPedidos.layout();
+                tablaPedidos.setItems(listaColaPedidos);
                 tablaPedidos.refresh();
 
                 if (!listaColaPedidos.isEmpty()) {
@@ -159,6 +170,7 @@ public class CocinaController {
             });
         }).start();
     }
+
     @FXML
     void atenderSiguiente(ActionEvent event) {
         if (listaColaPedidos.isEmpty()) return;
@@ -255,6 +267,7 @@ public class CocinaController {
     private void mostrarExito(String titulo, String mensaje) {
         AlertaPersonalizada.mostrarAlerta(titulo, mensaje, Alert.AlertType.INFORMATION);
     }
+
     @FXML
     void mostrarEnlaceWeb(ActionEvent event) {
         String ipReal = obtenerIpLocal();
@@ -265,9 +278,7 @@ public class CocinaController {
 
         try {
             javafx.scene.image.ImageView imagenQR = generarQR(enlaceWeb);
-
             AlertaPersonalizada.mostrarAlertaConImagen("Vincular Pantalla", mensaje, imagenQR);
-
         } catch (Exception e) {
             System.out.println("Error al generar QR: " + e.getMessage());
             AlertaPersonalizada.mostrarAlerta("Vincular Pantalla", mensaje, Alert.AlertType.INFORMATION);
@@ -288,6 +299,7 @@ public class CocinaController {
         }
         return new javafx.scene.image.ImageView(writableImage);
     }
+
     public String obtenerIpLocal(){
         try{
             Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
@@ -309,6 +321,7 @@ public class CocinaController {
         }
         return "localhost";
     }
+
     private void reproducirCampanaJavaFX() {
         if (App.usuarioLogueado != null) {
             String cargo = App.usuarioLogueado.getCargo();
