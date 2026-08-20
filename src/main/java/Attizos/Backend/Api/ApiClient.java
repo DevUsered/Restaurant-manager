@@ -493,8 +493,9 @@ public class ApiClient {
     //Modulo comandas / cocina
     public static ArrayList<Pedido> obtenerPedidosPendientes() {
         try {
+            long tiempoExacto = System.currentTimeMillis();
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(BASE_URL + "/cocina/pendientes"))
+                    .uri(URI.create(BASE_URL + "/cocina/pendientes?t="+tiempoExacto))
                     .GET()
                     .build();
 
