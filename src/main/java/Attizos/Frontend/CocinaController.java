@@ -30,7 +30,6 @@ public class CocinaController {
 
     @FXML private TableView<Pedido> tablaPedidos;
     @FXML private TableColumn<Pedido, Integer> colIdPedido;
-    @FXML private TableColumn<Pedido, String> colDescripcion;
     @FXML private TableColumn<Pedido, String> colEstado;
 
     @FXML private ListView<String> listaDetallesCocina;
@@ -53,8 +52,6 @@ public class CocinaController {
         colIdPedido.setCellValueFactory(new PropertyValueFactory<>("numeroTicket"));
         colEstado.setCellValueFactory(new PropertyValueFactory<>("estado"));
 
-        // 🔥 CORRECCIÓN: Enlazamos la descripción para que muestre el nombre del cliente
-        colDescripcion.setCellValueFactory(new PropertyValueFactory<>("cliente"));
 
         tablaPedidos.setItems(listaColaPedidos);
 
