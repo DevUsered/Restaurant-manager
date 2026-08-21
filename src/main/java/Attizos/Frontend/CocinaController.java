@@ -77,7 +77,7 @@ public class CocinaController {
 
         // 🔥 Escuchador del WebSocket en tiempo real
         WebSocketManager.setAccionCocina(() ->{
-            System.out.println("🔄 Evento WS recibido en Cocina. Forzando actualización visual...");
+            System.out.println("🔄 Evento WS recibido en Cocina. Actualizando tabla visual...");
             cargarColaDesdeBackend();
         });
     }
@@ -85,8 +85,8 @@ public class CocinaController {
     private void cargarColaDesdeBackend() {
         new Thread(() -> {
             try {
-                // Pequeña pausa para que la Base de Datos termine de asentar los cambios
-                Thread.sleep(350);
+                // Pequeña pausa para que la Base de Datos asiente los cambios
+                Thread.sleep(300);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -122,18 +122,14 @@ public class CocinaController {
 
                 int indiceSeleccionado = tablaPedidos.getSelectionModel().getSelectedIndex();
 
-                // 🔥 TRUCO DEFINITIVO PARA OBLIGAR A JAVAFX A REDIBUJAR LA TABLA 🔥
+                // 🔥 LÓGICA LIMPIA (Igual a la de Reservas) 🔥
                 listaColaPedidos.clear();
                 if (pedidosFrescos != null) {
                     listaColaPedidos.addAll(pedidosFrescos);
                 }
+                tablaPedidos.refresh(); // Refrescamos directamente sin desconectar
 
-                // Desconectamos y volvemos a conectar la lista para que la interfaz parpadee y se actualice
-                tablaPedidos.setItems(null);
-                tablaPedidos.layout();
-                tablaPedidos.setItems(listaColaPedidos);
-                tablaPedidos.refresh();
-
+                // Restaurar selección o seleccionar el primero
                 if (!listaColaPedidos.isEmpty()) {
                     if (indiceSeleccionado >= 0 && indiceSeleccionado < listaColaPedidos.size()) {
                         tablaPedidos.getSelectionModel().select(indiceSeleccionado);
