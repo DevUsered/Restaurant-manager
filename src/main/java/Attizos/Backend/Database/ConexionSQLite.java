@@ -325,7 +325,7 @@ public class ConexionSQLite {
                     jsonAtributos = "{\"diasValidos\":\"" + promo.getDiasValidos() + "\"}";
                 }
                 
-                stmtPromo.setString(9, "{}"); // Atributos extra vacíos
+                stmtPromo.setString(9, jsonAtributos);
                 
                 if (promo.getFechaInicio() != null) stmtPromo.setString(10, promo.getFechaInicio().toString());
                 else stmtPromo.setNull(10, java.sql.Types.VARCHAR);

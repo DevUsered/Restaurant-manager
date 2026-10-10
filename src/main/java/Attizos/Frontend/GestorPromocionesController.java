@@ -384,6 +384,18 @@ public class GestorPromocionesController {
         txtPrecio.setText(String.valueOf(sel.getPrecio()));
         dpInicio.setValue(sel.getFechaInicio());
         dpFin.setValue(sel.getFechaFin());
+        for(CheckBox c : checksDias) c.setSelected(false);
+        if(sel.getDiasValidos() != null && !sel.getDiasValidos().equals("Todos")){
+            String[] diasArr = sel.getDiasValidos().split(",");
+            for(String d : diasArr){
+                try{
+                    int index = Integer.parseInt(d) - 1;
+                    if(index >= 0 && index < checksDias.length){
+                        checksDias[index].setSelected(true);
+                    }
+                }catch (NumberFormatException e){}
+            }
+        }
 
         detallesTemporales.clear();
         detallesTemporales.addAll(sel.getProductosCombo());
