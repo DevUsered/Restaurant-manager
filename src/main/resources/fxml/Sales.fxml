@@ -13,45 +13,36 @@
 
 <AnchorPane style="-fx-background-color: transparent;" stylesheets="@../css/style.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="Attizos.Frontend.VentasController">
     <children>
-        <Label layoutX="51.0" text="Venta" textFill="#111111" AnchorPane.leftAnchor="51.0" AnchorPane.topAnchor="0.0">
-            <font>
-                <Font name="System Bold" size="28.0" />
-            </font>
-        </Label>
+        <!-- Encabezado con Título Centrado y Buscador a la Derecha -->
+        <HBox alignment="CENTER" prefHeight="60.0" AnchorPane.leftAnchor="14.0" AnchorPane.rightAnchor="376.0" AnchorPane.topAnchor="10.0">
+            <children>
+                <Region HBox.hgrow="ALWAYS" /> <!-- Espaciador izquierdo -->
+                <Label text="Menú" textFill="#111111">
+                    <font>
+                        <Font name="System Bold" size="32.0" />
+                    </font>
+                </Label>
+                <Region HBox.hgrow="ALWAYS" /> <!-- Espaciador derecho -->
+                <TextField fx:id="tfBuscar" prefHeight="40.0" prefWidth="250.0" promptText="🔍 Buscar en el menú..." style="-fx-background-color: #FFFFFF; -fx-text-fill: #111111; -fx-prompt-text-fill: #999999; -fx-background-radius: 20; -fx-padding: 8 15; -fx-border-color: #DDDDDD; -fx-border-radius: 20; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 5, 0, 0, 2);" />
+            </children>
+        </HBox>
 
-        <TextField fx:id="tfBuscar" layoutX="15.0" layoutY="40.0" prefHeight="35.0" prefWidth="150.0" promptText="🔍 Buscar..." style="-fx-background-color: #F5F5F5; -fx-text-fill: #111111; -fx-prompt-text-fill: #999999; -fx-background-radius: 10; -fx-padding: 8 15; -fx-border-color: #DDDDDD; -fx-border-radius: 10;" AnchorPane.leftAnchor="15.0" AnchorPane.topAnchor="40.0" />
+        <Label layoutX="14.0" layoutY="80.0" styleClass="section-title" text="Categorías" AnchorPane.leftAnchor="14.0" AnchorPane.topAnchor="80.0" />
 
-        <ScrollPane fx:id="sPPromociones" fitToHeight="true" fitToWidth="false" hbarPolicy="AS_NEEDED" layoutY="-49.0" prefHeight="229.0" prefWidth="232.0" style="-fx-background: transparent; -fx-background-color: transparent;" vbarPolicy="NEVER" AnchorPane.leftAnchor="190.0" AnchorPane.rightAnchor="370.0" AnchorPane.topAnchor="-49.0">
-            <content>
-                <VBox fx:id="panelPromociones" prefHeight="170.0" prefWidth="214.0" spacing="8.0" style="-fx-background-color: linear-gradient(to right, #ff9966, #ff5e62); -fx-background-radius: 10; -fx-padding: 10 15; -fx-effect: dropshadow(gaussian, rgba(255, 94, 98, 0.3), 5, 0, 0, 3);">
-                    <children>
-                        <Label text="🔥 Ofertas Especiales" textFill="#FFFFFF">
-                            <font>
-                                <Font name="System Bold" size="16.0" />
-                            </font>
-                        </Label>
-                        <HBox fx:id="hBPromociones" alignment="CENTER_LEFT" spacing="15.0" />
-                    </children>
-                </VBox>
-            </content>
-        </ScrollPane>
-
-        <Label layoutX="14.0" layoutY="132.0" styleClass="section-title" text="Categorías" AnchorPane.leftAnchor="14.0" AnchorPane.topAnchor="132.0" />
-
-        <ScrollPane fx:id="sPCategoria" fitToHeight="true" fitToWidth="true" hbarPolicy="AS_NEEDED" layoutX="14.0" layoutY="191.0" prefHeight="65.0" style="-fx-background: transparent; -fx-background-color: transparent;" vbarPolicy="NEVER" AnchorPane.leftAnchor="14.0" AnchorPane.rightAnchor="376.0" AnchorPane.topAnchor="191.0">
+        <ScrollPane fx:id="sPCategoria" fitToHeight="true" fitToWidth="true" hbarPolicy="AS_NEEDED" layoutX="14.0" layoutY="115.0" prefHeight="65.0" style="-fx-background: transparent; -fx-background-color: transparent;" vbarPolicy="NEVER" AnchorPane.leftAnchor="14.0" AnchorPane.rightAnchor="376.0" AnchorPane.topAnchor="115.0">
             <content>
                 <HBox fx:id="hBCategoria" alignment="CENTER_LEFT" spacing="10.0" style="-fx-background-color: transparent;" />
             </content>
         </ScrollPane>
 
-        <Label layoutX="14.0" layoutY="236.0" styleClass="section-title" text="Menú de Productos" AnchorPane.leftAnchor="14.0" AnchorPane.topAnchor="236.0" />
-
-        <ScrollPane fx:id="sPProductos" fitToWidth="true" hbarPolicy="NEVER" layoutX="14.0" layoutY="273.0" style="-fx-background: transparent; -fx-background-color: transparent;" AnchorPane.bottomAnchor="72.0" AnchorPane.leftAnchor="14.0" AnchorPane.rightAnchor="376.0" AnchorPane.topAnchor="273.0">
+        <ScrollPane fx:id="sPProductos" fitToWidth="true" hbarPolicy="NEVER" layoutX="14.0" layoutY="190.0" style="-fx-background: transparent; -fx-background-color: transparent;" AnchorPane.bottomAnchor="20.0" AnchorPane.leftAnchor="14.0" AnchorPane.rightAnchor="376.0" AnchorPane.topAnchor="190.0">
             <content>
+                <!-- Aquí se mostrarán tanto Promociones como Productos Normales -->
                 <FlowPane fx:id="flPProductos" hgap="15.0" style="-fx-background-color: transparent;" vgap="15.0" />
             </content>
         </ScrollPane>
 
+        <!-- El panel del Carrito se mantiene igual -->
         <AnchorPane fx:id="aPCarrito" prefWidth="330.0" style="-fx-background-color: #FFFFFF; -fx-background-radius: 15; -fx-border-color: rgba(218, 165, 32, 0.4); -fx-border-width: 1.5; -fx-border-radius: 15; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 20, 0, 0, 5);" AnchorPane.bottomAnchor="20.0" AnchorPane.rightAnchor="20.0" AnchorPane.topAnchor="20.0">
             <children>
                 <Label text="Orden Actual" textFill="#111111" AnchorPane.leftAnchor="20.0" AnchorPane.topAnchor="20.0">
@@ -95,7 +86,6 @@
                         <HBox alignment="CENTER" spacing="10.0">
                             <children>
                                 <Button fx:id="btnFinalizar" maxWidth="Infinity" mnemonicParsing="false" onAction="#finalizarVenta" prefHeight="45.0" style="-fx-background-color: linear-gradient(to right, #00ff88, #00cc6a); -fx-text-fill: #111111; -fx-font-weight: bold; -fx-font-size: 15px; -fx-background-radius: 10; -fx-cursor: hand;" text="💵 Efectivo" HBox.hgrow="ALWAYS" />
-
                                 <Button maxWidth="Infinity" mnemonicParsing="false" onAction="#cobrarConQR" prefHeight="45.0" style="-fx-background-color: linear-gradient(to right, #00c6ff, #0072ff); -fx-text-fill: #FFFFFF; -fx-font-weight: bold; -fx-font-size: 15px; -fx-background-radius: 10; -fx-cursor: hand;" text="📱 Pago QR" HBox.hgrow="ALWAYS" />
                             </children>
                         </HBox>

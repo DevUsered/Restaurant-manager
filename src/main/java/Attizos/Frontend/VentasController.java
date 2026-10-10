@@ -116,9 +116,8 @@ public class VentasController {
 
     private void cargarCategorias() {
         hBCategoria.getChildren().clear();
-
-        Button btnAll = crearBotonCategoria("Todos");
-        hBCategoria.getChildren().add(btnAll);
+        hBCategoria.getChildren().add(crearBotonCategoria("Todos"));
+        hBCategoria.getChildren().add(crearBotonCategoria("Promos"));
 
         Set<String> cats = new HashSet<>();
         if (menuRAM != null) {
@@ -134,7 +133,7 @@ public class VentasController {
     }
 
     private Button crearBotonCategoria(String nombreCat) {
-        Button btn = new Button(nombreCat);
+        Button btn = new Button(nombreCat.equals("Promos") ? "🔥 Promos" : nombreCat);
         btn.getStyleClass().add(nombreCat.equals(categoriaActiva) ? "menu-button-active" : "menu-button");
         btn.setOnAction(e -> {
             categoriaActiva = nombreCat;
@@ -147,6 +146,21 @@ public class VentasController {
     private void mostrarProductosPorCategoria(String categoria) {
         flPProductos.getChildren().clear();
         String busqueda = (tfBuscar != null && tfBuscar.getText() != null) ? tfBuscar.getText().toLowerCase() : "";
+
+        if(categoria.equalsIgnoreCase("Promos") || categoria.equalsIgnoreCase("Todos")){
+            ArrayList<Promocion> listaPromos = App.attizos.getPromocionesActivas();
+            if(listaPromos != null){
+                for(Promocion promo : listaPromos){
+                    if(esPromocionValidaHoy(promo)){
+                        boolean coincideBusqueda = promo.getNombre().toLowerCase().contains(busqueda);
+                        if(coincideBusqueda){
+                            crearTarjetaProducto(promo);
+                        }
+                    }
+                }
+            }
+        }
+
         if (menuRAM != null) {
             for(Producto p : App.attizos.getMenu()){
                 if(p.getEstado() != null && p.getEstado().equals("Activo") && !p.isPromocion() && !p.getCategoria().equalsIgnoreCase("Promocion")){
@@ -464,6 +478,9 @@ public class VentasController {
     private void crearTarjetaProducto(Producto p) {
         VBox card = new VBox(8);
         card.getStyleClass().add("sale-product-card");
+        if(p.isPromocion()){
+            card.setStyle("-fx-border-color: #DAA520; -fx-border-width: 2; -fx-border-radius: 10; -fx-effect: dropshadow(gaussian, rgba(218, 165, 32, 0.4), 10, 0, 0, 2);");
+        }
         card.setAlignment(Pos.CENTER);
         card.setPrefWidth(140);
         card.setMaxWidth(140);
@@ -478,6 +495,9 @@ public class VentasController {
         imgView.setImage(imgOptimizada);
         Label name = new Label(p.getNombre());
         name.getStyleClass().add("product-name");
+        if(p.isPromocion()){
+            name.setStyle("-fx-text-fill: #DAA520;");
+        }
         name.setWrapText(true);
         name.setTextAlignment(TextAlignment.CENTER);
         name.setMaxWidth(130);
@@ -490,7 +510,13 @@ public class VentasController {
         Label lblStock = new Label("Stock: " + stock);
         lblStock.setStyle("-fx-text-fill: " + (stock > 0 ? "#218c4e;" : "#ff4c4c;"));
 
-        card.getChildren().addAll(imgView, name, price, lblStock);
+        if(p.isPromocion()){
+            Label lblTag = new Label("✨ PROMO");
+            lblTag.setStyle("-fx-background-color: #DAA520; -fx-text-fill: white; -fx-padding: 2 6; -fx-background-radius: 5; -fx-font-size: 10px; -fx-font-weight: bold;");
+            card.getChildren().addAll(lblTag, imgView, name, price, lblStock);
+        }else{
+            card.getChildren().addAll(imgView, name, price, lblStock);
+        }
 
         card.setOnMouseClicked(e -> agregarAlCarrito(p));
         flPProductos.getChildren().add(card);
