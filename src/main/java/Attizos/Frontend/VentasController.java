@@ -41,13 +41,6 @@ public class VentasController {
     @FXML
     private Label lblTotal;
 
-    @FXML
-    private HBox hBPromociones;
-    @FXML
-    private ScrollPane sPPromociones;
-    @FXML
-    private VBox panelPromociones;
-
     private Factura facturaActual;
     private String categoriaActiva = "Todos";
 
@@ -90,7 +83,6 @@ public class VentasController {
                     }
                     cargarCategorias();
                     mostrarProductosPorCategoria(categoriaActiva);
-                    cargarPromocionesActivas();
                     actualizarVistaCarrito();
                     System.out.println("Ventas actualizada. ");
                 });
@@ -110,7 +102,6 @@ public class VentasController {
         menuRAM = App.attizos.getMenu();
         cargarCategorias();
         mostrarProductosPorCategoria("Todos");
-        cargarPromocionesActivas();
         actualizarVistaCarrito();
     }
 
@@ -195,7 +186,6 @@ public class VentasController {
         }
         actualizarVistaCarrito();
         mostrarProductosPorCategoria(categoriaActiva);
-        cargarPromocionesActivas();
     }
     private String obtenerMotivoSinStock(Producto p) {
         Map<Integer, Integer> prodDirectosAtrapados = new HashMap<>();
@@ -640,73 +630,6 @@ public class VentasController {
         }
     }
 
-    private void cargarPromocionesActivas(){
-        ArrayList<Promocion> listaPromos = App.attizos.getPromocionesActivas();
-        List<Promocion> promosValidas = new ArrayList<>();
-        if(listaPromos != null){
-            for(Promocion promo : listaPromos){
-                if(esPromocionValidaHoy(promo)){
-                    promosValidas.add(promo);
-                }
-            }
-        }
-        if(promosValidas.isEmpty()){
-            if(sPPromociones != null){
-                sPPromociones.setVisible(false);
-                sPPromociones.setManaged(false);
-            }
-            return;
-        }
-        if(sPPromociones != null){
-            sPPromociones.setVisible(true);
-            sPPromociones.setManaged(true);
-        }
-        hBPromociones.getChildren().clear();
-
-        for(Promocion promo : promosValidas) {
-            VBox tarjetaPromo = new VBox(8);
-            tarjetaPromo.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
-            tarjetaPromo.setMinWidth(150);
-            tarjetaPromo.setStyle("-fx-background-color: rgba(255,255,255,0.25); -fx-background-radius: 10; -fx-padding: 8 12; -fx-cursor: hand;");
-
-            ImageView imgView = new ImageView();
-            String datoImagen = promo.getImagenURL();
-            Image imgOptimizada = UtilidadesImagen.obtenerImagenOptimizada(datoImagen);
-            imgView.setImage(imgOptimizada);
-            imgView.setFitHeight(110);
-            imgView.setFitWidth(110);
-            imgView.setPreserveRatio(false);
-
-            javafx.scene.shape.Rectangle clip = new javafx.scene.shape.Rectangle(110, 110);
-            clip.setArcWidth(15);
-            clip.setArcHeight(15);
-            imgView.setClip(clip);
-
-            VBox textosPromo = new VBox(4);
-            textosPromo.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
-
-            Label lblNombre = new Label(promo.getNombre());
-            lblNombre.setStyle("-fx-text-fill: #FFFFFF; -fx-font-weight: bold; -fx-font-size: 16px;");
-
-            Label lblPrecio = new Label("Bs. " + String.format("%.2f", promo.getPrecio()));
-            lblPrecio.setStyle("-fx-text-fill: #FFEB3B; -fx-font-weight: bold; -fx-font-size: 15px;");
-            int stock = calcularDisponibilidadEnVivo(promo);
-            Label lblStock = new Label("Stock: " + stock);
-            lblStock.setStyle("-fx-text-fill: " + (stock > 0 ? "#FFFFFF;" : "#ff4c4c;"));
-
-            textosPromo.getChildren().addAll(lblNombre, lblPrecio);
-
-            tarjetaPromo.getChildren().addAll(imgView, textosPromo);
-
-            tarjetaPromo.setOnMouseClicked(e -> agregarAlCarrito(promo));
-
-            tarjetaPromo.setOnMouseEntered(e -> tarjetaPromo.setStyle("-fx-background-color: rgba(255,255,255,0.4); -fx-background-radius: 8; -fx-padding: 8 12; -fx-cursor: hand;"));
-            tarjetaPromo.setOnMouseExited(e -> tarjetaPromo.setStyle("-fx-background-color: rgba(255,255,255,0.25); -fx-background-radius: 8; -fx-padding: 8 12; -fx-cursor: hand;"));
-
-            hBPromociones.getChildren().add(tarjetaPromo);
-        }
-    }
-
     private void descontarStockProductoFisico(Producto p, int cant){
         if(p.tieneReceta() && p.getReceta() != null) {
             for (Map.Entry<String, Double> entry : p.getReceta().getIngredientes().entrySet()) {
@@ -722,7 +645,7 @@ public class VentasController {
         if (promo.getFechaInicio() != null && hoy.isBefore(promo.getFechaInicio())) return false;
         if (promo.getFechaFin() != null && hoy.isAfter(promo.getFechaFin())) return false;
 
-        if(promo.getProductosCombo() == null || promo.getDiasValidos().equals("Todos") || promo.getDiasValidos().trim().isEmpty()){
+        if(promo.getDiasValidos() == null || promo.getDiasValidos().equals("Todos") || promo.getDiasValidos().trim().isEmpty()){
             return true;
         }
         int diaActual = hoy.getDayOfWeek().getValue();
