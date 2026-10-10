@@ -469,7 +469,7 @@ public class VentasController {
         VBox card = new VBox(8);
         card.getStyleClass().add("sale-product-card");
         if(p.isPromocion()){
-            card.setStyle("-fx-border-color: #DAA520; -fx-border-width: 2; -fx-border-radius: 10; -fx-effect: dropshadow(gaussian, rgba(218, 165, 32, 0.4), 10, 0, 0, 2);");
+            card.setStyle("-fx-border-color: #FF4B2B; -fx-border-width: 2; -fx-border-radius: 10; -fx-effect: dropshadow(gaussian, rgba(255, 75, 43, 0.4), 10, 0, 0, 2);");
         }
         card.setAlignment(Pos.CENTER);
         card.setPrefWidth(140);
@@ -486,7 +486,7 @@ public class VentasController {
         Label name = new Label(p.getNombre());
         name.getStyleClass().add("product-name");
         if(p.isPromocion()){
-            name.setStyle("-fx-text-fill: #DAA520;");
+            name.setStyle("-fx-text-fill: #FF4B2B; -fx-font-weight: bold;");
         }
         name.setWrapText(true);
         name.setTextAlignment(TextAlignment.CENTER);
@@ -502,7 +502,7 @@ public class VentasController {
 
         if(p.isPromocion()){
             Label lblTag = new Label("✨ PROMO");
-            lblTag.setStyle("-fx-background-color: #DAA520; -fx-text-fill: white; -fx-padding: 2 6; -fx-background-radius: 5; -fx-font-size: 10px; -fx-font-weight: bold;");
+            lblTag.setStyle("-fx-background-color: linear-gradient(to right, #ff416c, #ff4b2b); -fx-text-fill: white; -fx-padding: 2 6; -fx-background-radius: 5; -fx-font-size: 11px; -fx-font-weight: bold;");
             card.getChildren().addAll(lblTag, imgView, name, price, lblStock);
         }else{
             card.getChildren().addAll(imgView, name, price, lblStock);
