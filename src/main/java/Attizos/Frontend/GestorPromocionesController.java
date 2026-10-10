@@ -28,6 +28,8 @@ import java.io.File;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 public class GestorPromocionesController {
 
@@ -39,7 +41,7 @@ public class GestorPromocionesController {
     @FXML
     private TableColumn<Promocion, Integer> colId;
     @FXML
-    private TableColumn<Promocion, String> colNombrePromo, colInicio, colFin, colEstado;
+    private TableColumn<Promocion, String> colNombrePromo, colInicio, colFin, colEstado, colDias;
     @FXML
     private TableColumn<Promocion, Double> colPrecio;
 
@@ -64,7 +66,6 @@ public class GestorPromocionesController {
     private TableColumn<DetalleCombo, Integer> colCCantidad;
     @FXML private CheckBox chkLunes, chkMartes, chkMiercoles, chkJueves, chkViernes, chkSabado, chkDomingo;
     private CheckBox[] checksDias;
-
 
     private ObservableList<Promocion> listaPromosVisibles = FXCollections.observableArrayList();
     private ObservableList<DetalleCombo> detallesTemporales = FXCollections.observableArrayList();
@@ -183,6 +184,7 @@ public class GestorPromocionesController {
         colEstado.setCellValueFactory(new PropertyValueFactory<>("estado"));
         colInicio.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getFechaInicio() != null ? c.getValue().getFechaInicio().toString() : "Siempre"));
         colFin.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getFechaFin() != null ? c.getValue().getFechaFin().toString() : "Indefinido"));
+        colDias.setCellValueFactory(c -> new SimpleStringProperty(convertirNumerosADias(c.getValue().getDiasValidos())));
         tablaPromos.setItems(listaPromosVisibles);
 
         colCProducto.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getProducto().getNombre()));
@@ -466,6 +468,21 @@ public class GestorPromocionesController {
     void cerrarVentana(ActionEvent event) {
         Stage stage = (Stage) rootPane.getScene().getWindow();
         stage.close();
+    }
+    private String convertirNumerosADias(String diasValidos){
+        if(diasValidos.equals("Todos") || diasValidos.trim().isEmpty()){
+            return "Todos";
+        }
+        String[] mapeo = {"", "Lu", "Ma", "Mi", "Ju", "Vi", "Sá", "Do"};
+        String[] nums = diasValidos.split(",");
+        List<String> nombres = new ArrayList<>();
+        for(String n : nums){
+            try{
+                int idx = Integer.parseInt(n.trim());
+                if(idx >= 1 && idx <= 7) nombres.add(mapeo[idx]);
+            }catch(Exception e){}
+        }
+        return String.join(",", nombres);
     }
 
 }

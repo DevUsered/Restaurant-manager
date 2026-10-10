@@ -284,7 +284,7 @@ public class ConexionSQLite {
         System.out.println("Sincronizando promociones y combos...");
         ArrayList<Promocion> promosDelServidor = ApiClient.obtenerPromocionesDelServidor();
 
-        // 2. VALIDAR SEGURIDAD
+
         if (promosDelServidor == null) {
             System.err.println("⚠️ Error de red. Abortando limpieza de combos locales.");
             return;
@@ -319,6 +319,11 @@ public class ConexionSQLite {
                 String imgPromo = asegurarImagenLocal(promo.getImagenURL(), promo.getId());
                 stmtPromo.setString(8, imgPromo);
                 stmtPromo.setString(8, promo.getImagenURL() != null ? promo.getImagenURL() : "default.png");
+
+                String jsonAtributos = "{}";
+                if(promo.getDiasValidos() != null && !promo.getDiasValidos().equals("Todos") && !promo.getDiasValidos().isEmpty()){
+                    jsonAtributos = "{\"diasValidos\":\"" + promo.getDiasValidos() + "\"}";
+                }
                 
                 stmtPromo.setString(9, "{}"); // Atributos extra vacíos
                 
@@ -614,8 +619,7 @@ public class ConexionSQLite {
     }
     public static ArrayList<Promocion> obtenerPromocionesLocal(ArrayList<Producto> menu) {
         ArrayList<Promocion> listaPromo = new ArrayList<>();
-        String sqlPromo = "SELECT id_producto, nombre, precio, imagen_base64, fecha_inicio, fecha_fin FROM productos WHERE categoria = 'Promocion' AND estado = 'Activo'";
-        // Usamos id_producto tal como lo definiste al crear tu tabla detalle_combo en SQLite
+        String sqlPromo = "SELECT id_producto, nombre, precio, imagen_base64, fecha_inicio, fecha_fin, atributos_extra FROM productos WHERE categoria = 'Promocion' AND estado = 'Activo'";
         String sqlDetalle = "SELECT id_producto, cantidad FROM detalle_combo WHERE id_promocion = ?";
 
         try (Connection conn = getConexion();
@@ -636,6 +640,18 @@ public class ConexionSQLite {
                 LocalDate fFin = (fFinStr != null && !fFinStr.trim().isEmpty() && !fFinStr.equals("null")) ? LocalDate.parse(fFinStr) : null;
 
                 Promocion promo = new Promocion(id, nombre, precio, img, fInicio, fFin);
+
+                String atributosExtra = rsPromo.getString("atributos_extra");
+                promo.setDiasValidos("Todos");
+                if(atributosExtra != null && atributosExtra.contains("diasValidos")){
+                    try{
+                        String[] partes = atributosExtra.split("\"diasValidos\"\\s*:\\s*\"");
+                        if(partes.length > 1){
+                            String dias = partes[1].split("\"")[0];
+                            promo.setDiasValidos(dias);
+                        }
+                    }catch (Exception e){}
+                }
 
                 // Buscar qué lleva por dentro este combo
                 try (PreparedStatement psDetalle = conn.prepareStatement(sqlDetalle)) {

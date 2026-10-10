@@ -45,6 +45,7 @@
                                         <TableColumn fx:id="colPrecio" prefWidth="80.0" text="PRECIO Bs" />
                                         <TableColumn fx:id="colInicio" prefWidth="90.0" text="INICIO" />
                                         <TableColumn fx:id="colFin" prefWidth="90.0" text="FIN" />
+                                        <TableColumn fx:id="colDias" prefWidth="90.0" text="DIAS" />
                                         <TableColumn fx:id="colEstado" prefWidth="80.0" text="ESTADO" />
                                     </columns>
                                 </TableView>
@@ -88,13 +89,13 @@
                                         <Label text="Días válidos de la semana (vacío = todos):" textFill="#555555"/>
                                         <HBox spacing="8.0" fx:id="hboxDiasSemana" alignment="CENTER_LEFT">
                                             <children>
-                                                <CheckBox fx:id="chkLunes" text="Lu" style="-fx-text-fill: #111111;" />
-                                                <CheckBox fx:id="chkMartes" text="Ma" style="-fx-text-fill: #111111;" />
-                                                <CheckBox fx:id="chkMiercoles" text="Mi" style="-fx-text-fill: #111111;" />
-                                                <CheckBox fx:id="chkJueves" text="Ju" style="-fx-text-fill: #111111;" />
-                                                <CheckBox fx:id="chkViernes" text="Vi" style="-fx-text-fill: #111111;" />
-                                                <CheckBox fx:id="chkSabado" text="Sá" style="-fx-text-fill: #111111;" />
-                                                <CheckBox fx:id="chkDomingo" text="Do" style="-fx-text-fill: #111111;" />
+                                                <CheckBox fx:id="chkLunes" text="L" style="-fx-text-fill: #111111;" />
+                                                <CheckBox fx:id="chkMartes" text="M" style="-fx-text-fill: #111111;" />
+                                                <CheckBox fx:id="chkMiercoles" text="M" style="-fx-text-fill: #111111;" />
+                                                <CheckBox fx:id="chkJueves" text="J" style="-fx-text-fill: #111111;" />
+                                                <CheckBox fx:id="chkViernes" text="V" style="-fx-text-fill: #111111;" />
+                                                <CheckBox fx:id="chkSabado" text="S" style="-fx-text-fill: #111111;" />
+                                                <CheckBox fx:id="chkDomingo" text="D" style="-fx-text-fill: #111111;" />
                                             </children>
                                         </HBox>
                                     </children>
