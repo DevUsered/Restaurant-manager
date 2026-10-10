@@ -290,6 +290,8 @@ public class ConexionSQLite {
             return;
         }
         String sqlLimpiarDetalle = "DELETE FROM detalle_combo";
+        String sqlLimpiarPromos = "DELETE FROM productos WHERE categoria = 'Promocion'";
+
         
         String sqlInsertarPromo = "INSERT OR REPLACE INTO productos " +
                 "(id_producto, nombre, precio, categoria, tipo_clase, stock_directo, tiene_receta, imagen_base64, atributos_extra, fecha_inicio, fecha_fin, estado) " +
@@ -303,6 +305,7 @@ public class ConexionSQLite {
              PreparedStatement stmtDetalle = connSQL.prepareStatement(sqlInsertarDetalle)) {
 
             stmtLimpiar.executeUpdate(sqlLimpiarDetalle);
+            stmtLimpiar.executeUpdate(sqlLimpiarPromos);
 
             int contadorPromo = 0;
             int contadorDetalle = 0;
@@ -324,7 +327,7 @@ public class ConexionSQLite {
                 if(promo.getDiasValidos() != null && !promo.getDiasValidos().equals("Todos") && !promo.getDiasValidos().isEmpty()){
                     jsonAtributos = "{\"diasValidos\":\"" + promo.getDiasValidos() + "\"}";
                 }
-                
+
                 stmtPromo.setString(9, jsonAtributos);
                 
                 if (promo.getFechaInicio() != null) stmtPromo.setString(10, promo.getFechaInicio().toString());
