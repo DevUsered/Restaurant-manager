@@ -24,6 +24,7 @@ import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 
 import java.awt.print.PrinterJob;
+import java.time.LocalDate;
 import java.util.*;
 
 public class VentasController {
@@ -615,22 +616,28 @@ public class VentasController {
 
     private void cargarPromocionesActivas(){
         ArrayList<Promocion> listaPromos = App.attizos.getPromocionesActivas();
-
-        if(listaPromos == null || listaPromos.isEmpty()){
+        List<Promocion> promosValidas = new ArrayList<>();
+        if(listaPromos != null){
+            for(Promocion promo : listaPromos){
+                if(esPromocionValidaHoy(promo)){
+                    promosValidas.add(promo);
+                }
+            }
+        }
+        if(promosValidas.isEmpty()){
             if(sPPromociones != null){
                 sPPromociones.setVisible(false);
                 sPPromociones.setManaged(false);
             }
             return;
         }
-
         if(sPPromociones != null){
             sPPromociones.setVisible(true);
             sPPromociones.setManaged(true);
         }
-
         hBPromociones.getChildren().clear();
-        for(Promocion promo : listaPromos) {
+
+        for(Promocion promo : promosValidas) {
             VBox tarjetaPromo = new VBox(8);
             tarjetaPromo.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
             tarjetaPromo.setMinWidth(150);
@@ -683,5 +690,22 @@ public class VentasController {
         }else{
             p.reducirStock(cant);
         }
+    }
+    private boolean esPromocionValidaHoy(Promocion promo){
+        LocalDate hoy = LocalDate.now();
+        if (promo.getFechaInicio() != null && hoy.isBefore(promo.getFechaInicio())) return false;
+        if (promo.getFechaFin() != null && hoy.isAfter(promo.getFechaFin())) return false;
+
+        if(promo.getProductosCombo() == null || promo.getDiasValidos().equals("Todos") || promo.getDiasValidos().trim().isEmpty()){
+            return true;
+        }
+        int diaActual = hoy.getDayOfWeek().getValue();
+        String[] diasPermitidos = promo.getDiasValidos().split(",");
+        for(String d : diasPermitidos){
+            if(d.trim().equals(String.valueOf(diaActual))){
+                return true;
+            }
+        }
+        return false;
     }
 }
