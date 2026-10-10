@@ -392,6 +392,7 @@ public class App {
                         out.write(buffer, 0, bytesRead);
                     }
                     System.out.println("✅ Logo de Cloudinary guardado exitosamente en caché local.");
+                    logoImageCache = new Image(archivoCache.toURI().toString());
                 } catch (Exception e) {
                     System.err.println("❌ Error guardando el logo en caché: " + e.getMessage());
                 }
