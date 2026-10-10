@@ -66,6 +66,9 @@ public class GestorPromocionesController {
     private TableColumn<DetalleCombo, Integer> colCCantidad;
     @FXML private CheckBox chkLunes, chkMartes, chkMiercoles, chkJueves, chkViernes, chkSabado, chkDomingo;
     private CheckBox[] checksDias;
+    private boolean isMaximized = false;
+    private double widthNormal, heightNormal, xNormal, yNormal;
+
 
     private ObservableList<Promocion> listaPromosVisibles = FXCollections.observableArrayList();
     private ObservableList<DetalleCombo> detallesTemporales = FXCollections.observableArrayList();
@@ -495,6 +498,32 @@ public class GestorPromocionesController {
             }catch(Exception e){}
         }
         return String.join(",", nombres);
+    }
+    @FXML
+    void maximizarVentana(ActionEvent event) {
+        Stage stage = (Stage) rootPane.getScene().getWindow();
+        Button btn = (Button) event.getSource();
+        if(isMaximized){
+            stage.setWidth(widthNormal);
+            stage.setHeight(heightNormal);
+            stage.setX(xNormal);
+            stage.setY(yNormal);
+            isMaximized = false;
+            btn.setText("🗖");
+        }else{
+            widthNormal = stage.getWidth();
+            heightNormal = stage.getHeight();
+            xNormal = stage.getX();
+            yNormal = stage.getY();
+            javafx.geometry.Rectangle2D bounds = javafx.stage.Screen.getPrimary().getVisualBounds();
+            stage.setX(bounds.getMinX());
+            stage.setY(bounds.getMinY());
+            stage.setWidth(bounds.getWidth());
+            stage.setHeight(bounds.getHeight());
+            isMaximized = true;
+
+            btn.setText("🗗");
+        }
     }
 
 }
