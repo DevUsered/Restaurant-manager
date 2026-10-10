@@ -15,6 +15,7 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
+<?import javafx.scene.control.CheckBox?>
 <AnchorPane fx:id="rootPane" prefHeight="650.0" prefWidth="1050.0" style="-fx-background-color: transparent;" stylesheets="@../css/style.css" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="Attizos.Frontend.GestorPromocionesController">
     <children>
         <AnchorPane style="-fx-background-color: #FFFFFF; -fx-background-radius: 15; -fx-border-color: #DAA520; -fx-border-width: 2; -fx-border-radius: 15; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 20, 0, 0, 5);" AnchorPane.bottomAnchor="10.0" AnchorPane.leftAnchor="10.0" AnchorPane.rightAnchor="10.0" AnchorPane.topAnchor="10.0">
@@ -82,6 +83,22 @@
                                         </VBox>
                                     </children>
                                 </HBox>
+                                <VBox spacing="5.0">
+                                    <children>
+                                        <Label text="Días válidos de la semana (vacío = todos):" textFill="#555555"/>
+                                        <HBox spacing="8.0" fx:id="hboxDiasSemana" alignment="CENTER_LEFT">
+                                            <children>
+                                                <CheckBox fx:id="chkLunes" text="Lu" style="-fx-text-fill: #111111;" />
+                                                <CheckBox fx:id="chkMartes" text="Ma" style="-fx-text-fill: #111111;" />
+                                                <CheckBox fx:id="chkMiercoles" text="Mi" style="-fx-text-fill: #111111;" />
+                                                <CheckBox fx:id="chkJueves" text="Ju" style="-fx-text-fill: #111111;" />
+                                                <CheckBox fx:id="chkViernes" text="Vi" style="-fx-text-fill: #111111;" />
+                                                <CheckBox fx:id="chkSabado" text="Sá" style="-fx-text-fill: #111111;" />
+                                                <CheckBox fx:id="chkDomingo" text="Do" style="-fx-text-fill: #111111;" />
+                                            </children>
+                                        </HBox>
+                                    </children>
+                                </VBox>
 
                                 <HBox alignment="CENTER_LEFT" spacing="15.0">
                                     <children>

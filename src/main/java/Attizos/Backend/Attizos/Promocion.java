@@ -8,6 +8,7 @@ public class Promocion extends Producto{
     private List<DetalleCombo> productosCombo;
     private LocalDate fechaInicio;
     private LocalDate fechaFin;
+    private String diasValidos = "Todos";
 
     public Promocion(){}
 
@@ -43,5 +44,11 @@ public class Promocion extends Producto{
 
     public void setFechaFin(LocalDate fechaFin) {
         this.fechaFin = fechaFin;
+    }
+    public String getDiasValidos() {
+        return diasValidos;
+    }
+    public void setDiasValidos(String diasValidos) {
+        this.diasValidos = diasValidos;
     }
 }

@@ -62,6 +62,9 @@ public class GestorPromocionesController {
     private TableColumn<DetalleCombo, String> colCProducto;
     @FXML
     private TableColumn<DetalleCombo, Integer> colCCantidad;
+    @FXML private CheckBox chkLunes, chkMartes, chkMiercoles, chkJueves, chkViernes, chkSabado, chkDomingo;
+    private CheckBox[] checksDias;
+
 
     private ObservableList<Promocion> listaPromosVisibles = FXCollections.observableArrayList();
     private ObservableList<DetalleCombo> detallesTemporales = FXCollections.observableArrayList();
@@ -75,6 +78,7 @@ public class GestorPromocionesController {
 
     @FXML
     public void initialize() {
+        checksDias = new CheckBox[]{chkLunes, chkMartes, chkMiercoles, chkJueves, chkViernes, chkSabado, chkDomingo};
         configurarArrastreVentana();
         estilizarControles();
         configurarTablas();
@@ -318,6 +322,14 @@ public class GestorPromocionesController {
             for (DetalleCombo dc : detallesTemporales) {
                 promoAGuardar.agregarProducto(dc.getProducto(), dc.getCantidad());
             }
+            StringBuilder diasSeleccionados = new StringBuilder();
+            for(int i = 0; i < checksDias.length; i++) {
+                if(checksDias[i].isSelected()){
+                    diasSeleccionados.append(i + 1).append(",");
+                }
+            }
+            String dias = diasSeleccionados.length() > 0 ? diasSeleccionados.substring(0, diasSeleccionados.length() - 1) : "Todos";
+            promoAGuardar.setDiasValidos(dias);
 
             String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
 
@@ -335,6 +347,7 @@ public class GestorPromocionesController {
                     promoEnEdicion.setFechaInicio(inicio);
                     promoEnEdicion.setFechaFin(fin);
                     promoEnEdicion.setImagenURL(nombreImg);
+                    promoEnEdicion.setDiasValidos(dias);
                     promoEnEdicion.getProductosCombo().clear();
                     promoEnEdicion.getProductosCombo().addAll(detallesTemporales);
 
@@ -442,6 +455,11 @@ public class GestorPromocionesController {
         imgPreview.setImage(null);
         archivoImagenSeleccionada = null;
         detallesTemporales.clear();
+        if(checksDias != null){
+            for(CheckBox c : checksDias){
+                c.setSelected(false);
+            }
+        }
     }
 
     @FXML
