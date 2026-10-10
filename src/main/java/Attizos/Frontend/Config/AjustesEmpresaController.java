@@ -196,7 +196,7 @@ public class AjustesEmpresaController implements Initializable {
             App.getAttizos().setNombre(nuevoNombre);
         }
         ApiClient.configurarIpServidor(nuevaIp);
-        App.cargarCacheLogo();
+        App.cargarCacheLogo(true);
 
         AlertaPersonalizada.mostrarAlerta(
                 "Ajustes Guardados",

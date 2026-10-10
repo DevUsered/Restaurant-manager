@@ -353,12 +353,15 @@ public class App {
     public static void setLogoImageCache(Image newImage) {
         logoImageCache = newImage;
     }
-
     public static void cargarCacheLogo(){
+        cargarCacheLogo(false);
+    }
+
+    public static void cargarCacheLogo(boolean forzarActualizacion){
         String rutaOLink = ConfigurationApp.getRutaLogo();
         if (rutaOLink == null || rutaOLink.isEmpty() || rutaOLink.equals("default_logo.png")) {
             try {
-                logoImageCache = new Image(App.class.getResourceAsStream("/images/Logo_attizos.png"));
+                logoImageCache = new Image(App.class.getResourceAsStream("/images/logo_personal.png"));
             } catch (Exception e) {
                 System.out.println("⚠️ No se encontró logo por defecto en recursos.");
             }
@@ -367,7 +370,7 @@ public class App {
         if (!rutaOLink.startsWith("http")) {
             File archivoLocal = new File(rutaOLink);
             if (archivoLocal.exists()) {
-                logoImageCache = new Image(archivoLocal.toURI().toString());
+                logoImageCache = new Image(archivoLocal.toURI().toString(), forzarActualizacion);
             }
             return;
         }
@@ -380,7 +383,7 @@ public class App {
 
         if (archivoCache.exists()) {
             System.out.println("⚡ Cargando logo desde la caché local del disco...");
-            logoImageCache = new Image(archivoCache.toURI().toString());
+            logoImageCache = new Image(archivoCache.toURI().toString(), forzarActualizacion);
         }else{
             System.out.println("☁️ Descargando nuevo logo desde Cloudinary a la caché local...");
             new Thread(() ->{
@@ -392,7 +395,7 @@ public class App {
                         out.write(buffer, 0, bytesRead);
                     }
                     System.out.println("✅ Logo de Cloudinary guardado exitosamente en caché local.");
-                    logoImageCache = new Image(archivoCache.toURI().toString());
+                    logoImageCache = new Image(archivoCache.toURI().toString(), true);
                 } catch (Exception e) {
                     System.err.println("❌ Error guardando el logo en caché: " + e.getMessage());
                 }
