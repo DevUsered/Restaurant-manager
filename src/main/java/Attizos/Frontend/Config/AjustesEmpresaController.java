@@ -197,6 +197,9 @@ public class AjustesEmpresaController implements Initializable {
         }
         ApiClient.configurarIpServidor(nuevaIp);
         App.cargarCacheLogo();
+        if(App.getLogoImageCache() != null){
+            imgLogoActual.setImage(App.getLogoImageCache());
+        }
 
         AlertaPersonalizada.mostrarAlerta(
                 "Ajustes Guardados",

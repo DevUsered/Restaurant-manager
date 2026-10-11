@@ -355,10 +355,14 @@ public class App {
     }
 
     public static void cargarCacheLogo() {
+        // Limpiamos la caché en memoria antes de leer
+        logoImageCache = null;
+        System.gc(); // Sugerimos al recolector de basura que limpie imágenes viejas
+
         String rutaOLink = ConfigurationApp.getRutaLogo();
         if (rutaOLink == null || rutaOLink.isEmpty() || rutaOLink.equals("default_logo.png")) {
             try {
-                logoImageCache = new Image(App.class.getResourceAsStream("/images/logo_personal.png"));
+                logoImageCache = new Image(App.class.getResourceAsStream("/images/Logo_attizos.png"));
             } catch (Exception e) {
                 System.out.println("⚠️ No se encontró logo por defecto en recursos.");
             }
@@ -368,7 +372,6 @@ public class App {
         if (!rutaOLink.startsWith("http")) {
             File archivoLocal = new File(rutaOLink);
             if (archivoLocal.exists()) {
-                // SOLUCIÓN: Usar FileInputStream para burlar la caché de JavaFX
                 try (java.io.InputStream is = new java.io.FileInputStream(archivoLocal)) {
                     logoImageCache = new Image(is);
                 } catch (Exception e) {
@@ -407,7 +410,6 @@ public class App {
                     try (java.io.InputStream is = new java.io.FileInputStream(archivoCache)) {
                         logoImageCache = new Image(is);
                     }
-
                 } catch (Exception e) {
                     System.err.println("❌ Error guardando el logo en caché: " + e.getMessage());
                 }
