@@ -353,11 +353,8 @@ public class App {
     public static void setLogoImageCache(Image newImage) {
         logoImageCache = newImage;
     }
-    public static void cargarCacheLogo(){
-        cargarCacheLogo(false);
-    }
 
-    public static void cargarCacheLogo(boolean forzarActualizacion){
+    public static void cargarCacheLogo() {
         String rutaOLink = ConfigurationApp.getRutaLogo();
         if (rutaOLink == null || rutaOLink.isEmpty() || rutaOLink.equals("default_logo.png")) {
             try {
@@ -367,13 +364,20 @@ public class App {
             }
             return;
         }
+
         if (!rutaOLink.startsWith("http")) {
             File archivoLocal = new File(rutaOLink);
             if (archivoLocal.exists()) {
-                logoImageCache = new Image(archivoLocal.toURI().toString(), forzarActualizacion);
+                // SOLUCIÓN: Usar FileInputStream para burlar la caché de JavaFX
+                try (java.io.InputStream is = new java.io.FileInputStream(archivoLocal)) {
+                    logoImageCache = new Image(is);
+                } catch (Exception e) {
+                    System.err.println("Error cargando logo local: " + e.getMessage());
+                }
             }
             return;
         }
+
         String rutaCarpetaCache = System.getenv("APPDATA") + File.separator + "Attizos" + File.separator + "images";
         File carpeta = new File(rutaCarpetaCache);
         if (!carpeta.exists()) carpeta.mkdirs();
@@ -383,10 +387,14 @@ public class App {
 
         if (archivoCache.exists()) {
             System.out.println("⚡ Cargando logo desde la caché local del disco...");
-            logoImageCache = new Image(archivoCache.toURI().toString(), forzarActualizacion);
-        }else{
+            try (java.io.InputStream is = new java.io.FileInputStream(archivoCache)) {
+                logoImageCache = new Image(is);
+            } catch (Exception e) {
+                System.err.println("Error cargando caché local: " + e.getMessage());
+            }
+        } else {
             System.out.println("☁️ Descargando nuevo logo desde Cloudinary a la caché local...");
-            new Thread(() ->{
+            new Thread(() -> {
                 try (InputStream in = new URL(rutaOLink).openStream();
                      FileOutputStream out = new FileOutputStream(archivoCache)) {
                     byte[] buffer = new byte[4096];
@@ -395,7 +403,11 @@ public class App {
                         out.write(buffer, 0, bytesRead);
                     }
                     System.out.println("✅ Logo de Cloudinary guardado exitosamente en caché local.");
-                    logoImageCache = new Image(archivoCache.toURI().toString(), true);
+
+                    try (java.io.InputStream is = new java.io.FileInputStream(archivoCache)) {
+                        logoImageCache = new Image(is);
+                    }
+
                 } catch (Exception e) {
                     System.err.println("❌ Error guardando el logo en caché: " + e.getMessage());
                 }
