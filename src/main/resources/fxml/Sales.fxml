@@ -13,13 +13,14 @@
 
 <AnchorPane style="-fx-background-color: transparent;" stylesheets="@../css/style.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="Attizos.Frontend.VentasController">
     <children>
-        <!-- Encabezado Subido y con Título Estilizado -->
-        <HBox alignment="CENTER" prefHeight="55.0" AnchorPane.leftAnchor="14.0" AnchorPane.rightAnchor="376.0" AnchorPane.topAnchor="5.0">
+        <!-- Encabezado Subido AL MÁXIMO y Título MÁS GRANDE -->
+        <HBox alignment="CENTER" prefHeight="55.0" AnchorPane.leftAnchor="14.0" AnchorPane.rightAnchor="376.0" AnchorPane.topAnchor="0.0">
             <children>
                 <Region HBox.hgrow="ALWAYS" /> <!-- Espaciador izquierdo -->
                 <Label text="✨ Nuestro Menú" style="-fx-text-fill: linear-gradient(to right, #ff416c, #ff4b2b); -fx-font-weight: 900; -fx-effect: dropshadow(gaussian, rgba(255,65,108,0.3), 5, 0, 0, 2);">
                     <font>
-                        <Font name="System Bold" size="34.0" />
+                        <!-- Aumentado a tamaño 40.0 -->
+                        <Font name="System Bold" size="50.0" />
                     </font>
                 </Label>
                 <Region HBox.hgrow="ALWAYS" /> <!-- Espaciador derecho -->
@@ -27,16 +28,16 @@
             </children>
         </HBox>
 
-        <!-- Elementos subidos ~20px para ahorrar espacio -->
-        <Label layoutX="14.0" layoutY="65.0" styleClass="section-title" text="Categorías" AnchorPane.leftAnchor="14.0" AnchorPane.topAnchor="65.0" />
+        <!-- Elementos subidos para acompañar al título -->
+        <Label layoutX="14.0" layoutY="60.0" styleClass="section-title" text="Categorías" AnchorPane.leftAnchor="14.0" AnchorPane.topAnchor="60.0" />
 
-        <ScrollPane fx:id="sPCategoria" fitToHeight="true" fitToWidth="true" hbarPolicy="AS_NEEDED" layoutX="14.0" layoutY="95.0" prefHeight="65.0" style="-fx-background: transparent; -fx-background-color: transparent;" vbarPolicy="NEVER" AnchorPane.leftAnchor="14.0" AnchorPane.rightAnchor="376.0" AnchorPane.topAnchor="95.0">
+        <ScrollPane fx:id="sPCategoria" fitToHeight="true" fitToWidth="true" hbarPolicy="AS_NEEDED" layoutX="14.0" layoutY="90.0" prefHeight="65.0" style="-fx-background: transparent; -fx-background-color: transparent;" vbarPolicy="NEVER" AnchorPane.leftAnchor="14.0" AnchorPane.rightAnchor="376.0" AnchorPane.topAnchor="90.0">
             <content>
                 <HBox fx:id="hBCategoria" alignment="CENTER_LEFT" spacing="10.0" style="-fx-background-color: transparent;" />
             </content>
         </ScrollPane>
 
-        <ScrollPane fx:id="sPProductos" fitToWidth="true" hbarPolicy="NEVER" layoutX="14.0" layoutY="165.0" style="-fx-background: transparent; -fx-background-color: transparent;" AnchorPane.bottomAnchor="20.0" AnchorPane.leftAnchor="14.0" AnchorPane.rightAnchor="376.0" AnchorPane.topAnchor="165.0">
+        <ScrollPane fx:id="sPProductos" fitToWidth="true" hbarPolicy="NEVER" layoutX="14.0" layoutY="160.0" style="-fx-background: transparent; -fx-background-color: transparent;" AnchorPane.bottomAnchor="20.0" AnchorPane.leftAnchor="14.0" AnchorPane.rightAnchor="376.0" AnchorPane.topAnchor="160.0">
             <content>
                 <FlowPane fx:id="flPProductos" hgap="15.0" style="-fx-background-color: transparent;" vgap="15.0" />
             </content>
