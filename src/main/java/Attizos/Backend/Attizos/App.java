@@ -355,65 +355,10 @@ public class App {
     }
 
     public static void cargarCacheLogo() {
-        // Limpiamos la caché en memoria antes de leer
-        logoImageCache = null;
-        System.gc(); // Sugerimos al recolector de basura que limpie imágenes viejas
-
-        String rutaOLink = ConfigurationApp.getRutaLogo();
-        if (rutaOLink == null || rutaOLink.isEmpty() || rutaOLink.equals("default_logo.png")) {
-            try {
-                logoImageCache = new Image(App.class.getResourceAsStream("/images/logo_personal.png"));
-            } catch (Exception e) {
-                System.out.println("⚠️ No se encontró logo por defecto en recursos.");
-            }
-            return;
-        }
-
-        if (!rutaOLink.startsWith("http")) {
-            File archivoLocal = new File(rutaOLink);
-            if (archivoLocal.exists()) {
-                try (java.io.InputStream is = new java.io.FileInputStream(archivoLocal)) {
-                    logoImageCache = new Image(is);
-                } catch (Exception e) {
-                    System.err.println("Error cargando logo local: " + e.getMessage());
-                }
-            }
-            return;
-        }
-
-        String rutaCarpetaCache = System.getenv("APPDATA") + File.separator + "Attizos" + File.separator + "images";
-        File carpeta = new File(rutaCarpetaCache);
-        if (!carpeta.exists()) carpeta.mkdirs();
-
-        String nombreArchivoCache = "logo_cache_" + Math.abs(rutaOLink.hashCode()) + ".png";
-        File archivoCache = new File(carpeta, nombreArchivoCache);
-
-        if (archivoCache.exists()) {
-            System.out.println("⚡ Cargando logo desde la caché local del disco...");
-            try (java.io.InputStream is = new java.io.FileInputStream(archivoCache)) {
-                logoImageCache = new Image(is);
-            } catch (Exception e) {
-                System.err.println("Error cargando caché local: " + e.getMessage());
-            }
-        } else {
-            System.out.println("☁️ Descargando nuevo logo desde Cloudinary a la caché local...");
-            new Thread(() -> {
-                try (InputStream in = new URL(rutaOLink).openStream();
-                     FileOutputStream out = new FileOutputStream(archivoCache)) {
-                    byte[] buffer = new byte[4096];
-                    int bytesRead;
-                    while ((bytesRead = in.read(buffer)) != -1) {
-                        out.write(buffer, 0, bytesRead);
-                    }
-                    System.out.println("✅ Logo de Cloudinary guardado exitosamente en caché local.");
-
-                    try (java.io.InputStream is = new java.io.FileInputStream(archivoCache)) {
-                        logoImageCache = new Image(is);
-                    }
-                } catch (Exception e) {
-                    System.err.println("❌ Error guardando el logo en caché: " + e.getMessage());
-                }
-            }).start();
+        try {
+            logoImageCache = new Image(App.class.getResourceAsStream("/images/logo_personal.png"));
+        }catch (Exception e){
+            System.out.println("NO SE ENCONTRO LA IMAGEN");
         }
     }
     public static void crearPlantillaCredencialesQR() {

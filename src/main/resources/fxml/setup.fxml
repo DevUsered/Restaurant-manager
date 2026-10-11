@@ -1,9 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-<?import javafx.scene.text.Font?>
-<?import javafx.scene.image.ImageView?>
 
 <StackPane style="-fx-background-color: transparent; -fx-padding: 20;" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="Attizos.Frontend.Config.SetupController">
 
@@ -43,13 +40,6 @@
                     <VBox spacing="15" HBox.hgrow="ALWAYS">
                         <Label text="3. PERFIL DEL NEGOCIO" style="-fx-text-fill: #B89728; -fx-font-weight: bold; -fx-font-size: 11px;"/>
                         <TextField fx:id="txtNombreNegocio" promptText="Nombre del Negocio (ej. Pizzería Attizos)" style="-fx-background-color: #FFFFFF; -fx-border-color: #E8E2D5; -fx-border-radius: 6; -fx-background-radius: 6; -fx-text-fill: #000000; -fx-prompt-text-fill: #888888;"/>
-
-                        <HBox spacing="15" alignment="CENTER_LEFT" fx:id="boxLogo">
-                            <Button text="Subir Logo" fx:id="btnSeleccionarLogo" onAction="#seleccionarLogo" style="-fx-background-color: #FFFFFF; -fx-text-fill: #000000; -fx-border-color: #E5B80B; -fx-border-radius: 6; -fx-background-radius: 6; -fx-cursor: hand; -fx-font-weight: bold;"/>
-                            <Label fx:id="lblRutaLogo" text="Ningún archivo" style="-fx-text-fill: #000000;" maxWidth="140" wrapText="true"/>
-                            <Region HBox.hgrow="ALWAYS"/>
-                            <ImageView fx:id="imgLogoPreview" fitWidth="50" fitHeight="50" preserveRatio="true"/>
-                        </HBox>
 
                         <VBox fx:id="boxModuloCocina" spacing="15">
                             <Label text="4. MULTIMEDIA Y MÓDULOS" style="-fx-text-fill: #B89728; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 5 0 0 0;"/>

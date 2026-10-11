@@ -2,7 +2,6 @@ package Attizos.Frontend.Config;
 
 import Attizos.Backend.Attizos.App;
 import Attizos.Frontend.AlertaPersonalizada;
-import Attizos.Frontend.ServicioNube;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -10,12 +9,9 @@ import javafx.fxml.Initializable;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
-import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 
@@ -23,10 +19,6 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.Properties;
 import java.util.ResourceBundle;
 import java.util.TimeZone;
@@ -37,10 +29,6 @@ public class SetupController implements Initializable {
     @FXML private RadioButton rbTerminalSucursal;
     @FXML private ToggleGroup tgModoOperacion;
     @FXML private TextField txtNombreNegocio;
-    @FXML private HBox boxLogo;
-    @FXML private Button btnSeleccionarLogo;
-    @FXML private Label lblRutaLogo;
-    @FXML private ImageView imgLogoPreview;
 
     @FXML private TextField txtDbUrl;
     @FXML private TextField txtDbUser;
@@ -53,9 +41,6 @@ public class SetupController implements Initializable {
 
     private final String RUTA_BASE = System.getenv("APPDATA") + File.separator + "Attizos";
     private final String RUTA_CONFIG = RUTA_BASE + File.separator + "configuracion.properties";
-    private final String RUTA_IMAGENES = RUTA_BASE + File.separator + "images";
-
-    private File archivoLogoTemporal = null;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -68,8 +53,6 @@ public class SetupController implements Initializable {
 
             txtNombreNegocio.setVisible(!esSucursal);
             txtNombreNegocio.setManaged(!esSucursal);
-            boxLogo.setVisible(!esSucursal);
-            boxLogo.setManaged(!esSucursal);
 
             if (boxModuloCocina != null) {
                 boxModuloCocina.setVisible(!esSucursal);
@@ -87,24 +70,6 @@ public class SetupController implements Initializable {
                 txtDbUrl.setPromptText("URL PostgreSQL (ej. localhost:5432)");
             }
         });
-    }
-
-    @FXML
-    private void seleccionarLogo(ActionEvent event) {
-        FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Seleccionar Logo del Negocio");
-        fileChooser.getExtensionFilters().addAll(
-                new FileChooser.ExtensionFilter("Archivos de Imagen", "*.png", "*.jpg", "*.jpeg")
-        );
-
-        Stage stage = (Stage) btnSeleccionarLogo.getScene().getWindow();
-        File seleccionado = fileChooser.showOpenDialog(stage);
-
-        if (seleccionado != null) {
-            archivoLogoTemporal = seleccionado;
-            lblRutaLogo.setText(seleccionado.getName());
-            imgLogoPreview.setImage(new Image(seleccionado.toURI().toString()));
-        }
     }
 
     @FXML
@@ -147,6 +112,7 @@ public class SetupController implements Initializable {
                 return;
             }
         }
+
         Properties propsBackend = new Properties();
         String nombreIngresado = rbServidorPrincipal.isSelected() ? txtNombreNegocio.getText().trim() : "Attizos POS";
 
@@ -166,37 +132,20 @@ public class SetupController implements Initializable {
             String cloudinaryInput = txtCloudinaryUrl.getText().trim();
             desglosarCloudinary(cloudinaryInput, propsBackend);
         }
+
         Properties propsFrontend = new Properties();
         propsFrontend.setProperty("app.modo", rbServidorPrincipal.isSelected() ? "SERVIDOR" : "SUCURSAL");
         propsFrontend.setProperty("app.modulo.cocina", String.valueOf(chkTieneCocina.isSelected()));
         propsFrontend.setProperty("app.servidor.ip", rbServidorPrincipal.isSelected() ? "localhost" : txtDbUrl.getText().trim());
+
         if (rbServidorPrincipal.isSelected()) {
             propsFrontend.setProperty("app.negocio.nombre", nombreIngresado);
-
-
             guardarArchivosFisicos(propsFrontend, propsBackend);
-
-            if (archivoLogoTemporal != null) {
-                try {
-                    lblRutaLogo.setText("Subiendo a la nube...");
-                    String urlCloudinary = ServicioNube.subirImagen(archivoLogoTemporal);
-
-                    if (urlCloudinary != null && !urlCloudinary.isEmpty()) {
-                        propsFrontend.setProperty("app.negocio.logo", urlCloudinary);
-                    } else {
-                        String rutaLocal = guardarLogoFisicamente(archivoLogoTemporal);
-                        if (rutaLocal != null) propsFrontend.setProperty("app.negocio.logo", rutaLocal);
-                    }
-                } catch (Exception e) {
-                    String rutaLocal = guardarLogoFisicamente(archivoLogoTemporal);
-                    if (rutaLocal != null) propsFrontend.setProperty("app.negocio.logo", rutaLocal);
-                }
-                guardarArchivosFisicos(propsFrontend, propsBackend);
-            }
         }
-        arrancarSistema();
 
+        arrancarSistema();
     }
+
     private void guardarArchivosFisicos(Properties propsF, Properties propsB) {
         File dirBase = new File(RUTA_BASE);
         File dirBackend = new File(RUTA_BASE + File.separator + "backend");
@@ -218,6 +167,7 @@ public class SetupController implements Initializable {
             e.printStackTrace();
         }
     }
+
     private void arrancarSistema() {
         App.iniciarBackend();
         btnGuardar.setText("⏳ Iniciando Servidor y Base de Datos...");
@@ -249,6 +199,7 @@ public class SetupController implements Initializable {
                 } else if (rbServidorPrincipal.isSelected()) {
                     AlertaPersonalizada.mostrarAlerta("Tiempo de Espera Agotado", "El servidor tardó más de 90 segundos en arrancar.", Alert.AlertType.WARNING);
                 }
+                ConfigurationApp.cargarConfiguracion();
                 App.setNombre(ConfigurationApp.getNombreRestaurante());
                 App.iniciarSistema();
 
@@ -276,34 +227,6 @@ public class SetupController implements Initializable {
         }).start();
     }
 
-    private boolean probarConexionPostgreSQL(String url, String user, String pass) {
-        String jdbcUrl = "jdbc:postgresql://" + url + "/attizos_db";
-        System.out.println("🔄 Probando credenciales en: " + jdbcUrl);
-        try {
-            java.sql.DriverManager.setLoginTimeout(3);
-            try (java.sql.Connection conn = java.sql.DriverManager.getConnection(jdbcUrl, user, pass)) {
-                return conn.isValid(3);
-            }
-        } catch (Exception e) {
-            System.err.println("❌ Falló la prueba de base de datos: " + e.getMessage());
-            return false;
-        }
-    }
-
-    private boolean validarFormatoCloudinary(String url) {
-        if (url == null || url.trim().isEmpty()) return false;
-        return url.trim().matches("^cloudinary://[^:]+:[^@]+@[a-zA-Z0-9_-]+$");
-    }
-
-    private boolean probarConexionSucursal(String ipCentral) {
-        try (java.net.Socket socket = new java.net.Socket()) {
-            socket.connect(new java.net.InetSocketAddress(ipCentral, 8080), 2500);
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
     private void desglosarCloudinary(String url, Properties propsBackend) {
         try {
             if (url != null && url.startsWith("cloudinary://")) {
@@ -325,99 +248,6 @@ public class SetupController implements Initializable {
         }
     }
 
-    private void guardarArchivos(Properties propsF, Properties propsB){
-        File dirBase = new File(RUTA_BASE);
-        File dirBackend = new File(RUTA_BASE + File.separator + "backend");
-
-        if(!dirBase.exists()) dirBase.mkdirs();
-        if(!dirBackend.exists() && rbServidorPrincipal.isSelected()) dirBackend.mkdirs();
-
-        try{
-            try(FileOutputStream outFront = new FileOutputStream(RUTA_CONFIG)){
-                propsF.store(outFront, "Configuración de POS - Frontend");
-            }
-            if(rbServidorPrincipal.isSelected()){
-                String rutaBackendProps = dirBackend.getAbsolutePath() + File.separator + "application.properties";
-                try(FileOutputStream outBack = new FileOutputStream(rutaBackendProps)){
-                    propsB.store(outBack, "Configuración de POS - Backend");
-                }
-            }
-
-            App.iniciarBackend();
-
-            btnGuardar.setText("⏳ Iniciando Servidor y Base de Datos...");
-            btnGuardar.setDisable(true);
-
-            new Thread(() -> {
-                int intentos = 0;
-                boolean servidorListo = false;
-
-                while (intentos < 90 && !servidorListo) {
-                    try {
-                        Thread.sleep(1000);
-                    } catch (InterruptedException e) {}
-
-                    servidorListo = Attizos.Backend.Api.ApiClient.isServidorDisponible();
-                    intentos++;
-
-                    int finalIntentos = intentos;
-                    javafx.application.Platform.runLater(() -> {
-                        if (finalIntentos == 15) {
-                            btnGuardar.setText("⏳ Creando tablas en PostgreSQL (Espera un momento)...");
-                        } else if (finalIntentos == 35) {
-                            btnGuardar.setText("⏳ Configurando motor de base de datos...");
-                        } else if (finalIntentos == 60) {
-                            btnGuardar.setText("⏳ Ya casi listo, finalizando arranque del servidor...");
-                        }
-                    });
-                }
-
-                boolean finalServidorListo = servidorListo;
-                int tiempoTotal = intentos;
-
-                javafx.application.Platform.runLater(() -> {
-                    if (finalServidorListo) {
-                        System.out.println("✅ ¡Servidor detectado en línea tras " + tiempoTotal + " segundos! Sincronizando...");
-                    } else if (rbServidorPrincipal.isSelected()) {
-                        AlertaPersonalizada.mostrarAlerta(
-                                "Tiempo de Espera Agotado",
-                                "El servidor tardó más de 90 segundos en arrancar.\nEs posible que tu máquina esté muy saturada o que el puerto 8080 esté bloqueado.\n\nEl sistema intentará iniciar en modo local.",
-                                Alert.AlertType.WARNING
-                        );
-                    }
-                    App.setNombre(ConfigurationApp.getNombreRestaurante());
-
-                    App.iniciarSistema();
-
-                    try {
-                        Stage stage = (Stage) btnGuardar.getScene().getWindow();
-                        stage.close();
-
-                        FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Login.fxml"));
-                        Parent root = loader.load();
-
-                        Stage homeStage = new Stage();
-                        homeStage.initStyle(StageStyle.TRANSPARENT);
-                        Scene scene = new Scene(root);
-                        scene.setFill(Color.TRANSPARENT);
-
-                        homeStage.setScene(scene);
-                        homeStage.setResizable(false);
-                        homeStage.centerOnScreen();
-                        homeStage.setOnCloseRequest(e -> System.exit(0));
-                        homeStage.show();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                });
-            }).start();
-
-        } catch (IOException e){
-            e.printStackTrace();
-            AlertaPersonalizada.mostrarAlerta("Error Crítico", "No se pudo guardar la configuración. Por favor, verifica los permisos de escritura.", Alert.AlertType.ERROR);
-        }
-    }
-
     private boolean validarCampos() {
         if (txtDbUrl.getText().trim().isEmpty() ||
                 txtDbUser.getText().trim().isEmpty() ||
@@ -428,27 +258,6 @@ public class SetupController implements Initializable {
             return !txtNombreNegocio.getText().trim().isEmpty();
         }
         return true;
-    }
-
-    private String guardarLogoFisicamente(File archivoOrigen) {
-        File dirImagenes = new File(RUTA_IMAGENES);
-        if (!dirImagenes.exists()) dirImagenes.mkdirs();
-
-        String nombreOriginal = archivoOrigen.getName();
-        String extension = "";
-        int i = nombreOriginal.lastIndexOf('.');
-        if (i > 0) extension = nombreOriginal.substring(i);
-
-        String nombreNuevo = "logo" + extension;
-        Path rutaDestino = Paths.get(RUTA_IMAGENES, nombreNuevo);
-
-        try {
-            Files.copy(archivoOrigen.toPath(), rutaDestino, StandardCopyOption.REPLACE_EXISTING);
-            return rutaDestino.toString();
-        } catch (IOException e) {
-            e.printStackTrace();
-            return null;
-        }
     }
 
     @FXML

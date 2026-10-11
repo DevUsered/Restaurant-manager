@@ -16,7 +16,6 @@ public class ConfigurationApp {
     public static boolean impresionActivada = true;
     public static String ipServidor = "localhost";
     public static String nombreRestaurante;
-    public static String rutaLogo = "default_logo.png";
 
     public static void cargarConfiguracion() {
         File archivoConfig = new File(RUTA_ARCHIVO);
@@ -33,7 +32,6 @@ public class ConfigurationApp {
             impresionActivada = Boolean.parseBoolean(propiedades.getProperty("app.modulo.impresion", "true"));
             ipServidor = propiedades.getProperty("app.servidor.ip", "localhost");
             nombreRestaurante = propiedades.getProperty("app.negocio.nombre", "Mi Restaurante");
-            rutaLogo = propiedades.getProperty("app.negocio.logo", "default_logo.png");
 
             Attizos.Backend.Api.ApiClient.configurarIpServidor(ipServidor);
 
@@ -42,7 +40,7 @@ public class ConfigurationApp {
         }
     }
 
-    public static void guardarConfiguracionNueva(boolean usarCocina, boolean imprimir,String ip, String nombre, String logo) {
+    public static void guardarConfiguracionNueva(boolean usarCocina, boolean imprimir, String ip, String nombre) {
         File carpeta = new File(RUTA_CARPETA);
         if (!carpeta.exists()) carpeta.mkdirs();
 
@@ -51,7 +49,6 @@ public class ConfigurationApp {
         propiedades.setProperty("app.modulo.impresion", String.valueOf(imprimir));
         propiedades.setProperty("app.servidor.ip", ip);
         propiedades.setProperty("app.negocio.nombre", nombre);
-        propiedades.setProperty("app.negocio.logo", logo);
 
         try (FileOutputStream fos = new FileOutputStream(RUTA_ARCHIVO)) {
             propiedades.store(fos, "Configuración del Punto de Venta Attizos");
@@ -61,7 +58,6 @@ public class ConfigurationApp {
             impresionActivada = imprimir;
             ipServidor = ip;
             nombreRestaurante = nombre;
-            rutaLogo = logo;
             esPrimeraVez = false;
 
             Attizos.Backend.Api.ApiClient.configurarIpServidor(ipServidor);
@@ -96,6 +92,4 @@ public class ConfigurationApp {
     public static void setIpServidor(String ipServidor) { ConfigurationApp.ipServidor = ipServidor; }
     public static String getNombreRestaurante() { return nombreRestaurante; }
     public static void setNombreRestaurante(String nombreRestaurante) { ConfigurationApp.nombreRestaurante = nombreRestaurante; }
-    public static String getRutaLogo() { return rutaLogo; }
-    public static void setRutaLogo(String rutaLogo) { ConfigurationApp.rutaLogo = rutaLogo; }
 }

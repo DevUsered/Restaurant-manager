@@ -4,32 +4,22 @@ import Attizos.Backend.Api.ApiClient;
 import Attizos.Backend.Attizos.App;
 import Attizos.Frontend.AlertaPersonalizada;
 import Attizos.Frontend.DialogoPersonalizado;
-import Attizos.Frontend.ServicioNube;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
-import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
-import java.io.File;
 import java.net.URL;
 import java.util.Optional;
 import java.util.ResourceBundle;
 
 public class AjustesEmpresaController implements Initializable {
     @FXML private TextField txtNombreNegocio;
-    @FXML private ImageView imgLogoActual;
-    @FXML private Label lblRutaLogo;
     @FXML private TextField txtIpServidor;
 
     @FXML private CheckBox chkTieneCocina;
-    @FXML private CheckBox chkImpresion; // ✨ NUEVA CASILLA
-
-    private File nuevoLogoSeleccionado = null;
-    private String urlLogoActual = "";
+    @FXML private CheckBox chkImpresion;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -48,24 +38,6 @@ public class AjustesEmpresaController implements Initializable {
 
         // Disparamos la actualización visual de textos
         actualizarTextosChecks(null);
-
-        urlLogoActual = ConfigurationApp.getRutaLogo();
-        lblRutaLogo.setText(urlLogoActual.startsWith("http") ? "Sincronizado en Cloudinary" : "Logo local/defecto");
-
-        try {
-            if (urlLogoActual != null && !urlLogoActual.isEmpty() && !urlLogoActual.equals("default_logo.png")) {
-                if (urlLogoActual.startsWith("http")) {
-                    imgLogoActual.setImage(new Image(urlLogoActual, true));
-                } else {
-                    File imgFile = new File(urlLogoActual);
-                    if (imgFile.exists()) {
-                        imgLogoActual.setImage(new Image(imgFile.toURI().toString()));
-                    }
-                }
-            }
-        } catch (Exception e) {
-            System.err.println("No se pudo cargar la vista previa del logo: " + e.getMessage());
-        }
     }
 
     // ✨ EVENTO DINÁMICO QUE CAMBIA LOS TEXTOS AL HACER CLIC
@@ -81,24 +53,6 @@ public class AjustesEmpresaController implements Initializable {
             chkImpresion.setText("🖨️ Impresión de Tickets: ACTIVADA");
         } else {
             chkImpresion.setText("🖨️ Impresión de Tickets: DESACTIVADA");
-        }
-    }
-
-    @FXML
-    private void cambiarLogo(ActionEvent event) {
-        FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Seleccionar Nuevo Logo para el Negocio");
-        fileChooser.getExtensionFilters().addAll(
-                new FileChooser.ExtensionFilter("Archivos de Imagen", "*.png", "*.jpg", "*.jpeg")
-        );
-
-        Stage stage = (Stage) txtNombreNegocio.getScene().getWindow();
-        File seleccionado = fileChooser.showOpenDialog(stage);
-
-        if (seleccionado != null) {
-            nuevoLogoSeleccionado = seleccionado;
-            lblRutaLogo.setText("Listo para subir a Cloudinary...");
-            imgLogoActual.setImage(new Image(seleccionado.toURI().toString()));
         }
     }
 
@@ -135,10 +89,6 @@ public class AjustesEmpresaController implements Initializable {
             cambios.append("• Impresión Tickets: ").append(nuevaImpresion ? "Habilitada" : "Deshabilitada").append("\n");
             hayCambios = true;
         }
-        if (nuevoLogoSeleccionado != null) {
-            cambios.append("• Logotipo: Nueva imagen lista para subir a Cloudinary\n");
-            hayCambios = true;
-        }
 
         // Si no tocó nada, evitamos guardar innecesariamente
         if (!hayCambios) {
@@ -146,7 +96,7 @@ public class AjustesEmpresaController implements Initializable {
             return;
         }
 
-        // 2. DIÁLOGO DINÁMICO
+        // DIÁLOGO DINÁMICO
         Optional<ButtonType> respuesta = DialogoPersonalizado.mostrarDialogoConfirmacion(
                 "Confirmar Modificaciones",
                 "¿Estás seguro de aplicar los siguientes cambios?",
@@ -172,34 +122,13 @@ public class AjustesEmpresaController implements Initializable {
             }
         }
 
-        String rutaLogoFinal = urlLogoActual;
-
-        if (nuevoLogoSeleccionado != null) {
-            try {
-                lblRutaLogo.setText("Subiendo a la nube...");
-                String urlSubida = ServicioNube.subirImagen(nuevoLogoSeleccionado);
-                if (urlSubida != null && !urlSubida.isEmpty()) {
-                    rutaLogoFinal = urlSubida;
-                } else {
-                    AlertaPersonalizada.mostrarAlerta("Advertencia de Red", "No se pudo subir a Cloudinary. Se mantendrá el logo anterior.", Alert.AlertType.WARNING);
-                }
-            } catch (Exception e) {
-                System.err.println("Error subiendo logo: " + e.getMessage());
-                AlertaPersonalizada.mostrarAlerta("Error de Conexión", "Fallo al conectar con Cloudinary. Se mantendrá el logo actual.", Alert.AlertType.ERROR);
-                return;
-            }
-        }
-        ConfigurationApp.guardarConfiguracionNueva(nuevaCocina, nuevaImpresion, nuevaIp, nuevoNombre, rutaLogoFinal);
+        ConfigurationApp.guardarConfiguracionNueva(nuevaCocina, nuevaImpresion, nuevaIp, nuevoNombre);
 
         App.setNombre(nuevoNombre);
         if (App.attizos != null) {
             App.getAttizos().setNombre(nuevoNombre);
         }
         ApiClient.configurarIpServidor(nuevaIp);
-        App.cargarCacheLogo();
-        if(App.getLogoImageCache() != null){
-            imgLogoActual.setImage(App.getLogoImageCache());
-        }
 
         AlertaPersonalizada.mostrarAlerta(
                 "Ajustes Guardados",
