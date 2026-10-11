@@ -362,7 +362,7 @@ public class App {
         String rutaOLink = ConfigurationApp.getRutaLogo();
         if (rutaOLink == null || rutaOLink.isEmpty() || rutaOLink.equals("default_logo.png")) {
             try {
-                logoImageCache = new Image(App.class.getResourceAsStream("/images/Logo_attizos.png"));
+                logoImageCache = new Image(App.class.getResourceAsStream("/images/logo_personal.png"));
             } catch (Exception e) {
                 System.out.println("⚠️ No se encontró logo por defecto en recursos.");
             }

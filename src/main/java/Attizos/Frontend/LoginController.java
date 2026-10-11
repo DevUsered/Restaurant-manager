@@ -32,16 +32,18 @@ public class LoginController {
             logoEmpresa.setImage(logo);
         }else{
             new Thread(() -> {
-                try{
-                    Thread.sleep(500);
-                    Platform.runLater(() -> {
-                        Image logoTardio = App.getLogoImageCache();
-                        if (logoTardio != null) {
-                            logoEmpresa.setImage(logoTardio);
-                        }
-                    });
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
+                for(int i = 0; i < 10; i++) {
+                    try {
+                        Thread.sleep(500);
+                        Platform.runLater(() -> {
+                            Image logoTardio = App.getLogoImageCache();
+                            if (logoTardio != null) {
+                                logoEmpresa.setImage(logoTardio);
+                            }
+                        });
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
                 }
             }).start();
         }
