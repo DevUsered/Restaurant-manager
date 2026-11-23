@@ -116,12 +116,12 @@ public class GestorPromocionesController {
         cmbProductosMenu.setConverter(new StringConverter<Producto>() {
             @Override
             public String toString(Producto p) {
-                return p == null ? "" : p.getNombre();
+                return p == null ? "" : p.getNombreConTamano();
             }
             @Override
             public Producto fromString(String string) {
                 return masterMenu.stream()
-                        .filter(p -> p.getNombre().equalsIgnoreCase(string))
+                        .filter(p -> p.getNombreConTamano().equalsIgnoreCase(string))
                         .findFirst().orElse(null);
             }
         });

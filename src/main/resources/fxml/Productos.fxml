@@ -48,6 +48,7 @@
                                     <columns>
                                         <TableColumn fx:id="colId" prefWidth="50.0" text="ID" />
                                         <TableColumn fx:id="colNombre" prefWidth="180.0" text="PRODUCTO" />
+                                        <TableColumn fx:id="colTamano" prefWidth="90.0" text="TAMAÑO"/>
                                         <TableColumn fx:id="colCategoria" prefWidth="100.0" text="CATEGORÍA" />
                                         <TableColumn fx:id="colPrecio" prefWidth="80.0" text="PRECIO Bs" />
                                         <TableColumn fx:id="colStock" prefWidth="80.0" text="STOCK" />
@@ -102,6 +103,13 @@
                                                         <ComboBox fx:id="cmbCategoria" editable="true" maxWidth="Infinity" promptText="Ej: Bebidas, Postres..." style="-fx-base: #FFFFFF; -fx-background-color: #F5F5F5; -fx-border-color: #DDDDDD; -fx-border-radius: 5;" />
                                                     </children>
                                                 </VBox>
+                                                <VBox fx:id="vboxTamano" spacing="5.0">
+                                                    <children>
+                                                        <Label text="Tamaño (Opcional):" textFill="#555555" />
+                                                        <ComboBox fx:id="cmbTamano" maxWidth="Infinity"
+                                                                style="-fx-base: #FFFFFF; -fx-background-color: #F5F5F5; -fx-border-color: #DDDDDD; -fx-border-radius: 5;" />
+                                                    </children>
+                                                </VBox>
 
                                                 <CheckBox fx:id="chkTieneReceta" text="¿Se prepara en cocina? (Usa receta)" wrapText="true" />
 
@@ -123,6 +131,12 @@
                                                                 <Button fx:id="btnAgregarIngrediente" minWidth="40.0" onAction="#agregarIngredienteVisual" style="-fx-background-color: rgba(218, 165, 32, 0.2); -fx-border-color: #DAA520; -fx-text-fill: #DAA520; -fx-font-weight: bold; -fx-cursor: hand;" text="➕" />
                                                             </children>
                                                         </HBox>
+                                                        <Label fx:id="lblUnidadInsumo"
+                                                            managed="false"
+                                                            visible="false"
+                                                            wrapText="true"
+                                                            maxWidth="Infinity"
+                                                            style="-fx-background-color: #FFF8E1; -fx-border-color: #DAA520; -fx-border-radius: 5; -fx-background-radius: 5; -fx-padding: 5 8; -fx-text-fill: #7A5C00; -fx-font-size: 11px; -fx-font-weight: bold;" />
 
                                                         <TableView fx:id="tablaRecetaFila" prefHeight="120.0" styleClass="modern-table">
                                                             <columnResizePolicy><TableView fx:constant="CONSTRAINED_RESIZE_POLICY" /></columnResizePolicy>

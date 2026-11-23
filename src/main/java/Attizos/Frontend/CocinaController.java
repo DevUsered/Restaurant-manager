@@ -25,6 +25,8 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
+import java.net.DatagramSocket;
+import java.net.Inet4Address;
 
 public class CocinaController {
 
@@ -80,6 +82,7 @@ public class CocinaController {
             System.out.println("🔄 Evento WS recibido en Cocina. Actualizando tabla visual...");
             cargarColaDesdeBackend();
         });
+        WebSocketManager.asegurarConexion(ApiClient.getIpServidor());
     }
 
     private void cargarColaDesdeBackend() {
@@ -263,7 +266,13 @@ public class CocinaController {
 
     @FXML
     void mostrarEnlaceWeb(ActionEvent event) {
-        String ipReal = obtenerIpLocal();
+        String ipConfigurada = ApiClient.getIpServidor();
+        String ipReal = (ipConfigurada != null
+                && !ipConfigurada.equalsIgnoreCase("localhost")
+                && !ipConfigurada.equals("127.0.0.1"))
+                ? ipConfigurada
+                : obtenerIpLocal();
+
         String enlaceWeb = "http://" + ipReal + ":8080/cocina.html";
         String mensaje = "Escanee este código QR con la cámara de su celular o tablet,\n"
                 + "o ingrese manualmente al siguiente enlace:\n\n"
@@ -293,26 +302,57 @@ public class CocinaController {
         return new javafx.scene.image.ImageView(writableImage);
     }
 
-    public String obtenerIpLocal(){
-        try{
+    public String obtenerIpLocal() {
+        try (DatagramSocket socket = new DatagramSocket()) {
+            socket.connect(InetAddress.getByName("8.8.8.8"), 10002);
+            InetAddress localAddr = socket.getLocalAddress();
+            if (localAddr instanceof Inet4Address
+                    && !localAddr.isLoopbackAddress()
+                    && !localAddr.isLinkLocalAddress()
+                    && !localAddr.isAnyLocalAddress()) {
+                return localAddr.getHostAddress();
+            }
+        } catch (Exception ignored) {
+        }
+
+        String ipRespaldo = null;
+        try {
             Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
-            while(interfaces.hasMoreElements()){
-                NetworkInterface networkInterface = interfaces.nextElement();
-                if(networkInterface.isLoopback() || !networkInterface.isUp()){
+            while (interfaces.hasMoreElements()) {
+                NetworkInterface ni = interfaces.nextElement();
+                if (ni.isLoopback() || !ni.isUp() || ni.isVirtual() || ni.isPointToPoint()) {
                     continue;
                 }
-                Enumeration<InetAddress> addresses = networkInterface.getInetAddresses();
-                while(addresses.hasMoreElements()){
+
+                String nombre = (ni.getName() + " " + ni.getDisplayName()).toLowerCase();
+                if (nombre.contains("virtual") || nombre.contains("vmware") || nombre.contains("vbox")
+                        || nombre.contains("docker") || nombre.contains("wsl") || nombre.contains("vethernet")
+                        || nombre.contains("hyper-v") || nombre.contains("vpn") || nombre.contains("tailscale")
+                        || nombre.contains("zerotier") || nombre.contains("radmin")) {
+                    continue;
+                }
+
+                Enumeration<InetAddress> addresses = ni.getInetAddresses();
+                while (addresses.hasMoreElements()) {
                     InetAddress addr = addresses.nextElement();
-                    if(addr.getHostAddress().contains(".")){
-                        return addr.getHostAddress();
+                    if (addr instanceof Inet4Address
+                            && !addr.isLoopbackAddress()
+                            && !addr.isLinkLocalAddress()) {
+                        String ip = addr.getHostAddress();
+                        if (ip.startsWith("192.168.")) {
+                            return ip;
+                        }
+                        if (addr.isSiteLocalAddress() && ipRespaldo == null) {
+                            ipRespaldo = ip;
+                        }
                     }
                 }
             }
-        }catch (Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
         }
-        return "localhost";
+
+        return ipRespaldo != null ? ipRespaldo : "localhost";
     }
 
     private void reproducirCampanaJavaFX() {

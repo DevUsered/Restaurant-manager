@@ -15,8 +15,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.type.TypeReference;
+
 public class ConexionSQLite {
     private static String urlSQLite;
+    private static final ObjectMapper mapper = new ObjectMapper();
+    private static final Object LOCK_SYNC = new Object();
 
     static {
         String rutaAppData = System.getenv("APPDATA");
@@ -38,7 +43,11 @@ public class ConexionSQLite {
             System.err.println("Error al cargar el driver de SQLite: " + e.getMessage());
             throw new SQLException("Driver de SQLite no encontrado", e);
         }
-        return DriverManager.getConnection(urlSQLite);
+        Connection conn = DriverManager.getConnection(urlSQLite);
+        try(Statement st = conn.createStatement()){
+            st.execute("PRAGMA busy_timeout = 5000;");
+        }
+        return conn;
     }
 
     public static void inicializarTablasLocales() {
@@ -121,6 +130,7 @@ public class ConexionSQLite {
             stmt.execute(sqlSecuencia);
             stmt.execute(sqlRecetasLocal);
             stmt.execute("INSERT OR IGNORE INTO secuencia_tickets (id, fecha, ultimo_numero) VALUES (1, '2000-01-01', 0);");
+            stmt.execute("PRAGMA journal_mode = WAL;");
 
             System.out.println("Caché SQLite inicializada correctamente. ");
         } catch (SQLException e) {
@@ -140,220 +150,297 @@ public class ConexionSQLite {
     }
 
     public static void sincronizarEmpleados() {
-        System.out.println("Iniciando sincronización de empleados via API REST.");
-        ArrayList<Empleado> empleadosDelServidor = ApiClient.obtenerEmpleadosDelServidor();
+        synchronized (LOCK_SYNC) {
+            System.out.println("Iniciando sincronización de empleados via API REST...");
+            ArrayList<Empleado> empleadosDelServidor = ApiClient.obtenerEmpleadosDelServidor();
 
-        // 2. VALIDAR SEGURIDAD
-        if (empleadosDelServidor == null) {
-            System.err.println("⚠️ Error de red. Abortando limpieza de empleados locales.");
-            return;
-        }
-        String sqlLimpiarSQLite = "DELETE FROM empleados";
-        String sqlInsertarSQLite = "INSERT INTO empleados (id_empleado, nombre, cargo, sueldo, username, password_hash, estado, fecha_ultimo_pago, fecha_contrato) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-
-        try (Connection connSQL = getConexion();
-             Statement stmtLimpiar = connSQL.createStatement();
-             PreparedStatement stmtInsertar = connSQL.prepareStatement(sqlInsertarSQLite)) {
-            stmtLimpiar.executeUpdate(sqlLimpiarSQLite);
-
-            int contador = 0;
-            for(Empleado emp : empleadosDelServidor){
-                stmtInsertar.setString(1, emp.getIdEmpleado());
-                stmtInsertar.setString(2, emp.getNombre());
-                stmtInsertar.setString(3, emp.getCargo());
-                stmtInsertar.setDouble(4, emp.getSueldo());
-                stmtInsertar.setString(5, emp.getUsername());
-                stmtInsertar.setString(6, emp.getPasswordHash());
-                stmtInsertar.setString(7, emp.getEstado());
-
-                stmtInsertar.setString(8, emp.getFechaUltimoPago() != null ? emp.getFechaUltimoPago().toString() : null);
-                stmtInsertar.setString(9, emp.getFechaContrato() != null ? emp.getFechaContrato().toString() : null);
-
-                stmtInsertar.executeUpdate();
-                contador++;
+            if (empleadosDelServidor == null) {
+                System.err.println("⚠️ Error de red/timeout. Se mantiene intacta la caché local de empleados.");
+                return;
             }
-            System.out.println("Sincronización de empleados completada. Total sincronizados: " + contador);
-        } catch (SQLException e) {
-            System.out.println("Error al sincronizar empleados: " + e.getMessage());
+
+            String sqlLimpiarSQLite = "DELETE FROM empleados";
+            String sqlInsertarSQLite = "INSERT OR REPLACE INTO empleados " +
+                    "(id_empleado, nombre, cargo, sueldo, username, password_hash, estado, fecha_ultimo_pago, fecha_contrato) " +
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+            try (Connection connSQL = getConexion()) {
+                connSQL.setAutoCommit(false);
+
+                try (Statement stmtLimpiar = connSQL.createStatement();
+                    PreparedStatement stmtInsertar = connSQL.prepareStatement(sqlInsertarSQLite)) {
+
+                    stmtLimpiar.executeUpdate(sqlLimpiarSQLite);
+                    int contador = 0;
+
+                    for (Empleado emp : empleadosDelServidor) {
+                        stmtInsertar.setString(1, emp.getIdEmpleado());
+                        stmtInsertar.setString(2, emp.getNombre());
+                        stmtInsertar.setString(3, emp.getCargo());
+                        stmtInsertar.setDouble(4, emp.getSueldo());
+                        stmtInsertar.setString(5, emp.getUsername());
+                        stmtInsertar.setString(6, emp.getPasswordHash());
+                        stmtInsertar.setString(7, emp.getEstado() != null ? emp.getEstado() : "Activo");
+                        stmtInsertar.setString(8, emp.getFechaUltimoPago() != null ? emp.getFechaUltimoPago().toString() : null);
+                        stmtInsertar.setString(9, emp.getFechaContrato() != null ? emp.getFechaContrato().toString() : null);
+
+                        stmtInsertar.executeUpdate();
+                        contador++;
+                    }
+
+                    connSQL.commit();
+                    System.out.println("✅ Empleados sincronizados de forma atómica: " + contador);
+                } catch (Exception e) {
+                    try {
+                        connSQL.rollback();
+                    } catch (SQLException rollbackEx) {
+                        System.err.println("❌ Error en rollback de empleados: " + rollbackEx.getMessage());
+                    }
+                    System.err.println("❌ Error al sincronizar empleados (rollback aplicado): " + e.getMessage());
+                }
+            } catch (SQLException e) {
+                System.err.println("❌ Error abriendo SQLite para sincronizar empleados: " + e.getMessage());
+            }
         }
     }
 
     public static void sincronizarInsumos() {
-        System.out.println("Sincronizando insumos...");
-        ArrayList<Insumo> insumosDelServidor = ApiClient.obtenerInsumoDelServidor();
+        synchronized (LOCK_SYNC) {
+            System.out.println("Sincronizando insumos...");
+            ArrayList<Insumo> insumosDelServidor = ApiClient.obtenerInsumoDelServidor();
 
-        // 2. VALIDAR SEGURIDAD
-        if (insumosDelServidor == null) {
-            System.err.println("⚠️ Error de red. Abortando limpieza de insumos locales.");
-            return;
-        }
-        String sqlLimpiarSQLite = "DELETE FROM insumos_catalogo";
-        String sqlInsertarSQLite = "INSERT INTO insumos_catalogo (codigo, nombre, categoria, unidad_medida, stock_minimo, stock_maximo, stock_actual, fecha_vencimiento, estado) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-
-        try (Connection connSQL = getConexion();
-             Statement stmtLimpiar = connSQL.createStatement();
-             PreparedStatement stmtInsertar = connSQL.prepareStatement(sqlInsertarSQLite)) {
-
-            stmtLimpiar.executeUpdate(sqlLimpiarSQLite);
-            int contador = 0;
-
-            for(Insumo ins : insumosDelServidor){
-                stmtInsertar.setString(1, ins.getCodigo());
-                stmtInsertar.setString(2, ins.getNombre());
-                stmtInsertar.setString(3, ins.getCategoria());
-                stmtInsertar.setString(4, ins.getUnidad());
-                stmtInsertar.setDouble(5, ins.getStockMinimo());
-                stmtInsertar.setDouble(6, ins.getStockMaximo());
-                stmtInsertar.setDouble(7, ins.getStockActual());
-                stmtInsertar.setString(8, ins.getFechaVencimiento() != null ? ins.getFechaVencimiento().toString() : null);
-                stmtInsertar.setString(9, ins.getEstado());
-
-                stmtInsertar.executeUpdate();
-                contador++;
+            if (insumosDelServidor == null) {
+                System.err.println("⚠️ Error de red/timeout. Se mantiene intacta la caché local de insumos.");
+                return;
             }
-            System.out.println("Insumos sincronizados: " + contador);
-        } catch (SQLException e) {
-            System.out.println("Error al sincronizar insumos: " + e.getMessage());
+
+            String sqlLimpiarSQLite = "DELETE FROM insumos_catalogo";
+            String sqlInsertarSQLite = "INSERT INTO insumos_catalogo " +
+                    "(codigo, nombre, categoria, unidad_medida, stock_minimo, stock_maximo, stock_actual, fecha_vencimiento, estado) " +
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+            try (Connection connSQL = getConexion()) {
+                connSQL.setAutoCommit(false);
+
+                try (Statement stmtLimpiar = connSQL.createStatement();
+                    PreparedStatement stmtInsertar = connSQL.prepareStatement(sqlInsertarSQLite)) {
+
+                    stmtLimpiar.executeUpdate(sqlLimpiarSQLite);
+                    int contador = 0;
+
+                    for (Insumo ins : insumosDelServidor) {
+                        stmtInsertar.setString(1, ins.getCodigo());
+                        stmtInsertar.setString(2, ins.getNombre());
+                        stmtInsertar.setString(3, ins.getCategoria());
+                        stmtInsertar.setString(4, ins.getUnidad());
+                        stmtInsertar.setDouble(5, ins.getStockMinimo());
+                        stmtInsertar.setDouble(6, ins.getStockMaximo());
+                        stmtInsertar.setDouble(7, ins.getStockActual());
+                        stmtInsertar.setString(8, ins.getFechaVencimiento() != null ? ins.getFechaVencimiento().toString() : null);
+                        stmtInsertar.setString(9, ins.getEstado());
+                        stmtInsertar.executeUpdate();
+                        contador++;
+                    }
+
+                    connSQL.commit();
+                    System.out.println("✅ Insumos sincronizados de forma atómica: " + contador);
+                } catch (Exception e) {
+                    try {
+                        connSQL.rollback();
+                    } catch (SQLException rollbackEx) {
+                        System.err.println("❌ Error en rollback de insumos: " + rollbackEx.getMessage());
+                    }
+                    System.err.println("❌ Error al sincronizar insumos (rollback aplicado): " + e.getMessage());
+                }
+            } catch (SQLException e) {
+                System.err.println("❌ Error abriendo SQLite para sincronizar insumos: " + e.getMessage());
+            }
         }
     }
 
-    public static void sincronizarProductos() {
-        System.out.println("Sincronizando productos...");
-        ArrayList<Producto> productosDelServidor = ApiClient.obtenerProductosDelServidor();
-        if(productosDelServidor == null){
-            System.out.println("No se puedo obtener productos del servidor. Se aborta la sincronización.");
-            return;
-        }
-        String sqlLimpiarSQLite = "DELETE FROM productos";
-        String sqlLimpiarRecetas = "DELETE FROM recetas_local";
-        
-        String sqlInsertarSQLite = "INSERT OR REPLACE INTO productos " +
-                "(id_producto, nombre, precio, categoria, tipo_clase, stock_directo, tiene_receta, imagen_base64, atributos_extra, fecha_inicio, fecha_fin, estado) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        String sqlInsertarReceta = "INSERT INTO recetas_local (id_producto, codigo_insumo, cantidad) VALUES (?, ?, ?)";
-
-        try (Connection connSQL = getConexion();
-             Statement stmtLimpiar = connSQL.createStatement();
-             PreparedStatement stmtInsertar = connSQL.prepareStatement(sqlInsertarSQLite);
-             PreparedStatement stmtReceta = connSQL.prepareStatement(sqlInsertarReceta)) {
-
-            stmtLimpiar.executeUpdate(sqlLimpiarSQLite);
-            stmtLimpiar.executeUpdate(sqlLimpiarRecetas);
-            int contador = 0;
-            
-            for(Producto p : productosDelServidor) {
-                if(p.getCategoria() != null && p.getCategoria().equalsIgnoreCase("Promocion")) {
-                    continue; 
-                }
-
-                stmtInsertar.setInt(1, p.getId());
-                stmtInsertar.setString(2, p.getNombre());
-                stmtInsertar.setDouble(3, p.getPrecio());
-                stmtInsertar.setString(4, p.getCategoria());
-                stmtInsertar.setString(5, "Producto");
-                stmtInsertar.setInt(6, (int) p.getStock());
-                stmtInsertar.setInt(7, p.tieneReceta() ? 1 : 0);
-
-                stmtInsertar.setString(8, p.getImagenURL() != null ? p.getImagenURL() : "default.png");
-
-                String atributos = (p.getAtributosDinamicos() != null) ? p.getAtributosDinamicos().toString() : "{}";
-                stmtInsertar.setString(9, atributos);
-                
-                stmtInsertar.setNull(10, java.sql.Types.VARCHAR);
-                stmtInsertar.setNull(11, java.sql.Types.VARCHAR);
-                
-                stmtInsertar.setString(12, p.getEstado());
-
-                stmtInsertar.executeUpdate();
-                if (p.tieneReceta() && p.getReceta() != null) {
-                    for (Map.Entry<String, Double> ingrediente : p.getReceta().getIngredientes().entrySet()) {
-                        stmtReceta.setInt(1, p.getId());
-                        stmtReceta.setString(2, ingrediente.getKey());
-                        stmtReceta.setDouble(3, ingrediente.getValue());
-                        stmtReceta.executeUpdate();
-                    }
-                }
-                contador++;
+   public static void sincronizarProductos() {
+        synchronized (LOCK_SYNC) {
+            System.out.println("Sincronizando productos...");
+            ArrayList<Producto> productosDelServidor = ApiClient.obtenerProductosDelServidor();
+            if (productosDelServidor == null) {
+                System.err.println("⚠️ Error de red/timeout. Se mantiene intacta la caché local de productos.");
+                return;
             }
-            System.out.println("Productos sincronizados desde la nube: " + contador);
-        } catch (SQLException e) {
-            System.out.println("Error al sincronizar productos locales: " + e.getMessage());
+
+            // Solo limpia productos normales; NO toca las promociones
+            String sqlLimpiarSQLite = "DELETE FROM productos WHERE COALESCE(categoria, '') != 'Promocion'";
+            String sqlLimpiarRecetas = "DELETE FROM recetas_local";
+
+            String sqlInsertarSQLite = "INSERT OR REPLACE INTO productos " +
+                    "(id_producto, nombre, precio, categoria, tipo_clase, stock_directo, tiene_receta, imagen_base64, atributos_extra, fecha_inicio, fecha_fin, estado) " +
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            String sqlInsertarReceta = "INSERT INTO recetas_local (id_producto, codigo_insumo, cantidad) VALUES (?, ?, ?)";
+
+            try (Connection connSQL = getConexion()) {
+                connSQL.setAutoCommit(false); // Inicia transacción atómica
+
+                try (Statement stmtLimpiar = connSQL.createStatement();
+                    PreparedStatement stmtInsertar = connSQL.prepareStatement(sqlInsertarSQLite);
+                    PreparedStatement stmtReceta = connSQL.prepareStatement(sqlInsertarReceta)) {
+
+                    stmtLimpiar.executeUpdate(sqlLimpiarSQLite);
+                    stmtLimpiar.executeUpdate(sqlLimpiarRecetas);
+                    int contador = 0;
+
+                    for (Producto p : productosDelServidor) {
+                        if (p.getCategoria() != null && p.getCategoria().equalsIgnoreCase("Promocion")) {
+                            continue;
+                        }
+
+                        stmtInsertar.setInt(1, p.getId());
+                        stmtInsertar.setString(2, p.getNombre());
+                        stmtInsertar.setDouble(3, p.getPrecio());
+                        stmtInsertar.setString(4, p.getCategoria());
+                        stmtInsertar.setString(5, "Producto");
+                        stmtInsertar.setInt(6, (int) p.getStock());
+                        stmtInsertar.setInt(7, p.tieneReceta() ? 1 : 0);
+                        stmtInsertar.setString(8, p.getImagenURL() != null ? p.getImagenURL() : "default.png");
+
+                        String atributosJson = "{}";
+                        if (p.getAtributosDinamicos() != null && !p.getAtributosDinamicos().isEmpty()) {
+                            try {
+                                atributosJson = mapper.writeValueAsString(p.getAtributosDinamicos());
+                            } catch (Exception ignored) {
+                                atributosJson = "{}";
+                            }
+                        }
+                        stmtInsertar.setString(9, atributosJson);
+
+                        stmtInsertar.setNull(10, java.sql.Types.VARCHAR);
+                        stmtInsertar.setNull(11, java.sql.Types.VARCHAR);
+                        stmtInsertar.setString(12, p.getEstado());
+                        stmtInsertar.executeUpdate();
+
+                        if (p.tieneReceta() && p.getReceta() != null && p.getReceta().getIngredientes() != null) {
+                            for (Map.Entry<String, Double> ingrediente : p.getReceta().getIngredientes().entrySet()) {
+                                stmtReceta.setInt(1, p.getId());
+                                stmtReceta.setString(2, ingrediente.getKey());
+                                stmtReceta.setDouble(3, ingrediente.getValue());
+                                stmtReceta.executeUpdate();
+                            }
+                        }
+                        contador++;
+                    }
+
+                    connSQL.commit(); // Recién aquí se hacen visibles los cambios de golpe
+                    System.out.println("✅ Productos sincronizados de forma atómica: " + contador);
+                } catch (Exception e) {
+                    try {
+                        connSQL.rollback(); // Si algo falló a la mitad, restaura la caché anterior
+                    } catch (SQLException rollbackEx) {
+                        System.err.println("❌ Error en rollback de productos: " + rollbackEx.getMessage());
+                    }
+                    System.err.println("❌ Error al sincronizar productos (rollback aplicado): " + e.getMessage());
+                }
+            } catch (SQLException e) {
+                System.err.println("❌ Error abriendo SQLite para sincronizar productos: " + e.getMessage());
+            }
         }
     }
     public static void sincronizarDetallesCombo() {
-        System.out.println("Sincronizando promociones y combos...");
-        ArrayList<Promocion> promosDelServidor = ApiClient.obtenerPromocionesDelServidor();
+        synchronized (LOCK_SYNC) {
+            System.out.println("Sincronizando promociones y combos...");
+            ArrayList<Promocion> promosDelServidor = ApiClient.obtenerPromocionesDelServidor();
 
-
-        if (promosDelServidor == null) {
-            System.err.println("⚠️ Error de red. Abortando limpieza de combos locales.");
-            return;
-        }
-        String sqlLimpiarDetalle = "DELETE FROM detalle_combo";
-        String sqlLimpiarPromos = "DELETE FROM productos WHERE categoria = 'Promocion'";
-
-        
-        String sqlInsertarPromo = "INSERT OR REPLACE INTO productos " +
-                "(id_producto, nombre, precio, categoria, tipo_clase, stock_directo, tiene_receta, imagen_base64, atributos_extra, fecha_inicio, fecha_fin, estado) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-                
-        String sqlInsertarDetalle = "INSERT OR REPLACE INTO detalle_combo (id_promocion, id_producto, cantidad) VALUES (?, ?, ?)";
-
-        try (Connection connSQL = getConexion();
-             Statement stmtLimpiar = connSQL.createStatement();
-             PreparedStatement stmtPromo = connSQL.prepareStatement(sqlInsertarPromo);
-             PreparedStatement stmtDetalle = connSQL.prepareStatement(sqlInsertarDetalle)) {
-
-            stmtLimpiar.executeUpdate(sqlLimpiarDetalle);
-            stmtLimpiar.executeUpdate(sqlLimpiarPromos);
-
-            int contadorPromo = 0;
-            int contadorDetalle = 0;
-            
-            for (Promocion promo : promosDelServidor) {
-                stmtPromo.setInt(1, promo.getId());
-                stmtPromo.setString(2, promo.getNombre());
-                stmtPromo.setDouble(3, promo.getPrecio());
-                stmtPromo.setString(4, "Promocion");
-                stmtPromo.setString(5, "Combo");
-                stmtPromo.setInt(6, 0); // No maneja stock directo
-                stmtPromo.setInt(7, 0); // No tiene receta de cocina directa
-                
-                String imgPromo = asegurarImagenLocal(promo.getImagenURL(), promo.getId());
-                stmtPromo.setString(8, imgPromo);
-                stmtPromo.setString(8, promo.getImagenURL() != null ? promo.getImagenURL() : "default.png");
-
-                String jsonAtributos = "{}";
-                if(promo.getDiasValidos() != null && !promo.getDiasValidos().equals("Todos") && !promo.getDiasValidos().isEmpty()){
-                    jsonAtributos = "{\"diasValidos\":\"" + promo.getDiasValidos() + "\"}";
-                }
-
-                stmtPromo.setString(9, jsonAtributos);
-                
-                if (promo.getFechaInicio() != null) stmtPromo.setString(10, promo.getFechaInicio().toString());
-                else stmtPromo.setNull(10, java.sql.Types.VARCHAR);
-                
-                if (promo.getFechaFin() != null) stmtPromo.setString(11, promo.getFechaFin().toString());
-                else stmtPromo.setNull(11, java.sql.Types.VARCHAR);
-                
-                stmtPromo.setString(12, promo.getEstado());
-                
-                stmtPromo.executeUpdate();
-                contadorPromo++;
-
-                if (promo.getProductosCombo() != null) {
-                    for (DetalleCombo detalle : promo.getProductosCombo()) {
-                        stmtDetalle.setInt(1, promo.getId());
-                        stmtDetalle.setInt(2, detalle.getProducto().getId());
-                        stmtDetalle.setInt(3, detalle.getCantidad());
-                        stmtDetalle.executeUpdate();
-                        contadorDetalle++;
-                    }
-                }
+            if (promosDelServidor == null) {
+                System.err.println("⚠️ Error de red/timeout. Se mantiene intacta la caché local de combos.");
+                return;
             }
-            System.out.println("Promociones sincronizadas: " + contadorPromo + " (con " + contadorDetalle + " detalles internos).");
-        } catch (SQLException e) {
-            System.out.println("Error al sincronizar combos locales: " + e.getMessage());
+
+            String sqlLimpiarDetalle = "DELETE FROM detalle_combo";
+            String sqlLimpiarPromos = "DELETE FROM productos WHERE COALESCE(categoria, '') = 'Promocion'";
+
+            String sqlInsertarPromo = "INSERT OR REPLACE INTO productos " +
+                    "(id_producto, nombre, precio, categoria, tipo_clase, stock_directo, tiene_receta, imagen_base64, atributos_extra, fecha_inicio, fecha_fin, estado) " +
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+            String sqlInsertarDetalle = "INSERT OR REPLACE INTO detalle_combo (id_promocion, id_producto, cantidad) VALUES (?, ?, ?)";
+
+            try (Connection connSQL = getConexion()) {
+                connSQL.setAutoCommit(false);
+
+                try (Statement stmtLimpiar = connSQL.createStatement();
+                    PreparedStatement stmtPromo = connSQL.prepareStatement(sqlInsertarPromo);
+                    PreparedStatement stmtDetalle = connSQL.prepareStatement(sqlInsertarDetalle)) {
+
+                    stmtLimpiar.executeUpdate(sqlLimpiarDetalle);
+                    stmtLimpiar.executeUpdate(sqlLimpiarPromos);
+
+                    int contadorPromo = 0;
+                    int contadorDetalle = 0;
+
+                    for (Promocion promo : promosDelServidor) {
+                        stmtPromo.setInt(1, promo.getId());
+                        stmtPromo.setString(2, promo.getNombre());
+                        stmtPromo.setDouble(3, promo.getPrecio());
+                        stmtPromo.setString(4, "Promocion");
+                        stmtPromo.setString(5, "Combo");
+                        stmtPromo.setInt(6, 0);
+                        stmtPromo.setInt(7, 0);
+                        stmtPromo.setString(8, promo.getImagenURL() != null ? promo.getImagenURL() : "default.png");
+
+                        String jsonAtributos = "{}";
+                        if (promo.getDiasValidos() != null
+                                && !promo.getDiasValidos().equalsIgnoreCase("Todos")
+                                && !promo.getDiasValidos().trim().isEmpty()) {
+                            Map<String, String> attrs = new HashMap<>();
+                            attrs.put("diasValidos", promo.getDiasValidos().trim());
+                            try {
+                                jsonAtributos = mapper.writeValueAsString(attrs);
+                            } catch (Exception ignored) {
+                                jsonAtributos = "{}";
+                            }
+                        }
+                        stmtPromo.setString(9, jsonAtributos);
+
+                        if (promo.getFechaInicio() != null) {
+                            stmtPromo.setString(10, promo.getFechaInicio().toString());
+                        } else {
+                            stmtPromo.setNull(10, java.sql.Types.VARCHAR);
+                        }
+
+                        if (promo.getFechaFin() != null) {
+                            stmtPromo.setString(11, promo.getFechaFin().toString());
+                        } else {
+                            stmtPromo.setNull(11, java.sql.Types.VARCHAR);
+                        }
+
+                        stmtPromo.setString(12, promo.getEstado() != null ? promo.getEstado() : "Activo");
+                        stmtPromo.executeUpdate();
+                        contadorPromo++;
+
+                        if (promo.getProductosCombo() != null) {
+                            for (DetalleCombo detalle : promo.getProductosCombo()) {
+                                if (detalle == null || detalle.getProducto() == null) {
+                                    continue;
+                                }
+                                stmtDetalle.setInt(1, promo.getId());
+                                stmtDetalle.setInt(2, detalle.getProducto().getId());
+                                stmtDetalle.setInt(3, detalle.getCantidad());
+                                stmtDetalle.executeUpdate();
+                                contadorDetalle++;
+                            }
+                        }
+                    }
+
+                    connSQL.commit();
+                    System.out.println("✅ Promociones sincronizadas de forma atómica: " + contadorPromo + " (con " + contadorDetalle + " detalles).");
+                } catch (Exception e) {
+                    try {
+                        connSQL.rollback();
+                    } catch (SQLException rollbackEx) {
+                        System.err.println("❌ Error en rollback de promociones: " + rollbackEx.getMessage());
+                    }
+                    System.err.println("❌ Error al sincronizar combos (rollback aplicado): " + e.getMessage());
+                }
+            } catch (SQLException e) {
+                System.err.println("❌ Error abriendo SQLite para sincronizar combos: " + e.getMessage());
+            }
         }
     }
     public static ArrayList<Empleado> obtenerEmpleadosLocal() {
@@ -431,65 +518,66 @@ public class ConexionSQLite {
     }
 
     public static ArrayList<Producto> obtenerMenuLocal() {
-        ArrayList<Producto> menu = new ArrayList<>();
-        String sql = "SELECT id_producto, nombre, precio, categoria, stock_directo, tiene_receta, imagen_base64, atributos_extra, estado " +
-                "FROM productos WHERE estado = 'Activo' AND categoria != 'Promocion' ORDER BY id_producto";
-        String sqlReceta = "SELECT codigo_insumo, cantidad FROM recetas_local WHERE id_producto = ?";
+    ArrayList<Producto> menu = new ArrayList<>();
+    String sql = "SELECT id_producto, nombre, precio, categoria, stock_directo, tiene_receta, imagen_base64, atributos_extra, estado " +
+            "FROM productos WHERE estado = 'Activo' AND categoria != 'Promocion' ORDER BY id_producto";
+    String sqlReceta = "SELECT codigo_insumo, cantidad FROM recetas_local WHERE id_producto = ?";
 
-        try (Connection conn = getConexion();
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
+    try (Connection conn = getConexion();
+         PreparedStatement ps = conn.prepareStatement(sql);
+         ResultSet rs = ps.executeQuery()) {
 
-            while (rs.next()) {
-                int id = rs.getInt("id_producto");
-                String nombre = rs.getString("nombre");
-                double precio = rs.getDouble("precio");
-                String categoria = rs.getString("categoria");
-                int stockDirecto = rs.getInt("stock_directo");
-                boolean tieneReceta = rs.getInt("tiene_receta") == 1;
-                String imagenBase64 = rs.getString("imagen_base64");
-                String jsonStr = rs.getString("atributos_extra");
+        while (rs.next()) {
+            int id = rs.getInt("id_producto");
+            String nombre = rs.getString("nombre");
+            double precio = rs.getDouble("precio");
+            String categoria = rs.getString("categoria");
+            int stockDirecto = rs.getInt("stock_directo");
+            boolean tieneReceta = rs.getInt("tiene_receta") == 1;
+            String imagenBase64 = rs.getString("imagen_base64");
+            String jsonStr = rs.getString("atributos_extra");
 
-                if (imagenBase64 == null || imagenBase64.trim().isEmpty()) {
-                    imagenBase64 = "default.png";
-                }
-
-                Producto nuevoProducto = new Producto(id, nombre, precio, categoria, stockDirecto, imagenBase64, rs.getString("estado"));
-                nuevoProducto.setTieneReceta(tieneReceta);
-                if(tieneReceta){
-                    Receta receta = new Receta();
-                    try (PreparedStatement psReceta = conn.prepareStatement(sqlReceta)) {
-                        psReceta.setInt(1, id);
-                        try (ResultSet rsReceta = psReceta.executeQuery()) {
-                            while (rsReceta.next()) {
-                                receta.agregarIngrediente(rsReceta.getString("codigo_insumo"), rsReceta.getDouble("cantidad"));
-                            }
-                        }
-                    }
-                    nuevoProducto.setReceta(receta);
-                }
-
-                if (jsonStr != null && jsonStr.length() > 2) {
-                    String contenido = jsonStr.substring(1, jsonStr.length() - 1);
-                    String[] pares = contenido.split(",");
-
-                    for (String par : pares) {
-                        String[] claveValor = par.split(":");
-                        if (claveValor.length == 2) {
-                            String clave = claveValor[0].replace("\"", "").trim();
-                            String valor = claveValor[1].replace("\"", "").trim();
-                            nuevoProducto.agregarAtributo(clave, valor);
-                        }
-                    }
-                }
-
-                menu.add(nuevoProducto);
+            if (imagenBase64 == null || imagenBase64.trim().isEmpty()) {
+                imagenBase64 = "default.png";
             }
-        } catch (SQLException e) {
-            System.err.println("❌ Error al leer el menú local: " + e.getMessage());
+
+            Producto nuevoProducto = new Producto(id, nombre, precio, categoria, stockDirecto, imagenBase64, rs.getString("estado"));
+            nuevoProducto.setTieneReceta(tieneReceta);
+
+            if (tieneReceta) {
+                Receta receta = new Receta();
+                try (PreparedStatement psReceta = conn.prepareStatement(sqlReceta)) {
+                    psReceta.setInt(1, id);
+                    try (ResultSet rsReceta = psReceta.executeQuery()) {
+                        while (rsReceta.next()) {
+                            receta.agregarIngrediente(rsReceta.getString("codigo_insumo"), rsReceta.getDouble("cantidad"));
+                        }
+                    }
+                }
+                nuevoProducto.setReceta(receta);
+            }
+
+            if (jsonStr != null && !jsonStr.trim().isEmpty()) {
+                try {
+                    Map<String, String> attrs = mapper.readValue(
+                            jsonStr,
+                            mapper.getTypeFactory().constructMapType(HashMap.class, String.class, String.class)
+                    );
+                    if (attrs != null) {
+                        attrs.forEach(nuevoProducto::agregarAtributo);
+                    }
+                } catch (Exception e) {
+                    System.err.println("⚠️ No se pudieron leer atributos_extra de producto " + id + ": " + e.getMessage());
+                }
+            }
+
+            menu.add(nuevoProducto);
         }
-        return menu;
+    } catch (SQLException e) {
+        System.err.println("❌ Error al leer el menú local: " + e.getMessage());
     }
+    return menu;
+}
 
     public static Empleado autenticarUsuarioLocal(String username, String passwordHash) {
         String sql = "SELECT id_empleado, nombre, cargo, sueldo, username, estado FROM empleados WHERE username = ? AND password_hash = ? AND estado = 'Activo'";

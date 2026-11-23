@@ -6,6 +6,7 @@ import Attizos.Backend.Database.ConexionSQLite;
 import Attizos.Frontend.Cobros.CobroQRController;
 import Attizos.Frontend.Config.ConfigurationApp;
 import Attizos.Frontend.Network.WebSocketManager;
+import Attizos.Frontend.utils.ImpresoraTermica;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -23,9 +24,11 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 
-import java.awt.print.PrinterJob;
+
 import java.time.LocalDate;
 import java.util.*;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class VentasController {
     @FXML
@@ -45,10 +48,11 @@ public class VentasController {
     private String categoriaActiva = "Todos";
 
     private Producto productoSeleccionadoEnCarrito;
-    private HBox filaSeleccionada;
 
     private ArrayList<Producto> menuRAM;
     private HashMap<String, Insumo> inventarioFrescoBD;
+    private boolean procesandoVenta = false;
+    private static final ObjectMapper jsonMapper = new ObjectMapper();
 
     @FXML
     public void initialize() {
@@ -73,7 +77,7 @@ public class VentasController {
                         App.attizos.getInventario().getInventarioInsumos().putAll(inventarioActualizado);
                         inventarioFrescoBD = App.attizos.getInventario().getInventarioInsumos();
                     }
-                    if(menuActualizado != null){
+                    if(menuActualizado != null && !menuActualizado.isEmpty()){
                         App.attizos.getMenu().clear();
                         App.attizos.getMenu().addAll(menuActualizado);
                         menuRAM = App.attizos.getMenu();
@@ -96,7 +100,7 @@ public class VentasController {
         if (tfBuscar != null) tfBuscar.clear();
         facturaActual = new Factura(0, "");
         productoSeleccionadoEnCarrito = null;
-        filaSeleccionada = null;
+       // filaSeleccionada = null;
 
         inventarioFrescoBD = App.attizos.getInventario().getInventarioInsumos();
         menuRAM = App.attizos.getMenu();
@@ -156,7 +160,7 @@ public class VentasController {
             for(Producto p : App.attizos.getMenu()){
                 if(p.getEstado() != null && p.getEstado().equals("Activo") && !p.isPromocion() && !p.getCategoria().equalsIgnoreCase("Promocion")){
                     boolean coincideCategoria = categoria.equalsIgnoreCase("Todos") || p.getCategoria().equalsIgnoreCase(categoria);
-                    boolean coincideBusqueda = p.getNombre().toLowerCase().contains(busqueda);
+                    boolean coincideBusqueda = p.getNombre().toLowerCase().contains(busqueda) || p.getTamano().toLowerCase().contains(busqueda);
                     if(coincideCategoria && coincideBusqueda){
                         crearTarjetaProducto(p);
                     }
@@ -256,7 +260,7 @@ public class VentasController {
                 }else{
                     facturaActual.eliminarProducto(productoSeleccionadoEnCarrito);
                     productoSeleccionadoEnCarrito = null;
-                    filaSeleccionada = null;
+                    //filaSeleccionada = null;
                 }
                 break;
             }
@@ -273,7 +277,7 @@ public class VentasController {
         }
         facturaActual.eliminarProducto(productoSeleccionadoEnCarrito);
         productoSeleccionadoEnCarrito = null;
-        filaSeleccionada = null;
+        //filaSeleccionada = null;
         actualizarVistaCarrito();
         mostrarProductosPorCategoria(categoriaActiva);
     }
@@ -307,7 +311,6 @@ public class VentasController {
 
             if(controller.isPagoCompletado()){
                 procesarVentaFinal("QR");
-                mostrarAlerta("¡Pago Exitoso!", "El pago QR se validó con éxito.", Alert.AlertType.INFORMATION);
             }else{
                 mostrarAlerta("Operación Cancelada", "El cobro QR fue cancelado. ", Alert.AlertType.WARNING);
             }
@@ -317,6 +320,8 @@ public class VentasController {
         }
     }
     private void procesarVentaFinal(String metodoPago) {
+        if(procesandoVenta) return ;
+
         String nombreCli = tfNombreCli.getText().trim();
         if (nombreCli.isEmpty()) nombreCli = "Sin Nombre";
 
@@ -324,143 +329,116 @@ public class VentasController {
             mostrarAlerta("Carrito Vacío", "⚠ Agregue productos antes de cobrar.", Alert.AlertType.WARNING);
             return;
         }
-        boolean usarCocina = ConfigurationApp.isTieneCocina();
-        boolean usarImpresora = ConfigurationApp.isImpresionActivada();
-        if(facturaActual.requierePreparacion() && usarCocina) {
-                facturaActual.setEstado("En cocina");
-        }else{
-                facturaActual.setEstado("Finalizada");
-        }
+        procesandoVenta = true;
+        try{
 
-        Map<Producto, Integer> carritoDB = new HashMap<>();
+            boolean usarCocina = ConfigurationApp.isTieneCocina();
+            boolean usarImpresora = ConfigurationApp.isImpresionActivada();
+            boolean enviarCocina = facturaActual.requierePreparacion() && usarCocina;
+            
+            facturaActual.setEstado(enviarCocina ? "En cocina" : "Finalizada");
 
-        StringBuilder jsonVenta = new StringBuilder();
-        jsonVenta.append("{\"cliente\": \"").append(nombreCli).append("\", ");
-        jsonVenta.append("\"total\": ").append(facturaActual.getTotal()).append(", ");
-        jsonVenta.append("\"metodo_pago\": \"").append(metodoPago).append("\", ");
-        jsonVenta.append("\"estado\": \"").append(facturaActual.getEstado()).append("\",");
-        jsonVenta.append("\"detalles\": [");
-
-        boolean primero = true;
-        for(DetalleFactura df : facturaActual.getDetalles()){
-            carritoDB.put(df.getProducto(), df.getCantidad());
-            if (!primero) jsonVenta.append(", ");
-            jsonVenta.append("{\"id_producto\": ").append(df.getProducto().getId())
-                    .append(", \"cantidad\": ").append(df.getCantidad()).append("}");
-            primero = false;
-        }
-        jsonVenta.append("]}");
-
-        int numeroTicketDiario = -1;
-        int numeroFacturaGlobal = -1;
-
-        if(ApiClient.isServidorDisponible()){
-            App.modoOffline = false;
-            int[] resultados = ApiClient.registrarVenta(nombreCli, facturaActual.getTotal(), carritoDB, facturaActual.getEstado(), metodoPago);
-            if(resultados != null){
-                numeroFacturaGlobal = resultados[0];
-                numeroTicketDiario = resultados[1];
-                ConexionSQLite.actualizarSecuenciaLocal(numeroTicketDiario);
+            Map<Producto, Integer> carritoDB = new HashMap<>();
+            List<Object> detallesOffline = new ArrayList<>();
+            for(DetalleFactura df : facturaActual.getDetalles()){
+                carritoDB.put(df.getProducto(), df.getCantidad());
+                Map<String, Object> detMap = new HashMap<>();
+                detMap.put("id_producto", df.getProducto().getId());
+                detMap.put("cantidad", df.getCantidad());
+                detallesOffline.add(detMap);
             }
-        }else{
-            App.modoOffline = true;
-        }
-        if (numeroTicketDiario <= 0) {
-            numeroTicketDiario = ConexionSQLite.obtenerSiguienteTicketOffline();
-            numeroFacturaGlobal = 0;
-            boolean guardadoOffline = ConexionSQLite.guardarVentaOffline(jsonVenta.toString());
-            if (!guardadoOffline) {
-                mostrarAlerta("Error Crítico", "No se pudo registrar la venta localmente.", Alert.AlertType.ERROR);
-                return;
+            Map<String, Object> ventaOfflineMap = new HashMap<>();
+            ventaOfflineMap.put("cliente", nombreCli);
+            ventaOfflineMap.put("total", facturaActual.getTotal());
+            ventaOfflineMap.put("metodo_pago", metodoPago);
+            ventaOfflineMap.put("estado", facturaActual.getEstado());
+            ventaOfflineMap.put("detalles", detallesOffline);
+            String jsonVenta = jsonMapper.writeValueAsString(ventaOfflineMap);
+
+
+            int numeroTicketDiario = -1;
+            int numeroFacturaGlobal = -1;
+
+            if(ApiClient.isServidorDisponible()){
+                App.modoOffline = false;
+                int[] resultados = ApiClient.registrarVenta(nombreCli, facturaActual.getTotal(), carritoDB, facturaActual.getEstado(), metodoPago);
+                if(resultados != null){
+                    numeroFacturaGlobal = resultados[0];
+                    numeroTicketDiario = resultados[1];
+                    ConexionSQLite.actualizarSecuenciaLocal(numeroTicketDiario);
+                }
+            }else{
+                App.modoOffline = true;
             }
-        }
-
-        if (numeroTicketDiario > 0) {
-            facturaActual.setNumeroFactura(numeroFacturaGlobal);
-            facturaActual.setNombreCliente(nombreCli);
-
-            for (Map.Entry<Producto, Integer> entry : carritoDB.entrySet()) {
-                Producto p = entry.getKey();
-                int cantVendida = entry.getValue();
-                if (p.isPromocion()) {
-                    Promocion promo = (Promocion) p;
-                    for (DetalleCombo itemCombo : promo.getProductosCombo()) {
-                        Producto productoInterno = itemCombo.getProducto();
-                        int cantidadADescontar = itemCombo.getCantidad() * cantVendida;
-                        descontarStockProductoFisico(productoInterno, cantidadADescontar);
-                    }
-                } else {
-                    descontarStockProductoFisico(p, cantVendida);
+            if (numeroTicketDiario <= 0) {
+                numeroTicketDiario = ConexionSQLite.obtenerSiguienteTicketOffline();
+                numeroFacturaGlobal = 0;
+                boolean guardadoOffline = ConexionSQLite.guardarVentaOffline(jsonVenta.toString());
+                if (!guardadoOffline) {
+                    mostrarAlerta("Error Crítico", "No se pudo registrar la venta localmente.", Alert.AlertType.ERROR);
+                    return;
                 }
             }
 
-            try {
-                FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Ticket.fxml"));
-                Parent rootCompleto = loader.load();
+            if (numeroTicketDiario > 0) {
+                facturaActual.setNumeroFactura(numeroFacturaGlobal);
+                facturaActual.setNombreCliente(nombreCli);
 
-                TicketController controller = loader.getController();
-                String nombreCajero = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Caja Principal";
-
-                controller.inicializarTicket(facturaActual, nombreCajero, numeroTicketDiario);
-
-                rootCompleto.applyCss();
-                rootCompleto.layout();
-                if(usarImpresora){
-                    javafx.print.PrinterJob printerJob = javafx.print.PrinterJob.createPrinterJob();
-                    if(printerJob != null){
-                        if(facturaActual.requierePreparacion()){
-                            printerJob.printPage(controller.getContenedorTicketCliente());
-                            printerJob.printPage(controller.getContenedorTicketCocina());
-                            printerJob.endJob();
-                            mostrarAlerta("¡Venta registrada!", "Cobro exitoso mediante " + metodoPago + ".\nTickets impresos.", Alert.AlertType.INFORMATION);
-                        } else {
-                            boolean imprimir = AlertaPersonalizada.mostrarConfirmacion(
-                                    "Ahorro de Papel",
-                                    "Venta registrada con éxito (" + metodoPago + ").\n\n¿El cliente solicita su comprobante impreso?"
-                            );
-                            if (imprimir) {
-                                printerJob.printPage(controller.getContenedorTicketCliente());
-                                printerJob.endJob();
-                            }
+                for (Map.Entry<Producto, Integer> entry : carritoDB.entrySet()) {
+                    Producto p = entry.getKey();
+                    int cantVendida = entry.getValue();
+                    if (p.isPromocion()) {
+                        Promocion promo = (Promocion) p;
+                        for (DetalleCombo itemCombo : promo.getProductosCombo()) {
+                            Producto productoInterno = itemCombo.getProducto();
+                            descontarStockProductoFisico(itemCombo.getProducto(), itemCombo.getCantidad() * cantVendida);
                         }
                     } else {
-                        mostrarAlerta("Error", "No se detectó impresora.", Alert.AlertType.ERROR);
+                        descontarStockProductoFisico(p, cantVendida);
                     }
-                } else {
-                    mostrarAlerta("¡Venta registrada!", "Cobro exitoso mediante " + metodoPago, Alert.AlertType.INFORMATION);
                 }
+                String nombreCajero = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Caja Principal";
+                int anchoPapel = ImpresoraTermica.ANCHO_80MM;
+                String impresoraConfig = null;
 
-            } catch (Exception e) {
-                e.printStackTrace();
-                mostrarAlerta("Error", "La venta se registró pero no se pudo mandar al ticket.", Alert.AlertType.ERROR);
+                if(usarImpresora){
+                    if(enviarCocina){
+                        boolean okCli = ImpresoraTermica.imprimirTicketCliente(facturaActual, numeroTicketDiario, metodoPago, impresoraConfig, anchoPapel);
+                        boolean okCoc = ImpresoraTermica.imprimirTicketCocina(facturaActual, nombreCajero, numeroTicketDiario, impresoraConfig, anchoPapel);
+                        if (okCli && okCoc) {
+                            mostrarAlerta("¡Venta registrada!", "Cobro exitoso (" + metodoPago + ").\nTickets impresos.", Alert.AlertType.INFORMATION);
+                        } else {
+                            mostrarAlerta("Aviso de Impresión", "La venta se registró (Turno #" + String.format("%03d", numeroTicketDiario) + "), pero no se detectó la impresora térmica.", Alert.AlertType.WARNING);
+                        }
+                    }else{
+                        boolean imprimir = AlertaPersonalizada.mostrarConfirmacion(
+                                "Ahorro de Papel",
+                                "Venta registrada con éxito (" + metodoPago + ").\n\n¿El cliente solicita su comprobante impreso?"
+                        );
+                        if (imprimir) {
+                            boolean okCli = ImpresoraTermica.imprimirTicketCliente(facturaActual, numeroTicketDiario, metodoPago, impresoraConfig, anchoPapel);
+                            if (!okCli) {
+                                mostrarAlerta("Error de Impresora", "No se pudo imprimir el comprobante. Verifique la impresora predeterminada.", Alert.AlertType.WARNING);
+                            }
+                        }
+                    }
+                }
+                if(!App.modoOffline){
+                    new Thread(() ->{
+                        ConexionSQLite.subirVentasPendientes();
+                        ConexionSQLite.sincronizarInsumos();
+                        ConexionSQLite.sincronizarProductos();
+                    }).start();
+                }
+                iniciarNuevaVenta();
             }
-            if(!App.modoOffline){
-                new Thread(() ->{
-                    ConexionSQLite.subirVentasPendientes();
-                    ConexionSQLite.sincronizarInsumos();
-                    ConexionSQLite.sincronizarProductos();
-                }).start();
-            }
-            iniciarNuevaVenta();
+        }catch(Exception e){
+            e.printStackTrace();
+            mostrarAlerta("Error", "Ocurrio un error al procesar la venta: "+e.getMessage(), Alert.AlertType.ERROR);
+        }finally{
+            procesandoVenta = false;
         }
     }
-
-    private void imprimirEnImpresoraTermica(javafx.scene.Node nodoTicket) {
-        javafx.print.PrinterJob printerJob = javafx.print.PrinterJob.createPrinterJob();
-        if (printerJob != null) {
-            try {
-                boolean impreso = printerJob.printPage(nodoTicket);
-                if (impreso) {
-                    printerJob.endJob();
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        } else {
-            mostrarAlerta("Error de Impresora", "No se detectó ninguna impresora instalada en el sistema.", Alert.AlertType.ERROR);
-        }
-    }
-
     private void mostrarAlerta(String titulo, String mensaje, Alert.AlertType tipo) {
         AlertaPersonalizada.mostrarAlerta(titulo, mensaje, tipo);
     }
@@ -504,6 +482,11 @@ public class VentasController {
             Label lblTag = new Label("✨ PROMO");
             lblTag.setStyle("-fx-background-color: linear-gradient(to right, #ff416c, #ff4b2b); -fx-text-fill: white; -fx-padding: 2 6; -fx-background-radius: 5; -fx-font-size: 11px; -fx-font-weight: bold;");
             card.getChildren().addAll(lblTag, imgView, name, price, lblStock);
+        }else if(!p.getTamano().isEmpty()){
+            Label lblTamano = new Label(p.getTamano().toUpperCase());
+            lblTamano.setStyle("-fx-background-color: #EEF2FF; -fx-text-fill: #3730A3; -fx-padding: 2 8; -fx-background-radius: 5; -fx-font-size: 10px; -fx-font-weight: bold;");
+            card.getChildren().addAll(lblTamano, imgView, name, price, lblStock);
+                
         }else{
             card.getChildren().addAll(imgView, name, price, lblStock);
         }
@@ -520,7 +503,7 @@ public class VentasController {
             Producto p = df.getProducto();
             HBox itemRow = new HBox(12);
             itemRow.getStyleClass().add("cart-item");
-            if (p == productoSeleccionadoEnCarrito) {
+            if (productoSeleccionadoEnCarrito != null && p.getId() == productoSeleccionadoEnCarrito.getId()) {
                 itemRow.getStyleClass().add("cart-item-selected");
             }
 
@@ -539,7 +522,7 @@ public class VentasController {
 
             VBox textos = new VBox(2);
             textos.setAlignment(Pos.CENTER_LEFT);
-            Label name = new Label(p.getNombre());
+            Label name = new Label(p.getNombreConTamano());
             name.getStyleClass().add("cart-product-name");
             name.setMaxWidth(110);
             name.setWrapText(true);

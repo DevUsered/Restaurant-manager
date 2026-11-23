@@ -1,11 +1,13 @@
 package Attizos.Backend.Attizos;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
-import java.util.Map;
 import java.util.HashMap;
+import java.util.Map;
 
-public  class Producto
-{
+public class Producto {
+    public static final String ATTR_TAMANO = "tamano";
+
     private int id;
     private String nombre;
     private double precio;
@@ -17,11 +19,12 @@ public  class Producto
     private Map<String, String> atributosDinamicos;
     private boolean tieneReceta;
 
-    public Producto(){
+    public Producto() {
         this.tieneReceta = false;
         this.atributosDinamicos = new HashMap<>();
     }
-    public Producto(int id, String nombre, double precio, String categoria, double stock, String imagenURL, String estado){
+
+    public Producto(int id, String nombre, double precio, String categoria, double stock, String imagenURL, String estado) {
         this.id = id;
         this.nombre = nombre;
         this.precio = precio;
@@ -31,12 +34,13 @@ public  class Producto
         this.receta = null;
         this.atributosDinamicos = new HashMap<>();
 
-        if(imagenURL == null || imagenURL.isEmpty()){
+        if (imagenURL == null || imagenURL.isEmpty()) {
             this.imagenURL = "/images/default.png";
         } else {
             this.imagenURL = imagenURL;
         }
     }
+
     public void aumentarStock(int cantidad) {
         this.stock += cantidad;
     }
@@ -48,19 +52,65 @@ public  class Producto
         }
         return false;
     }
+
     public void agregarAtributo(String clave, String valor) {
         if (this.atributosDinamicos == null) {
             this.atributosDinamicos = new HashMap<>();
         }
-        this.atributosDinamicos.put(clave, valor);
+        if (clave != null && valor != null) {
+            this.atributosDinamicos.put(clave, valor);
+        }
     }
 
     public String getAtributo(String clave) {
+        if (this.atributosDinamicos == null || clave == null) {
+            return "";
+        }
         return this.atributosDinamicos.getOrDefault(clave, "");
     }
 
+    @JsonIgnore
+    public String getTamano() {
+        if (isPromocion() || "Promocion".equalsIgnoreCase(this.categoria)) {
+            return "";
+        }
+        return getAtributo(ATTR_TAMANO);
+    }
+
+    @JsonIgnore
+    public void setTamano(String tamano) {
+        if (this.atributosDinamicos == null) {
+            this.atributosDinamicos = new HashMap<>();
+        }
+        if (isPromocion()
+                || "Promocion".equalsIgnoreCase(this.categoria)
+                || tamano == null
+                || tamano.trim().isEmpty()
+                || tamano.equalsIgnoreCase("Sin tamaño")) {
+            this.atributosDinamicos.remove(ATTR_TAMANO);
+        } else {
+            this.atributosDinamicos.put(ATTR_TAMANO, tamano.trim());
+        }
+    }
+
+    @JsonIgnore
+    public String getNombreConTamano() {
+        String tamano = getTamano();
+        if (tamano != null && !tamano.isEmpty()) {
+            return this.nombre + " (" + tamano + ")";
+        }
+        return this.nombre;
+    }
+
     public Map<String, String> getAtributosDinamicos() {
+        if (this.atributosDinamicos == null) {
+            this.atributosDinamicos = new HashMap<>();
+        }
         return atributosDinamicos;
+    }
+
+    public void setAtributosDinamicos(Map<String, String> atributosDinamicos) {
+        this.atributosDinamicos = (atributosDinamicos != null) ? atributosDinamicos : new HashMap<>();
     }
 
     public int getId() {
@@ -109,7 +159,7 @@ public  class Producto
 
     public void setReceta(Receta receta) {
         this.receta = receta;
-        if(receta != null) this.tieneReceta = true;
+        if (receta != null) this.tieneReceta = true;
     }
 
     public boolean isTieneReceta() {
@@ -136,9 +186,6 @@ public  class Producto
         this.estado = estado;
     }
 
-    public void setAtributosDinamicos(Map<String, String> atributosDinamicos) {
-        this.atributosDinamicos = atributosDinamicos;
-    }
     public boolean tieneReceta() {
         return this.receta != null && !this.receta.esVacia();
     }
@@ -149,6 +196,6 @@ public  class Producto
 
     @Override
     public String toString() {
-        return nombre + " - Bs. " + precio;
+        return getNombreConTamano() + " - Bs. " + precio;
     }
 }

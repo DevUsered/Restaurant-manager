@@ -25,6 +25,7 @@ config.properties
 # --- NetBeans ---
 /nbproject/private/
 /nbbuild/
+/jre/
 /dist/
 /nbdist/
 /.nb-gradle/
