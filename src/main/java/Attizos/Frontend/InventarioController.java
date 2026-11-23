@@ -109,16 +109,17 @@ public class InventarioController {
         cargarDatos();
         WebSocketManager.setAccionVentasYStock(() ->{
             System.out.println("Movimiento de inventario: Actualizando tabla de inventario.");
-            new Thread(() ->{
-                App.sincronizarDatosDesdeServidor();
-                Platform.runLater(() ->{
-                    HashMap<String, Insumo> frescoLocal = ConexionSQLite.obtenerInventarioLocal();
-                    App.attizos.getInventario().getInventarioInsumos().clear();
-                    App.attizos.getInventario().getInventarioInsumos().putAll(frescoLocal);
-                    cargarDatos();
-                    System.out.println("Inventario actualizado");
-                });
-            }).start();
+            recargarInventarioSeguro(null);
+        });
+        txtCodigoInsumo.textProperty().addListener((obs, oldVal, newVal) -> {
+            Insumo encontrado = (newVal != null && !newVal.trim().isEmpty())
+                    ? App.attizos.getInventario().buscarInsumo(newVal.trim())
+                    : null;
+            if (encontrado != null && encontrado.getUnidad() != null && !encontrado.getUnidad().isEmpty()) {
+                txtCantidad.setPromptText("Cant. (" + encontrado.getUnidad() + ")");
+            } else {
+                txtCantidad.setPromptText("Cantidad");
+            }
         });
     }
 
@@ -130,7 +131,7 @@ public class InventarioController {
             boolean coincideNombre = insumo.getNombre().toLowerCase().contains(busqueda) ||
                     insumo.getCodigo().toLowerCase().contains(busqueda);
             boolean coincideCat = (categoria == null || categoria.equals("Todas las categorías") ||
-                    insumo.getCategoria().equals(categoria));
+                    (insumo.getCategoria() != null) && insumo.getCategoria().equals(categoria));
             return coincideNombre && coincideCat;
         });
     }
@@ -147,15 +148,20 @@ public class InventarioController {
         if (inventarioFresco != null && !inventarioFresco.isEmpty()){
             for (Insumo i : inventarioFresco.values()) {
                 masterData.add(i);
-                categoriasUnicas.add(i.getCategoria());
+                if (i.getCategoria() != null && !i.getCategoria().trim().isEmpty()) {
+                    categoriasUnicas.add(i.getCategoria());
+                }
                 if (i.isVencido()) {
                     alertas.add("❌ CADUCADO: " + i.getNombre());
                 }else if(i.isPorVencer()){
                     alertas.add("⏳ POR VENCER: " + i.getNombre() + " (" + i.getFechaVencimiento().format(DateTimeFormatter.ofPattern("dd/MM/yy")) + ")");
                 }
-                if(i.getStockActual() > 0 && i.getStockActual() <= i.getStockMinimo()){
-                    alertas.add("📉 STOCK BAJO: " + i.getNombre() + " (Quedan " + i.getStockActual() + " " + i.getUnidad() + ")");
+                if(i.getStockActual() <= 0){
+                    alertas.add("🚫 AGOTADO: " + i.getNombre() + " (0 " + i.getUnidad() + ")");
+                }else if(i.getStockActual() <= i.getStockMinimo()){
+                    alertas.add("📉 STOCK BAJO: " + i.getNombre() + " (Quedan " + String.format("%.2f", i.getStockActual()) + " " + i.getUnidad() + ")");
                 }
+                
             }
         }
         cmbFiltroCategoria.setItems(FXCollections.observableArrayList(categoriasUnicas));
@@ -196,7 +202,7 @@ public class InventarioController {
                 lblItem.setWrapText(true);
                 lblItem.setMaxWidth(Double.MAX_VALUE);
 
-                if (textoAlerta.contains("CADUCADO")) {
+                if (textoAlerta.contains("CADUCADO") || textoAlerta.contains("AGOTADO")) {
                     lblItem.setStyle("-fx-background-color: rgba(255, 76, 76, 0.1); -fx-border-color: #ff4c4c; -fx-border-radius: 5; -fx-background-radius: 5; -fx-padding: 8; -fx-text-fill: #ff4c4c; -fx-font-weight: bold;");
                 } else if (textoAlerta.contains("POR VENCER")) {
                     lblItem.setStyle("-fx-background-color: rgba(243, 156, 18, 0.1); -fx-border-color: #f39c12; -fx-border-radius: 5; -fx-background-radius: 5; -fx-padding: 8; -fx-text-fill: #f39c12; -fx-font-weight: bold;");
@@ -247,26 +253,21 @@ public class InventarioController {
                                 }
                                 boolean exitoDB = ApiClient.registrarLoteEnServidor(codigoBase, cantidad, costo, nuevaFecha);
                                 if (exitoDB) {
-                                    ApiClient.registrarEgresoEnServidor("Registrar insumo",costo);
+                                    if (costo > 0) {
+                                        ApiClient.registrarEgresoEnServidor(
+                                                "Compra Insumo: " + insumoBase.getNombre() + " (" + cantidad + " " + insumoBase.getUnidad() + ")",
+                                                costo
+                                        );
+                                    }
                                     String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
                                     App.registrarAuditoria(operador, "Insumo", insumoBase.getNombre(), "Ingreso Lote", cantidad, "Ingreso de nuevo lote. Costo: " + costo);
-                                    new Thread(() ->{
-                                        ConexionSQLite.subirAuditoriaPendiente();
-                                        ConexionSQLite.sincronizarInsumos();
-                                        ArrayList<Insumo> insumosFrescos = ApiClient.obtenerInsumoDelServidor();
-                                        Platform.runLater(() ->{
-                                            App.attizos.getInventario().getInventarioInsumos().clear();
-                                            for(Insumo ins : insumosFrescos){
-                                                App.attizos.getInventario().getInventarioInsumos().put(ins.getCodigo(), ins);
-                                            }
-                                            txtCodigoInsumo.clear();
-                                            txtCantidad.clear();
-                                            dpFechaVencimiento.setValue(null);
-                                            cargarDatos();
-                                            mostrarExito("Lote Registrado", "El stock ha sido sumado correctamente en la Base de Datos.");
 
-                                        });
-                                    }).start();
+                                    recargarInventarioSeguro(() -> {
+                                        txtCodigoInsumo.clear();
+                                        txtCantidad.clear();
+                                        dpFechaVencimiento.setValue(null);
+                                        mostrarExito("Lote Registrado", "El stock ha sido sumado correctamente en la Base de Datos.");
+                                    });
                                 } else {
                                     mostrarAlerta("Error", "No se pudo registrar el lote. ");
                                 }
@@ -285,54 +286,78 @@ public class InventarioController {
     @FXML
     void disminuirStock(ActionEvent event) {
         Insumo seleccionado = tablaInventario.getSelectionModel().getSelectedItem();
-        if(seleccionado == null){
+        if (seleccionado == null) {
             mostrarAlerta("Selección requerida", "Seleccione un insumo de la tabla.");
             return;
         }
-        if(seleccionado.getStockActual() >= 1){
-            DialogoPersonalizado.mostrarDialogo("Justificación de Merma / Ajuste", "Descontando 1 unidad de: " + seleccionado.getNombre(), "Describa el motivo (Ej: Caducado, Dañado, Consumo interno):", "")
-                    .ifPresent(motivo -> {
-                        if(motivo.trim().isEmpty()){
-                            mostrarAlerta("Obligatorio", "Debe ingresar una explicación válida para los reportes de almacén.");
-                        }else{
-                            boolean descuentoExitoso = ApiClient.descontarStockFEFOEnServidor(seleccionado.getCodigo(), 1);
-                            if(descuentoExitoso){
-                                String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
-                                App.registrarAuditoria(operador, "Insumo", seleccionado.getNombre(), "Ajuste Stock (-1)", 1.0, "Merma FEFO: " + motivo);
-
-                                new Thread(() -> {
-                                    ConexionSQLite.subirAuditoriaPendiente();
-                                    ConexionSQLite.sincronizarInsumos();
-                                    ArrayList<Insumo> insumosFrescos = ApiClient.obtenerInsumoDelServidor();
-
-                                    Platform.runLater(() -> {
-                                        App.attizos.getInventario().getInventarioInsumos().clear();
-                                        for(Insumo ins : insumosFrescos){
-                                            App.attizos.getInventario().getInventarioInsumos().put(ins.getCodigo(),ins);
-                                        }
-                                        txtCodigoInsumo.clear();
-                                        txtCantidad.clear();
-                                        dpFechaVencimiento.setValue(null);
-
-                                        cargarDatos();
-
-                                        Insumo actualizado = App.attizos.getInventario().buscarInsumo(seleccionado.getCodigo());
-                                        if (actualizado != null) {
-                                            mostrarExito("Ajuste Realizado", "Se descontó 1 unidad bajo el sistema FEFO.\nQuedan: " + actualizado.getStockActual() + " " + actualizado.getUnidad());
-                                            if (actualizado.getStockActual() <= actualizado.getStockMinimo()) {
-                                                mostrarAlerta("⚠ Stock Crítico", "El insumo bajó a niveles críticos. ¡Es momento de reabastecer!");
-                                            }
-                                        } else {
-                                            mostrarExito("Insumo Agotado", "El stock llegó a cero en todos los lotes. El catálogo sigue activo.\nMotivo Registrado: " + motivo);
-                                        }
-                                    });
-                                }).start();
-                            }
-                        }
-                    });
-        }else {
-            mostrarAlerta("Sin Stock", "El insumo ya tiene 0 unidades en todos sus lotes.");
+        if (seleccionado.getStockActual() <= 0) {
+            mostrarAlerta("Sin Stock", "El insumo ya tiene 0 " + seleccionado.getUnidad() + " en todos sus lotes.");
+            return;
         }
+
+        String uni = seleccionado.getUnidad() != null ? seleccionado.getUnidad() : "und";
+        String stockFmt = String.format("%.2f", seleccionado.getStockActual());
+
+        DialogoPersonalizado.mostrarDialogo(
+                "Descontar Stock (FEFO)",
+                "Insumo: " + seleccionado.getNombre() + " (Disponible: " + stockFmt + " " + uni + ")",
+                "Ingrese la cantidad a descontar en " + uni + ":",
+                "1"
+        ).ifPresent(cantStr -> {
+            try {
+                double cantDescontar = Double.parseDouble(cantStr.trim().replace(",", "."));
+                if (cantDescontar <= 0) {
+                    mostrarAlerta("Error", "La cantidad debe ser mayor a 0.");
+                    return;
+                }
+                if (cantDescontar > seleccionado.getStockActual() + 0.0001) {
+                    mostrarAlerta("Stock Insuficiente", "No puede descontar más de " + stockFmt + " " + uni + ".");
+                    return;
+                }
+
+                DialogoPersonalizado.mostrarDialogo(
+                        "Justificación de Merma / Ajuste",
+                        "Descontando " + cantDescontar + " " + uni + " de: " + seleccionado.getNombre(),
+                        "Describa el motivo (Ej: Caducado, Dañado, Consumo interno):",
+                        ""
+                ).ifPresent(motivo -> {
+                    if (motivo.trim().isEmpty()) {
+                        mostrarAlerta("Obligatorio", "Debe ingresar una explicación válida para los reportes de almacén.");
+                        return;
+                    }
+
+                    boolean descuentoExitoso = ApiClient.descontarStockFEFOEnServidor(seleccionado.getCodigo(), cantDescontar);
+                    if (descuentoExitoso) {
+                        String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
+                        App.registrarAuditoria(operador, "Insumo", seleccionado.getNombre(),
+                                "Ajuste Stock (-" + cantDescontar + " " + uni + ")", cantDescontar, "Merma FEFO: " + motivo);
+
+                        recargarInventarioSeguro(() -> {
+                            txtCodigoInsumo.clear();
+                            txtCantidad.clear();
+                            dpFechaVencimiento.setValue(null);
+
+                            Insumo actualizado = App.attizos.getInventario().buscarInsumo(seleccionado.getCodigo());
+                            if (actualizado != null && actualizado.getStockActual() > 0) {
+                                mostrarExito("Ajuste Realizado",
+                                        "Se descontaron " + cantDescontar + " " + uni + " bajo FEFO.\nQuedan: " +
+                                        String.format("%.2f", actualizado.getStockActual()) + " " + uni);
+                                if (actualizado.getStockActual() <= actualizado.getStockMinimo()) {
+                                    mostrarAlerta("⚠ Stock Crítico", "El insumo bajó a niveles críticos. ¡Es momento de reabastecer!");
+                                }
+                            } else {
+                                mostrarExito("Insumo Agotado",
+                                        "El stock llegó a cero en todos los lotes. El catálogo sigue activo.\nMotivo: " + motivo);
+                            }
+                        });
+                    } else {
+                        mostrarAlerta("Error", "No se pudo descontar el stock en el servidor.");
+                    }
+                });
+            } catch (NumberFormatException e) {
+                mostrarAlerta("Error", "Ingrese una cantidad numérica válida (Ej: 0.5 o 2).");
+            }
+        });
     }
 
     @FXML
@@ -362,7 +387,7 @@ public class InventarioController {
                                     mostrarExito("Insumo Eliminado", "El registro ha sido eliminado del sistema.\nMotivo guardado: " + motivo);
                                     cargarDatos();
                                 }else{
-                                    mostrarAlerta("Insumo Eliminado", "No se pudo eliminar el insumo en el servidor.");
+                                    mostrarAlerta("Error", "No se pudo eliminar el insumo en el servidor.");
                                 }
                             });
 
@@ -426,21 +451,7 @@ public class InventarioController {
                 if (retirado > 0) {
                     String operador = (App.usuarioLogueado != null) ? App.usuarioLogueado.getUsername() : "Admin";
                     App.registrarAuditoria(operador, "Insumo", seleccionado.getNombre(), "Merma por Caducidad", retirado, "Limpieza manual: " + motivo);
-                    new Thread(() ->{
-                        ConexionSQLite.subirAuditoriaPendiente();
-                        ConexionSQLite.sincronizarInsumos();
-                        ArrayList<Insumo> insumosFrescos = ApiClient.obtenerInsumoDelServidor();
-
-                        Platform.runLater(() ->{
-                            App.attizos.getInventario().getInventarioInsumos().clear();
-                            for(Insumo ins : insumosFrescos){
-                                App.attizos.getInventario().getInventarioInsumos().put(ins.getCodigo(),ins);
-                            }
-                            cargarDatos();
-                            mostrarExito("Limpieza Exitosa", "Se retiraron " + retirado + " " + seleccionado.getUnidad() + " caducados.\nLos lotes frescos siguen intactos en el inventario.");
-
-                        });
-                    }).start();
+                    recargarInventarioSeguro(() -> mostrarExito("Limpieza Exitosa", "Se retiraron " + retirado + " " + seleccionado.getUnidad() + " caducados.\nLos lotes frescos siguen intactos en el inventario."));
                 } else {
                     mostrarAlerta("Error", "No se pudo realizar la limpieza en la base de datos.");
                 }
@@ -448,4 +459,23 @@ public class InventarioController {
         });
 
     }
+    private void recargarInventarioSeguro(Runnable alTerminarEnUI) {
+    new Thread(() -> {
+        ConexionSQLite.subirAuditoriaPendiente();
+        ConexionSQLite.sincronizarInsumos();
+        HashMap<String, Insumo> frescoLocal = ConexionSQLite.obtenerInventarioLocal();
+
+        Platform.runLater(() -> {
+            if (frescoLocal != null && !frescoLocal.isEmpty()) {
+                App.attizos.getInventario().getInventarioInsumos().clear();
+                App.attizos.getInventario().getInventarioInsumos().putAll(frescoLocal);
+            }
+            cargarDatos();
+            if (alTerminarEnUI != null) {
+                alTerminarEnUI.run();
+            }
+        });
+    }).start();
+}
+
 }

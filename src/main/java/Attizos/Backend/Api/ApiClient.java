@@ -55,6 +55,7 @@ public class ApiClient {
         try {
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(BASE_URL + "/empleados"))
+                    .timeout(Duration.ofSeconds(10))
                     .GET()
                     .build();
 
@@ -70,7 +71,7 @@ public class ApiClient {
             System.err.println("Falla de conexión con el backend: " + e.getMessage());
         }
 
-        return new ArrayList<>();
+        return null;
     }
 
     public static boolean guardarEmpleadoEnServidor(Empleado empleado) {
@@ -167,6 +168,7 @@ public class ApiClient {
         try{
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(BASE_URL + "/insumos"))
+                    .timeout(Duration.ofSeconds(10))
                     .GET()
                     .build();
 
@@ -181,7 +183,7 @@ public class ApiClient {
         }catch(Exception e){
             System.out.println("Falla de conexión: "+ e.getMessage());
         }
-        return new ArrayList<>();
+        return null;
     }
     public static String obtenerSiguienteCodigoInsumo() {
         try {
@@ -260,20 +262,24 @@ public class ApiClient {
         try {
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(BASE_URL + "/menu/productos"))
+                    .timeout(Duration.ofSeconds(10))
                     .GET()
                     .build();
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() == 200) {
-                return mapper.readValue(response.body(), new com.fasterxml.jackson.core.type.TypeReference<ArrayList<Producto>>() {});
+                return mapper.readValue(
+                    response.body(), 
+                    mapper.getTypeFactory().constructCollectionType(ArrayList.class, Producto.class)
+                );
             } else {
                 System.err.println("Error al obtener menú: Código " + response.statusCode());
             }
         } catch (Exception e) {
             System.err.println("Falla de conexión al obtener productos: " + e.getMessage());
         }
-        return new ArrayList<>();
+        return null;
     }
 
     public static boolean guardarProductoEnServidor(Producto producto) {
@@ -319,7 +325,7 @@ public class ApiClient {
     public static boolean actualizarImagenProductoEnServidor(int idProducto, String urlImagen){
        try {
            Map<String, String> body = new HashMap<>();
-           body.put("imageURL", urlImagen);
+           body.put("imagenURL", urlImagen);
            String json = mapper.writeValueAsString(body);
            HttpRequest request = HttpRequest.newBuilder()
                    .uri(URI.create(BASE_URL + "/menu/productos/" + idProducto + "/imagen"))
@@ -354,6 +360,7 @@ public class ApiClient {
         try {
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(BASE_URL + "/menu/promociones"))
+                    .timeout(Duration.ofSeconds(10))
                     .GET()
                     .build();
 
@@ -365,7 +372,7 @@ public class ApiClient {
         } catch (Exception e) {
             System.err.println("Falla de conexión al obtener combos: " + e.getMessage());
         }
-        return new ArrayList<>();
+        return null;
     }
 
     public static boolean guardarPromocionEnServidor(Promocion promocion) {
