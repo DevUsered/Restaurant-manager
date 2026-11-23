@@ -16,6 +16,7 @@ public class ConfigurationApp {
     public static boolean impresionActivada = true;
     public static String ipServidor = "localhost";
     public static String nombreRestaurante;
+    public static int segundosNotificacion = 0;
 
     public static void cargarConfiguracion() {
         File archivoConfig = new File(RUTA_ARCHIVO);
@@ -32,6 +33,12 @@ public class ConfigurationApp {
             impresionActivada = Boolean.parseBoolean(propiedades.getProperty("app.modulo.impresion", "true"));
             ipServidor = propiedades.getProperty("app.servidor.ip", "localhost");
             nombreRestaurante = propiedades.getProperty("app.negocio.nombre", "Mi Restaurante");
+            try{
+                int seg = Integer.parseInt(propiedades.getProperty("app.notificacion.segundos", "8"));
+                segundosNotificacion = Math.max(2, Math.min(60, seg));
+            }catch(NumberFormatException e){
+                segundosNotificacion = 8;
+            }
 
             Attizos.Backend.Api.ApiClient.configurarIpServidor(ipServidor);
 
@@ -39,19 +46,25 @@ public class ConfigurationApp {
             System.err.println("Error al leer configuración local: " + e.getMessage());
         }
     }
-
     public static void guardarConfiguracionNueva(boolean usarCocina, boolean imprimir, String ip, String nombre) {
+        guardarConfiguracionNueva(usarCocina, imprimir, ip, nombre, segundosNotificacion);
+    }
+
+    public static void guardarConfiguracionNueva(boolean usarCocina, boolean imprimir, String ip, String nombre, int segundosNotif) {
         File carpeta = new File(RUTA_CARPETA);
         if (!carpeta.exists()) carpeta.mkdirs();
+
+        int segundosSeguros = Math.max(2, Math.min(60, segundosNotif));
 
         propiedades.setProperty("app.modo", modoOperacion);
         propiedades.setProperty("app.modulo.cocina", String.valueOf(usarCocina));
         propiedades.setProperty("app.modulo.impresion", String.valueOf(imprimir));
         propiedades.setProperty("app.servidor.ip", ip);
         propiedades.setProperty("app.negocio.nombre", nombre);
+        propiedades.setProperty("app.notificacion.segundos", String.valueOf(segundosSeguros));
 
         try (FileOutputStream fos = new FileOutputStream(RUTA_ARCHIVO)) {
-            propiedades.store(fos, "Configuración del Punto de Venta Attizos");
+            propiedades.store(fos, "Configuración del Punto de Venta Craft POS");
 
             // Actualizar variables en RAM
             tieneCocina = usarCocina;
@@ -64,6 +77,12 @@ public class ConfigurationApp {
         } catch (Exception e) {
             System.err.println("Error al guardar configuración: " + e.getMessage());
         }
+    }
+    public static int getSegundosNotificacion(){
+        return segundosNotificacion;
+    }
+    public static void setSegundosNotificacion(){
+        ConfigurationApp.segundosNotificacion = Math.max(2, Math.min(60, segundosNotificacion));
     }
 
     public static String getModoOperacion() {
