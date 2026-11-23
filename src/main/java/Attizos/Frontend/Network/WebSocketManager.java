@@ -10,6 +10,10 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import Attizos.Backend.Attizos.App;
+import Attizos.Frontend.NotificacionToast;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class WebSocketManager {
     private static volatile WebSocket socketActual;
@@ -19,6 +23,7 @@ public class WebSocketManager {
         t.setDaemon(true);
         return t;
     });
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private static final AtomicBoolean conectando = new AtomicBoolean(false);
     private static final AtomicBoolean reintentoProgramado = new AtomicBoolean(false);
@@ -147,6 +152,28 @@ public class WebSocketManager {
             accionReportes.run();
         } else if (mensajeJson.contains("SYNC_EMPLEADOS") && accionEmpleados != null) {
             accionEmpleados.run();
+        }else if(mensajeJson.contains("PEDIDO_LISTO")){
+            manejarPedidoListo(mensajeJson);
+        }
+    }
+    private static void manejarPedidoListo(String mensajeJson) {
+        if (App.usuarioLogueado == null) {
+            return;
+        }
+
+        // Evita que la notificación le salga al cocinero/chef que acaba de despachar
+        String cargo = App.usuarioLogueado.getCargo();
+        if (cargo != null && (cargo.equalsIgnoreCase("Cocinero") || cargo.equalsIgnoreCase("Chef"))) {
+            return;
+        }
+
+        try {
+            JsonNode json = MAPPER.readTree(mensajeJson);
+            int ticket = json.path("ticket").asInt(0);
+            String cliente = json.path("cliente").asText("Cliente");
+            NotificacionToast.mostrarPedidoListo(ticket, cliente);
+        } catch (Exception e) {
+            System.err.println("⚠️ Error al procesar notificación PEDIDO_LISTO: " + e.getMessage());
         }
     }
 

@@ -31,6 +31,13 @@
                 <CheckBox fx:id="chkImpresion" onAction="#actualizarTextosChecks" textFill="#1A1A1A" style="-fx-font-size: 13px;"/>
             </VBox>
 
+            <VBox spacing="8">
+                <Label text="DURACIÓN DE NOTIFICACIÓN DE COCINA" textFill="#B89728" style="-fx-font-weight: bold; -fx-font-size: 11px;"/>
+                <HBox alignment="CENTER_LEFT" spacing="10">
+                    <Spinner fx:id="spnSegundosNotificacion" editable="true" prefWidth="110.0" style="-fx-background-color: #FFFFFF; -fx-border-color: #E8E2D5; -fx-border-radius: 6; -fx-background-radius: 6;"/>
+                    <Label text="segundos en pantalla (2 a 60)" textFill="#555555" style="-fx-font-size: 12px;"/>
+                </HBox>
+            </VBox>
             <Region VBox.vgrow="ALWAYS" />
 
             <Button text="Guardar Cambios" onAction="#confirmarYGuardar" maxWidth="Infinity" style="-fx-background-color: #E5B80B; -fx-text-fill: #000000; -fx-font-weight: bold; -fx-font-size: 14px; -fx-background-radius: 8; -fx-cursor: hand;" prefHeight="40.0"/>

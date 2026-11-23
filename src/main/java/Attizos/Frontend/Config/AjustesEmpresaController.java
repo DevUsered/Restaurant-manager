@@ -17,20 +17,45 @@ import java.util.ResourceBundle;
 public class AjustesEmpresaController implements Initializable {
     @FXML private TextField txtNombreNegocio;
     @FXML private TextField txtIpServidor;
+    @FXML private Spinner<Integer> spnSegundosNotificacion;
 
     @FXML private CheckBox chkTieneCocina;
     @FXML private CheckBox chkImpresion;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        spnSegundosNotificacion.setValueFactory(
+            new SpinnerValueFactory.IntegerSpinnerValueFactory(2, 60,8)
+        );
+        spnSegundosNotificacion.focusedProperty().addListener((obs, eraFoco, esFoco) ->{
+            if(!esFoco){
+                confirmarTextoSpinner();
+            }
+        });
         cargarDatosDesdeConfigApp();
     }
+    private int confirmarTextoSpinner() {
+        try {
+            int valor = Integer.parseInt(spnSegundosNotificacion.getEditor().getText().trim());
+            valor = Math.max(2, Math.min(60, valor));
+            spnSegundosNotificacion.getValueFactory().setValue(valor);
+            return valor;
+        } catch (NumberFormatException e) {
+            int actual = spnSegundosNotificacion.getValue() != null
+                    ? spnSegundosNotificacion.getValue()
+                    : ConfigurationApp.getSegundosNotificacion();
+            spnSegundosNotificacion.getEditor().setText(String.valueOf(actual));
+            return actual;
+        }
+    }
+
 
     private void cargarDatosDesdeConfigApp() {
         ConfigurationApp.cargarConfiguracion(); // Nos aseguramos de tener lo último en RAM
 
         txtNombreNegocio.setText(ConfigurationApp.getNombreRestaurante());
         txtIpServidor.setText(ConfigurationApp.getIpServidor());
+        spnSegundosNotificacion.getValueFactory().setValue(ConfigurationApp.getSegundosNotificacion());
 
         // Cargamos los estados booleanos
         chkTieneCocina.setSelected(ConfigurationApp.isTieneCocina());
@@ -58,6 +83,7 @@ public class AjustesEmpresaController implements Initializable {
 
     @FXML
     private void confirmarYGuardar(ActionEvent event) {
+        int nuevosSegundos = confirmarTextoSpinner();
         String nuevoNombre = txtNombreNegocio.getText().trim();
         if (nuevoNombre.isEmpty()) {
             AlertaPersonalizada.mostrarAlerta("Campo Obligatorio", "El nombre del restaurante no puede quedar vacío.", Alert.AlertType.WARNING);
@@ -89,6 +115,14 @@ public class AjustesEmpresaController implements Initializable {
             cambios.append("• Impresión Tickets: ").append(nuevaImpresion ? "Habilitada" : "Deshabilitada").append("\n");
             hayCambios = true;
         }
+        if (nuevosSegundos != ConfigurationApp.getSegundosNotificacion()) {
+            cambios.append("• Duración Notificación: ")
+                   .append(ConfigurationApp.getSegundosNotificacion())
+                   .append("s ➔ ")
+                   .append(nuevosSegundos)
+                   .append("s\n");
+            hayCambios = true;
+        }
 
         // Si no tocó nada, evitamos guardar innecesariamente
         if (!hayCambios) {
@@ -104,11 +138,11 @@ public class AjustesEmpresaController implements Initializable {
         );
 
         if (respuesta.isPresent() && respuesta.get() == ButtonType.OK) {
-            ejecutarGuardadoEnNubeYLocal(nuevoNombre, nuevaIp, nuevaCocina, nuevaImpresion);
+            ejecutarGuardadoEnNubeYLocal(nuevoNombre, nuevaIp, nuevaCocina, nuevaImpresion, nuevosSegundos);
         }
     }
 
-    private void ejecutarGuardadoEnNubeYLocal(String nuevoNombre, String nuevaIp, boolean nuevaCocina, boolean nuevaImpresion) {
+    private void ejecutarGuardadoEnNubeYLocal(String nuevoNombre, String nuevaIp, boolean nuevaCocina, boolean nuevaImpresion, int nuevosSegundos) {
 
         if (!nuevaIp.equals(ConfigurationApp.getIpServidor()) && !nuevaIp.equalsIgnoreCase("localhost")) {
             System.out.println("🔄 Verificando nueva IP del servidor: " + nuevaIp);
@@ -122,7 +156,7 @@ public class AjustesEmpresaController implements Initializable {
             }
         }
 
-        ConfigurationApp.guardarConfiguracionNueva(nuevaCocina, nuevaImpresion, nuevaIp, nuevoNombre);
+        ConfigurationApp.guardarConfiguracionNueva(nuevaCocina, nuevaImpresion, nuevaIp, nuevoNombre, nuevosSegundos);
 
         App.setNombre(nuevoNombre);
         if (App.attizos != null) {
