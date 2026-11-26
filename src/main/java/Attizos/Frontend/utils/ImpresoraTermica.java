@@ -13,7 +13,7 @@ import java.util.List;
 public class ImpresoraTermica {
 
     // Ancho en caracteres por línea según el rollo de papel:
-    // 58mm = 32 caracteres | 80mm = 42 o 48 caracteres (42 es el estándar seguro en 80mm)
+    // 58mm = 32 caracteres | 80mm = 42 caracteres
     public static final int ANCHO_58MM = 32;
     public static final int ANCHO_80MM = 42;
 
@@ -22,23 +22,22 @@ public class ImpresoraTermica {
     private static final byte[] ESC_CP850       = {0x1B, 0x74, 0x02}; // Tabla caracteres CP850 (español)
     private static final byte[] ALIGN_LEFT      = {0x1B, 0x61, 0x00};
     private static final byte[] ALIGN_CENTER    = {0x1B, 0x61, 0x01};
-    private static final byte[] ALIGN_RIGHT     = {0x1B, 0x61, 0x02};
     private static final byte[] BOLD_ON         = {0x1B, 0x45, 0x01};
     private static final byte[] BOLD_OFF        = {0x1B, 0x45, 0x00};
     private static final byte[] SIZE_NORMAL     = {0x1D, 0x21, 0x00}; // 1x1
     private static final byte[] SIZE_DOUBLE_H   = {0x1D, 0x21, 0x01}; // 1x ancho, 2x alto
     private static final byte[] SIZE_DOUBLE_WH  = {0x1D, 0x21, 0x11}; // 2x ancho, 2x alto
     private static final byte[] SIZE_TURNO      = {0x1D, 0x21, 0x22}; // 3x ancho, 3x alto (para #001)
-    private static final byte[] CUT_PARTIAL     = {0x1D, 0x56, 0x42, 0x00}; // Avanza y corta papel
+    private static final byte[] CUT_PARTIAL     = {0x1D, 0x56, 0x42, 0x00}; // Avanza hasta cuchilla y hace corte parcial
 
     private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
     /**
-     * Imprime el ticket de cliente (equivalente a ticketCliente en Ticket.fxml).
+     * Imprime 1 solo ticket de cliente ("SU TURNO: #001") cuando no requiere cocina.
      */
     public static boolean imprimirTicketCliente(Factura factura, int turno, String metodoPago, String nombreImpresora, int ancho) {
         try {
-            byte[] data = construirBytesCliente(factura, turno, metodoPago, ancho);
+            byte[] data = construirBytesTicket(factura, turno, metodoPago, ancho, false);
             return enviarAImpresora(data, nombreImpresora);
         } catch (Exception e) {
             System.err.println("❌ Error al imprimir ticket cliente: " + e.getMessage());
@@ -47,34 +46,45 @@ public class ImpresoraTermica {
     }
 
     /**
-     * Imprime la comanda de cocina/caja (equivalente a ticketCocina en Ticket.fxml).
+     * Imprime ambos tickets en un solo trabajo continuo con corte parcial justo entre ellos:
+     * 1) Cliente ("SU TURNO: #001" + Nombre cliente grande)
+     * 2) Cocina ("TICKET #001" + Nombre cliente grande, sin encabezado de comanda)
      */
-    public static boolean imprimirTicketCocina(Factura factura, String nombreCajero, int turno, String nombreImpresora, int ancho) {
+    public static boolean imprimirTicketDoble(Factura factura, int turno, String metodoPago, String nombreImpresora, int ancho) {
         try {
-            byte[] data = construirBytesCocina(factura, nombreCajero, turno, ancho);
-            return enviarAImpresora(data, nombreImpresora);
+            byte[] ticketCliente = construirBytesTicket(factura, turno, metodoPago, ancho, false);
+            byte[] ticketCocina  = construirBytesTicket(factura, turno, metodoPago, ancho, true);
+
+            ByteArrayOutputStream combinado = new ByteArrayOutputStream(ticketCliente.length + ticketCocina.length);
+            combinado.write(ticketCliente); // Incluye CUT_PARTIAL justo al terminar el primer ticket
+            combinado.write(ticketCocina);  // Sale inmediatamente después e incluye su propio CUT_PARTIAL
+
+            return enviarAImpresora(combinado.toByteArray(), nombreImpresora);
         } catch (Exception e) {
-            System.err.println("❌ Error al imprimir ticket cocina: " + e.getMessage());
+            System.err.println("❌ Error al imprimir ticket doble: " + e.getMessage());
             return false;
         }
     }
 
     /**
-     * Útil para depurar el alineado exacto en consola sin gastar papel térmico.
+     * Vista previa en texto plano para depurar alineación en consola.
      */
-    public static String vistaPreviaConsola(Factura factura, String nombreCajero, int turno, String metodoPago, int ancho) {
+    public static String vistaPreviaConsola(Factura factura, int turno, String metodoPago, int ancho) {
         StringBuilder sb = new StringBuilder();
         String sep = "-".repeat(ancho);
-        String nombreNegocio = App.getNombre() != null ? App.getNombre().toUpperCase() : "ATTIZOS";
+        String nombreNegocio = App.getNombre() != null ? App.getNombre().toUpperCase() : "CRAFT POS";
+        String cliente = obtenerNombreClienteLimpio(factura);
         String fechaStr = obtenerFechaFormateada(factura);
 
         sb.append("=== VISTA PREVIA CLIENTE (").append(ancho).append(" cols) ===\n");
         sb.append(centrarTexto(nombreNegocio, ancho)).append("\n");
         sb.append(centrarTexto("SU TURNO:", ancho)).append("\n");
         sb.append(centrarTexto("#" + String.format("%03d", turno), ancho)).append("\n");
-        sb.append("Fecha:   ").append(fechaStr).append("\n");
-        sb.append("Cliente: ").append(factura.getNombreCliente()).append("\n");
-        sb.append("Pago:    ").append(metodoPago).append("\n");
+        sb.append(centrarTexto(cliente.toUpperCase(), ancho)).append("\n");
+        sb.append("Fecha: ").append(fechaStr).append("\n");
+        if (metodoPago != null && !metodoPago.isEmpty()) {
+            sb.append("Pago:  ").append(metodoPago).append("\n");
+        }
         sb.append(sep).append("\n");
         sb.append(formatearEncabezadoTabla(ancho)).append("\n");
         sb.append(sep).append("\n");
@@ -89,11 +99,13 @@ public class ImpresoraTermica {
         return sb.toString();
     }
 
-    private static byte[] construirBytesCliente(Factura factura, int turno, String metodoPago, int ancho) throws IOException {
+    private static byte[] construirBytesTicket(Factura factura, int turno, String metodoPago, int ancho, boolean esParaCocina) throws IOException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         String sep = "-".repeat(ancho);
-        String nombreNegocio = App.getNombre() != null ? App.getNombre().toUpperCase() : "ATTIZOS";
+        String nombreNegocio = App.getNombre() != null ? App.getNombre().toUpperCase() : "CRAFT POS";
+        String cliente = obtenerNombreClienteLimpio(factura);
         String fechaStr = obtenerFechaFormateada(factura);
+        String turnoFormateado = String.format("%03d", turno);
 
         out.write(ESC_INIT);
         out.write(ESC_CP850);
@@ -105,86 +117,26 @@ public class ImpresoraTermica {
         escribirLinea(out, nombreNegocio);
         out.write(SIZE_NORMAL);
         out.write(BOLD_OFF);
-        escribirLinea(out, "");
+        escribirLinea(out, esParaCocina ? "COMANDA:" : "SU TURNO:");
 
-        escribirLinea(out, "SU TURNO:");
         out.write(BOLD_ON);
         out.write(SIZE_TURNO);
-        escribirLinea(out, "#" + String.format("%03d", turno));
-        out.write(SIZE_NORMAL);
-        out.write(BOLD_OFF);
-        escribirLinea(out, "");
-
-        // Datos del cliente
-        out.write(ALIGN_LEFT);
-        escribirLinea(out, "Fecha:   " + fechaStr);
-        escribirLinea(out, "Cliente: " + limpiarTexto(factura.getNombreCliente()));
-        if (metodoPago != null && !metodoPago.isEmpty()) {
-            escribirLinea(out, "Pago:    " + metodoPago);
-        }
-
-        escribirLinea(out, sep);
-        out.write(BOLD_ON);
-        escribirLinea(out, formatearEncabezadoTabla(ancho));
-        out.write(BOLD_OFF);
-        escribirLinea(out, sep);
-
-        // Detalle de productos (con tamaño)
-        for (DetalleFactura df : factura.getDetalles()) {
-            String nombreProd = df.getProducto().getNombreConTamano();
-            for (String linea : formatearFilaProducto(df.getCantidad(), nombreProd, df.getSubtotal(), ancho)) {
-                escribirLinea(out, linea);
-            }
-        }
-
-        escribirLinea(out, sep);
-
-        // Total
-        out.write(BOLD_ON);
-        out.write(SIZE_DOUBLE_H);
-        escribirLinea(out, alinearIzquierdaDerecha("TOTAL PAGADO:", String.format("Bs. %.2f", factura.getTotal()), ancho));
-        out.write(SIZE_NORMAL);
-        out.write(BOLD_OFF);
-
-        // Pie de página
-        escribirLinea(out, "");
-        out.write(ALIGN_CENTER);
-        escribirLinea(out, "¡Gracias por su preferencia!");
-        escribirLinea(out, "");
-        escribirLinea(out, "");
-        escribirLinea(out, "");
-
-        out.write(CUT_PARTIAL);
-        return out.toByteArray();
-    }
-
-    private static byte[] construirBytesCocina(Factura factura, String nombreCajero, int turno, int ancho) throws IOException {
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        String sep = "-".repeat(ancho);
-        String nombreNegocio = App.getNombre() != null ? App.getNombre().toUpperCase() : "ATTIZOS";
-        String fechaStr = obtenerFechaFormateada(factura);
-
-        out.write(ESC_INIT);
-        out.write(ESC_CP850);
-
-        // Encabezado cocina
-        out.write(ALIGN_CENTER);
-        out.write(BOLD_ON);
-        out.write(SIZE_DOUBLE_H);
-        escribirLinea(out, nombreNegocio);
-        out.write(SIZE_NORMAL);
-        escribirLinea(out, "** COMANDA DE COCINA **");
+        escribirLinea(out, "#"+turnoFormateado);
+        
         out.write(SIZE_DOUBLE_WH);
-        escribirLinea(out, "TICKET #" + String.format("%03d", turno));
+        for (String lineaCliente : envolverTexto(cliente.toUpperCase(), Math.max(12, ancho / 2))) {
+            escribirLinea(out, lineaCliente);
+        }
         out.write(SIZE_NORMAL);
         out.write(BOLD_OFF);
-        escribirLinea(out, "");
+        escribirLinea(out,"");
 
-        // Metadatos
+        // Metadatos del pedido
         out.write(ALIGN_LEFT);
-        escribirLinea(out, "Fecha:   " + fechaStr);
-        escribirLinea(out, "Usuario: " + limpiarTexto(nombreCajero));
-        escribirLinea(out, "Cliente: " + limpiarTexto(factura.getNombreCliente()));
+        escribirLinea(out, "Fecha: " + fechaStr);
+        if (metodoPago != null && !metodoPago.isEmpty()) {
+            escribirLinea(out, "Pago:  " + metodoPago);
+        }
 
         escribirLinea(out, sep);
         out.write(BOLD_ON);
@@ -192,16 +144,14 @@ public class ImpresoraTermica {
         out.write(BOLD_OFF);
         escribirLinea(out, sep);
 
-        // Productos en cocina (destacados y con desglose de combos)
+        // Detalle automático según la cantidad de ítems del pedido
         for (DetalleFactura df : factura.getDetalles()) {
             Producto p = df.getProducto();
-            out.write(BOLD_ON);
             for (String linea : formatearFilaProducto(df.getCantidad(), p.getNombreConTamano(), df.getSubtotal(), ancho)) {
                 escribirLinea(out, linea);
             }
-            out.write(BOLD_OFF);
 
-            // Si es promoción/combo, imprimir lo que cocina debe preparar adentro
+            // Si es combo/promoción, detalla sus componentes debajo
             if (p.isPromocion() && p instanceof Promocion promo && promo.getProductosCombo() != null) {
                 for (DetalleCombo dc : promo.getProductosCombo()) {
                     int cantTotalItem = dc.getCantidad() * df.getCantidad();
@@ -215,10 +165,19 @@ public class ImpresoraTermica {
 
         escribirLinea(out, sep);
 
+        // Total
         out.write(BOLD_ON);
-        escribirLinea(out, alinearIzquierdaDerecha("TOTAL A PAGAR:", String.format("Bs. %.2f", factura.getTotal()), ancho));
+        out.write(SIZE_DOUBLE_H);
+        escribirLinea(out, alinearIzquierdaDerecha("TOTAL PAGADO:", String.format("Bs. %.2f", factura.getTotal()), ancho));
+        out.write(SIZE_NORMAL);
         out.write(BOLD_OFF);
 
+        // Pie de página y avance justo hasta la cuchilla
+        escribirLinea(out, "");
+        if (!esParaCocina) {
+            out.write(ALIGN_CENTER);
+            escribirLinea(out, "¡Gracias por su preferencia!");
+        }
         escribirLinea(out, "");
         escribirLinea(out, "");
         escribirLinea(out, "");
@@ -227,9 +186,6 @@ public class ImpresoraTermica {
         return out.toByteArray();
     }
 
-    /**
-     * Busca la impresora por nombre parcial (ej. "POS-80", "Xprinter") o usa la predeterminada del SO.
-     */
     private static boolean enviarAImpresora(byte[] rawBytes, String nombreImpresora) throws PrintException {
         PrintService servicio = buscarImpresora(nombreImpresora);
         if (servicio == null) {
@@ -345,6 +301,11 @@ public class ImpresoraTermica {
         return lineas;
     }
 
+    private static String obtenerNombreClienteLimpio(Factura factura) {
+        String nombre = limpiarTexto(factura.getNombreCliente());
+        return nombre.isEmpty() ? "Sin Nombre" : nombre;
+    }
+
     private static String obtenerFechaFormateada(Factura factura) {
         LocalDateTime fechaSegura = factura.getFecha() != null ? factura.getFecha() : LocalDateTime.now();
         return fechaSegura.format(FORMATO_FECHA);
@@ -359,9 +320,6 @@ public class ImpresoraTermica {
         out.write('\n');
     }
 
-    /**
-     * Codificador CP850 sin dependencia de jdk.charsets (seguro para JREs empaquetados).
-     */
     private static byte[] codificarCP850(String texto) {
         ByteArrayOutputStream buf = new ByteArrayOutputStream(texto.length());
         for (int i = 0; i < texto.length(); i++) {

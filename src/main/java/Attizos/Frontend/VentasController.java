@@ -56,6 +56,7 @@ public class VentasController {
 
     @FXML
     public void initialize() {
+        WebSocketManager.asegurarConexion(ApiClient.getIpServidor());
         iniciarNuevaVenta();
         if (tfBuscar != null) {
             tfBuscar.textProperty().addListener((observable, oldValue, newValue) -> {
@@ -292,16 +293,21 @@ public class VentasController {
             mostrarAlerta("Carrito Vacío","⚠ Agregue productos antes de cobrar.",Alert.AlertType.WARNING);
             return;
         }
+        if(!ApiClient.isServidorDisponible()){
+            mostrarAlerta("Servidor No Disponible", "El cobro por QR requiere conexión con el servidor central.", Alert.AlertType.WARNING);
+            return;
+        }
         try{
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/ModalCobroQR.fxml"));
             Parent root = loader.load();
 
             CobroQRController controller = loader.getController();
-            controller.inicializarCobro(facturaActual.getTotal());
+            controller.inicializarCobro(facturaActual.getTotal(), tfNombreCli.getText());
 
             Stage stage = new Stage();
             stage.initModality(Modality.APPLICATION_MODAL);
             stage.initStyle(StageStyle.TRANSPARENT);
+            stage.setOnHidden(e -> controller.limpiarAlCerrar());
 
             Scene scene = new Scene(root);
             scene.setFill(Color.TRANSPARENT);
@@ -403,9 +409,10 @@ public class VentasController {
 
                 if(usarImpresora){
                     if(enviarCocina){
-                        boolean okCli = ImpresoraTermica.imprimirTicketCliente(facturaActual, numeroTicketDiario, metodoPago, impresoraConfig, anchoPapel);
-                        boolean okCoc = ImpresoraTermica.imprimirTicketCocina(facturaActual, nombreCajero, numeroTicketDiario, impresoraConfig, anchoPapel);
-                        if (okCli && okCoc) {
+                        boolean okDoble = ImpresoraTermica.imprimirTicketDoble(
+                                facturaActual, numeroTicketDiario, metodoPago, impresoraConfig, anchoPapel
+                        );
+                        if (okDoble) {
                             mostrarAlerta("¡Venta registrada!", "Cobro exitoso (" + metodoPago + ").\nTickets impresos.", Alert.AlertType.INFORMATION);
                         } else {
                             mostrarAlerta("Aviso de Impresión", "La venta se registró (Turno #" + String.format("%03d", numeroTicketDiario) + "), pero no se detectó la impresora térmica.", Alert.AlertType.WARNING);

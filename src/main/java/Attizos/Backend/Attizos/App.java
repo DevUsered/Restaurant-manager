@@ -39,33 +39,39 @@ public class App {
         nombre = ConfigurationApp.getNombreRestaurante();
         attizos = new Restaurante(nombre, "FAST_FOOD");
         cargarCacheLogo();
-        crearPlantillaCredencialesQR();
-        ApiClient.cargarCredencialesDelServidor();
         ConexionSQLite.inicializarTablasLocales();
 
-        if(ApiClient.isServidorDisponible()) {
-            System.out.println("🔄 Sincronizando datos con la Base de Datos PRINCIPAL...");
-            modoOffline = false;
-            ConexionSQLite.subirAuditoriaPendiente();
-            ConexionSQLite.subirVentasPendientes();
-            ServicioNube.sincronizarImagenesPendientes();
-
-            ConexionSQLite.actualizarCacheCompleta();
-
-            new Thread(() -> {
-                String ipServidor = ApiClient.getIpServidor();
-                WebSocketManager.conectarAlServidor(ipServidor);
-            }).start();
-        } else {
-            System.err.println("[Modo Offline] Trabajando con caché local.");
-            modoOffline = true;
-        }
-
+        // 1. Carga inmediata desde SQLite local para abrir la ventana al instante (con o sin red)
         System.out.println("Cargando datos locales a RAM...");
         cargarEmpleados();
         cargarInventario();
         cargarProductos();
-        System.out.println("✅ Datos listos.");
+        modoOffline = true;
+        System.out.println("✅ Datos locales listos al instante.");
+
+        // 2. Comprobación de red y sincronización en segundo plano sin congelar el arranque
+        new Thread(() -> {
+            if (!ApiClient.isServidorDisponible()
+                    && procesoBackend != null && procesoBackend.isAlive()
+                    && ConexionSQLite.obtenerEmpleadosLocal().isEmpty()) {
+                System.out.println("⏳ Base local sin usuarios. Esperando a que el servidor termine de iniciar...");
+                for (int i = 0; i < 30 && !ApiClient.isServidorDisponible(); i++) {
+                    try { Thread.sleep(1000); } catch (InterruptedException ignored) {}
+                }
+            }
+            if (ApiClient.isServidorDisponible()) {
+                System.out.println("🔄 Servidor disponible. Sincronizando en segundo plano...");
+                modoOffline = false;
+                ApiClient.cargarCredencialesDelServidor();
+                ConexionSQLite.subirAuditoriaPendiente();
+                ConexionSQLite.subirVentasPendientes();
+                ServicioNube.sincronizarImagenesPendientes();
+                sincronizarDatosDesdeServidor();
+                WebSocketManager.conectarAlServidor(ApiClient.getIpServidor());
+            } else {
+                System.out.println("[Modo Offline] Trabajando con caché local sin esperar red.");
+            }
+        }).start();
     }
 
     public static void sincronizarDatosDesdeServidor() {
@@ -186,11 +192,11 @@ public class App {
         }
     }
 
-    public static void iniciarBackend(){
-        try{
+    public static void iniciarBackend() {
+        try {
             String rutaBase = System.getenv("APPDATA") + File.separator + "Attizos";
             File archivoConfig = new File(rutaBase + File.separator + "configuracion.properties");
-            if(archivoConfig.exists()){
+            if (archivoConfig.exists()) {
                 java.util.Properties props = new java.util.Properties();
                 try (java.io.FileInputStream in = new java.io.FileInputStream(archivoConfig)) {
                     props.load(in);
@@ -199,19 +205,21 @@ public class App {
                 ApiClient.configurarIpServidor(ip);
                 String modo = props.getProperty("app.modo", "SUCURSAL");
 
-                if(modo.equals("SERVIDOR")){
+                if (modo.equals("SERVIDOR")) {
                     String pathBackend = rutaBase + File.separator + "backend" + File.separator + "backend.jar";
                     String pathProps = rutaBase + File.separator + "backend" + File.separator + "application.properties";
 
                     File jarFile = new File(pathBackend);
-                    if(jarFile.exists()){
+                    if (jarFile.exists()) {
+                        // 1. Matar cualquier instancia previa antes de encender una nueva
+                        detenerBackend();
+                        Runtime.getRuntime().addShutdownHook(new Thread(App::detenerBackend));
+
                         System.out.println("🚀 Encendiendo servidor Spring Boot en segundo plano...");
 
-                        // --- CAMBIO CLAVE AQUI: Apuntar al JRE empaquetado ---
                         String directorioApp = System.getProperty("user.dir");
                         String extensionExe = System.getProperty("os.name").toLowerCase().contains("win") ? "java.exe" : "java";
                         String javaBin = directorioApp + File.separator + "jre" + File.separator + "bin" + File.separator + extensionExe;
-                        // -----------------------------------------------------
 
                         ProcessBuilder pb = new ProcessBuilder(
                                 javaBin,
@@ -227,7 +235,19 @@ public class App {
                                 String linea;
                                 while ((linea = reader.readLine()) != null) {
                                     System.out.println("[Spring Boot] " + linea);
-                                    if (linea.contains("CÓDIGO DE EQUIPO:")) {
+
+                                    // 2. En cuanto Spring Boot termine de levantar, cargar credenciales y sincronizar
+                                    if (linea.contains("Started BackendApplication")) {
+                                        new Thread(() -> {
+                                            modoOffline = false;
+                                            ApiClient.cargarCredencialesDelServidor();
+                                            ConexionSQLite.subirAuditoriaPendiente();
+                                            ConexionSQLite.subirVentasPendientes();
+                                            ServicioNube.sincronizarImagenesPendientes();
+                                            sincronizarDatosDesdeServidor();
+                                            WebSocketManager.conectarAlServidor(ApiClient.getIpServidor());
+                                        }).start();
+                                    } else if (linea.contains("CÓDIGO DE EQUIPO:")) {
                                         try {
                                             String codigo = linea.split("CÓDIGO DE EQUIPO:")[1].trim();
                                             Platform.runLater(() -> {
@@ -279,16 +299,8 @@ public class App {
                                 System.err.println("🛑 Consola de Spring Boot desconectada.");
                             }
                         }).start();
-
-                        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                            if (procesoBackend != null && procesoBackend.isAlive()) {
-                                System.out.println("🛑 Apagando servidor Spring Boot y liberando puertos...");
-                                procesoBackend.destroyForcibly();
-                            }
-                        }));
                     } else {
                         System.out.println("❌ No se encontró el archivo backend.jar en la ruta: " + pathBackend);
-                        // NUEVO: Alerta visual si no se instaló bien el backend
                         final String rutaFaltante = pathBackend;
                         Platform.runLater(() -> {
                             AlertaPersonalizada.mostrarAlerta(
@@ -302,7 +314,6 @@ public class App {
             }
         } catch (Exception e) {
             System.err.println("Error al iniciar backend: " + e.getMessage());
-            // NUEVO: Alerta visual si ProcessBuilder explota (ej. falta de permisos o no encuentra java.exe)
             final String mensajeError = e.getMessage();
             Platform.runLater(() -> {
                 AlertaPersonalizada.mostrarAlerta(
@@ -361,25 +372,28 @@ public class App {
             System.out.println("NO SE ENCONTRO LA IMAGEN");
         }
     }
-    public static void crearPlantillaCredencialesQR() {
+    public static void detenerBackend() {
         try {
-            String rutaBase = System.getenv("APPDATA") + File.separator + "Attizos";
-            File archivoCredenciales = new File(rutaBase + File.separator + "credenciales_economico.properties");
-
-            if (!archivoCredenciales.exists()) {
-                java.util.Properties props = new java.util.Properties();
-                props.setProperty("API_URL_BASE", "https://apimktdesa.baneco.com.bo/ApiGateway");
-                props.setProperty("USER_NAME", "AQUI_TU_USUARIO");
-                props.setProperty("PASSWORD_ENCRIPTADO", "AQUI_TU_CLAVE_ENCRIPTADA");
-                props.setProperty("CUENTA_ABONO_ENCRIPTADA", "AQUI_TU_CUENTA_ENCRIPTADA");
-
-                try (java.io.FileOutputStream out = new java.io.FileOutputStream(archivoCredenciales)) {
-                    props.store(out, "--- Plantilla de Credenciales para Banco Economico (Pagos QR Simple) ---");
+            boolean cerradoAlguno = false;
+            if (procesoBackend != null && procesoBackend.isAlive()) {
+                procesoBackend.descendants().forEach(ProcessHandle::destroyForcibly);
+                procesoBackend.destroyForcibly();
+                procesoBackend.waitFor(3, TimeUnit.SECONDS);
+                System.out.println("🛑 Servidor backend detenido correctamente.");
+                cerradoAlguno = true;
+            }
+            for (ProcessHandle p : ProcessHandle.allProcesses().toList()) {
+                if (p.info().commandLine().orElse("").contains("backend.jar")) {
+                    System.out.println("🧹 Cerrando instancia anterior de backend.jar (PID " + p.pid() + ")...");
+                    p.destroyForcibly();
+                    cerradoAlguno = true;
                 }
-                System.out.println("✅ Plantilla de credenciales QR generada en: " + archivoCredenciales.getAbsolutePath());
+            }
+            if (cerradoAlguno) {
+                Thread.sleep(500);
             }
         } catch (Exception e) {
-            System.err.println("❌ Error al generar la plantilla de credenciales QR: " + e.getMessage());
+            System.err.println("⚠️ No se pudo detener el backend anterior: " + e.getMessage());
         }
     }
 }
