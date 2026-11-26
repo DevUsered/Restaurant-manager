@@ -10,10 +10,13 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
+
 import Attizos.Backend.Attizos.App;
 import Attizos.Frontend.NotificacionToast;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 
 public class WebSocketManager {
     private static volatile WebSocket socketActual;
@@ -34,6 +37,7 @@ public class WebSocketManager {
     private static Runnable accionEmpleados;
     private static Runnable accionMenu;
     private static Runnable accionReportes;
+    private static Consumer<String> accionPagoQr;
 
     public static void setAccionVentasYStock(Runnable accion) { accionVentasYStock = accion; }
     public static void setAccionCocina(Runnable accion) { accionCocina = accion; }
@@ -41,6 +45,9 @@ public class WebSocketManager {
     public static void setAccionMenu(Runnable accion) { accionMenu = accion; }
     public static void setAccionReportes(Runnable accion) { accionReportes = accion; }
     public static void setAccionEmpleados(Runnable accion) { accionEmpleados = accion; }
+    public static void setAccionPagoQr(Consumer<String> accion){
+        accionPagoQr = accion;
+    }
 
     public static boolean estaConectado() {
         return socketActual != null && !socketActual.isOutputClosed() && !socketActual.isInputClosed();
@@ -154,6 +161,10 @@ public class WebSocketManager {
             accionEmpleados.run();
         }else if(mensajeJson.contains("PEDIDO_LISTO")){
             manejarPedidoListo(mensajeJson);
+        }else if(mensajeJson.contains("PAGO_CONFIRMADO")){
+            if(accionPagoQr != null){
+                accionPagoQr.accept(mensajeJson);
+            }
         }
     }
     private static void manejarPedidoListo(String mensajeJson) {

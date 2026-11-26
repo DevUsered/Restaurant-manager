@@ -9,7 +9,6 @@ import javafx.fxml.Initializable;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
@@ -35,7 +34,9 @@ public class SetupController implements Initializable {
     @FXML private PasswordField txtDbPassword;
 
     @FXML private VBox boxModuloCocina;
-    @FXML private TextField txtCloudinaryUrl;
+    @FXML private TextField txtCloudName;
+    @FXML private TextField txtCloudApiKey;
+    @FXML private PasswordField txtCloudApiSecret;
     @FXML private CheckBox chkTieneCocina;
     @FXML private Button btnGuardar;
 
@@ -57,11 +58,6 @@ public class SetupController implements Initializable {
             if (boxModuloCocina != null) {
                 boxModuloCocina.setVisible(!esSucursal);
                 boxModuloCocina.setManaged(!esSucursal);
-            } else {
-                txtCloudinaryUrl.setVisible(!esSucursal);
-                txtCloudinaryUrl.setManaged(!esSucursal);
-                chkTieneCocina.setVisible(!esSucursal);
-                chkTieneCocina.setManaged(!esSucursal);
             }
 
             if (esSucursal) {
@@ -78,6 +74,11 @@ public class SetupController implements Initializable {
             AlertaPersonalizada.mostrarAlerta("Campos Incompletos", "Por favor, completa todos los campos requeridos para continuar.", Alert.AlertType.WARNING);
             return;
         }
+
+        String cloudName = txtCloudName != null && txtCloudName.getText() != null ? txtCloudName.getText().trim() : "";
+        String cloudKey  = txtCloudApiKey != null && txtCloudApiKey.getText() != null ? txtCloudApiKey.getText().trim() : "";
+        String cloudSec  = txtCloudApiSecret != null && txtCloudApiSecret.getText() != null ? txtCloudApiSecret.getText().trim() : "";
+
         if (rbServidorPrincipal.isSelected()) {
             String ipPostgres = txtDbUrl.getText().trim();
             String user = txtDbUser.getText().trim();
@@ -92,11 +93,22 @@ public class SetupController implements Initializable {
                 return;
             }
 
-            String urlCloudinary = txtCloudinaryUrl.getText().trim();
-            if (!urlCloudinary.isEmpty() && !ValidadorCredenciales.probarCloudinaryReal(urlCloudinary)) {
+            boolean algunoCloudinary = !cloudName.isEmpty() || !cloudKey.isEmpty() || !cloudSec.isEmpty();
+            boolean todosCloudinary  = !cloudName.isEmpty() && !cloudKey.isEmpty() && !cloudSec.isEmpty();
+
+            if (algunoCloudinary && !todosCloudinary) {
+                AlertaPersonalizada.mostrarAlerta(
+                        "Cloudinary Incompleto",
+                        "Si deseas usar Cloudinary, debes llenar los 3 campos (Cloud Name, API Key y API Secret), o dejar los 3 vacíos.",
+                        Alert.AlertType.WARNING
+                );
+                return;
+            }
+
+            if (todosCloudinary && !ValidadorCredenciales.probarCloudinaryReal(cloudName, cloudKey, cloudSec)) {
                 AlertaPersonalizada.mostrarAlerta(
                         "Credenciales Incorrectas (Cloudinary)",
-                        "¡Los servidores de Cloudinary rechazaron las credenciales!\nRevisa que el API Key, API Secret y el Cloud Name sean correctos.\n\nNo se guardará la configuración.",
+                        "¡Los servidores de Cloudinary rechazaron las credenciales!\nRevisa que el Cloud Name, API Key y API Secret no tengan espacios ni errores.\n\nNo se guardará la configuración.",
                         Alert.AlertType.ERROR
                 );
                 return;
@@ -129,8 +141,16 @@ public class SetupController implements Initializable {
             propsBackend.setProperty("app.negocio.nombre", nombreIngresado);
             propsBackend.setProperty("gemini.api-key", "AQ.Ab8RN6IIu1a1FViogSvXftSrRPmq1_gCHFvGjyXs3fqf_dldKw");
 
-            String cloudinaryInput = txtCloudinaryUrl.getText().trim();
-            desglosarCloudinary(cloudinaryInput, propsBackend);
+            propsBackend.setProperty("cloudinary.cloud-name", cloudName);
+            propsBackend.setProperty("cloudinary.api-key", cloudKey);
+            propsBackend.setProperty("cloudinary.api-secret", cloudSec);
+
+            propsBackend.setProperty("qr.proveedor", "simulador");
+            propsBackend.setProperty("qr.simulador.segundos-auto-pago", "8");
+            propsBackend.setProperty("bnb.api.auth-url", "http://test.bnb.com.bo/ClientAuthentication.API/api/v1/auth/token");
+            propsBackend.setProperty("bnb.api.qr-base-url", "http://test.bnb.com.bo/QRSimple.API/api/v1/main");
+            propsBackend.setProperty("bnb.api.account-id", "");
+            propsBackend.setProperty("bnb.api.authorization-id", "");
         }
 
         Properties propsFrontend = new Properties();
@@ -141,6 +161,8 @@ public class SetupController implements Initializable {
         if (rbServidorPrincipal.isSelected()) {
             propsFrontend.setProperty("app.negocio.nombre", nombreIngresado);
             guardarArchivosFisicos(propsFrontend, propsBackend);
+        } else {
+            guardarArchivosFisicos(propsFrontend, null);
         }
 
         arrancarSistema();
@@ -157,7 +179,7 @@ public class SetupController implements Initializable {
             try(FileOutputStream outFront = new FileOutputStream(RUTA_CONFIG)){
                 propsF.store(outFront, "Configuración de POS - Frontend");
             }
-            if(rbServidorPrincipal.isSelected()){
+            if(rbServidorPrincipal.isSelected() && propsB != null){
                 String rutaBackendProps = dirBackend.getAbsolutePath() + File.separator + "application.properties";
                 try(FileOutputStream outBack = new FileOutputStream(rutaBackendProps)){
                     propsB.store(outBack, "Configuración de POS - Backend");
@@ -225,27 +247,6 @@ public class SetupController implements Initializable {
                 }
             });
         }).start();
-    }
-
-    private void desglosarCloudinary(String url, Properties propsBackend) {
-        try {
-            if (url != null && url.startsWith("cloudinary://")) {
-                String base = url.substring(13);
-                String[] partesArroba = base.split("@");
-                String cloudName = partesArroba[1];
-                String[] credenciales = partesArroba[0].split(":");
-
-                propsBackend.setProperty("cloudinary.api-key", credenciales[0]);
-                propsBackend.setProperty("cloudinary.api-secret", credenciales[1]);
-                propsBackend.setProperty("cloudinary.cloud-name", cloudName);
-            } else {
-                propsBackend.setProperty("cloudinary.api-key", "");
-                propsBackend.setProperty("cloudinary.api-secret", "");
-                propsBackend.setProperty("cloudinary.cloud-name", "");
-            }
-        } catch (Exception e) {
-            System.err.println("Error procesando URL de Cloudinary: " + e.getMessage());
-        }
     }
 
     private boolean validarCampos() {

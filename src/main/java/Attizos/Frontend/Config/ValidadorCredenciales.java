@@ -1,10 +1,11 @@
 package Attizos.Frontend.Config;
 
-import java.net.HttpURLConnection;
-import java.net.URL;
+import com.cloudinary.Cloudinary;
+import com.cloudinary.utils.ObjectUtils;
+
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.util.Base64;
+import java.util.Map;
 
 public class ValidadorCredenciales {
 
@@ -12,9 +13,8 @@ public class ValidadorCredenciales {
         String urlJdbc = "jdbc:postgresql://" + ip + "/attizos_db";
         System.out.println("🔄 Verificando credenciales de PostgreSQL en: " + urlJdbc);
         try {
-            DriverManager.setLoginTimeout(3); // 3 segundos máximo de espera
+            DriverManager.setLoginTimeout(3);
             try (Connection conn = DriverManager.getConnection(urlJdbc, usuario, password)) {
-                // Ejecutamos una consulta real para validar los permisos
                 return conn.isValid(3);
             }
         } catch (Exception e) {
@@ -23,58 +23,49 @@ public class ValidadorCredenciales {
         }
     }
 
-    /**
-     * PRUEBA REAL DE CLOUDINARY:
-     * Hace una llamada HTTP autenticada a la API de Cloudinary usando Key y Secret.
-     * Si las credenciales no existen o están mal, Cloudinary devuelve error (401/404) y esto devuelve false.
-     */
-    public static boolean probarCloudinaryReal(String urlCloudinary) {
-        if (urlCloudinary == null || urlCloudinary.trim().isEmpty()) {
-            return true; // Si lo dejó en blanco, no validamos (es opcional)
+    
+    public static boolean probarCloudinaryReal(String cloudName, String apiKey, String apiSecret) {
+        if ((cloudName == null || cloudName.isBlank()) &&
+            (apiKey == null || apiKey.isBlank()) &&
+            (apiSecret == null || apiSecret.isBlank())) {
+            return true; // Opcional si los 3 campos se dejan vacíos
         }
 
-        System.out.println("🔄 Conectando con los servidores de Cloudinary para verificar credenciales...");
+        if (cloudName == null || cloudName.isBlank() ||
+            apiKey == null || apiKey.isBlank() ||
+            apiSecret == null || apiSecret.isBlank()) {
+            return false; // Incompleto: faltan una o más credenciales
+        }
+
+        System.out.println("🔄 Verificando las 3 credenciales de Cloudinary con firma SHA-1...");
         try {
-            // 1. Extraemos las partes de cloudinary://KEY:SECRET@CLOUD_NAME
-            String base = urlCloudinary.trim().substring(13);
-            String[] partesArroba = base.split("@");
-            String cloudName = partesArroba[1];
-            String[] credenciales = partesArroba[0].split(":");
-            String apiKey = credenciales[0];
-            String apiSecret = credenciales[1];
+            Cloudinary cloudinary = new Cloudinary(ObjectUtils.asMap(
+                    "cloud_name", cloudName.trim(),
+                    "api_key", apiKey.trim(),
+                    "api_secret", apiSecret.trim()
+            ));
 
-            // 2. Armamos la URL de la API oficial de Cloudinary (hacemos un ping a su servidor)
-            String apiEndpoint = "https://api.cloudinary.com/v1_1/" + cloudName + "/ping";
-            URL url = new URL(apiEndpoint);
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            conn.setRequestMethod("GET");
-            conn.setConnectTimeout(4000);
-            conn.setReadTimeout(4000);
+            // Prueba la firma SHA-1 real con un ID inexistente (no crea ni borra nada)
+            Map<?, ?> respuesta = cloudinary.uploader().destroy(
+                    "craftpos_verificacion_credenciales",
+                    ObjectUtils.emptyMap()
+            );
 
-            // 3. Autenticación Básica HTTP (Key:Secret en Base64)
-            String auth = apiKey + ":" + apiSecret;
-            String encodedAuth = Base64.getEncoder().encodeToString(auth.getBytes());
-            conn.setRequestProperty("Authorization", "Basic " + encodedAuth);
-
-            // 4. Si el código HTTP es 200 (OK), las credenciales SON 100% REALES
-            int responseCode = conn.getResponseCode();
-            if (responseCode == 200) {
-                System.out.println("✅ Credenciales de Cloudinary verificadas exitosamente.");
+            Object resultado = respuesta.get("result");
+            if ("not found".equals(resultado) || "ok".equals(resultado)) {
+                System.out.println("✅ Las 3 credenciales de Cloudinary son válidas.");
                 return true;
-            } else {
-                System.err.println("❌ Cloudinary rechazó las credenciales. Código HTTP: " + responseCode);
-                return false;
             }
+
+            System.err.println("❌ Respuesta inesperada de Cloudinary: " + respuesta);
+            return false;
         } catch (Exception e) {
-            System.err.println("❌ Error al verificar Cloudinary: " + e.getMessage());
+            // Si cloud_name, api_key o api_secret fallan, Cloudinary lanza excepción aquí
+            System.err.println("❌ Credenciales de Cloudinary inválidas: " + e.getMessage());
             return false;
         }
     }
 
-    /**
-     * PRUEBA DE RED PARA SUCURSALES:
-     * Verifica que la computadora central exista y tenga el puerto de Attizos (8080) abierto.
-     */
     public static boolean probarServidorCentral(String ipCentral) {
         try (java.net.Socket socket = new java.net.Socket()) {
             socket.connect(new java.net.InetSocketAddress(ipCentral, 8080), 2500);
